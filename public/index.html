@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cotizador Médic</title>
+    <!-- <link rel="icon" type="image/png" href="/public/favicon.png"> -->
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="header">
+      <h1><i class="fas fa-file-invoice-dollar"></i> Cotizador Odontologico</h1>
+      <div>
+        <button class="btn btn-primary" id="newQuoteBtn">
+          <i class="fas fa-plus"></i> Nueva Cotización
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="new">Nueva Cotización</div>
+      <div class="tab" data-tab="history">Historial</div>
+      <div class="tab" data-tab="presets">Plantillas</div>
+    </div>
+
+    <div id="newQuoteTab" class="tab-content active">
+      <div class="card">
+        <h2 id="quoteTitle">Nueva Cotización</h2>
+        <form id="cotizacionForm">
+          <div class="form-group">
+            <label for="nombrePaciente"
+              ><i class="fas fa-user"></i> Nombre del Paciente</label
+            >
+            <input
+              type="text"
+              id="nombrePaciente"
+              class="form-control"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="correoPaciente"
+              ><i class="fas fa-envelope"></i> Correo del Paciente</label
+            >
+            <input
+              type="email"
+              id="correoPaciente"
+              class="form-control"
+              required
+            />
+          </div>
+
+          <h3><i class="fas fa-procedures"></i> Procedimientos</h3>
+          <div id="procedimientosContainer">
+            <!-- Procedimientos se añadirán aquí -->
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="agregarProcedimiento"
+          >
+            <i class="fas fa-plus-circle"></i> Agregar Procedimiento
+          </button>
+
+          <div class="form-group">
+            <label for="observaciones"
+              ><i class="fas fa-comment"></i> Observaciones</label
+            >
+            <textarea
+              id="observaciones"
+              rows="3"
+              class="form-control"
+            ></textarea>
+          </div>
+
+          <div class="totals-display">
+            <h4>Totales</h4>
+            <div class="totals-row">
+              <span>Subtotal:</span>
+              <span id="subtotal">$0.00</span>
+            </div>
+            <div class="totals-row">
+              <span>Descuento:</span>
+              <span id="descuento">$0.00</span>
+            </div>
+            <div class="totals-row total">
+              <span>Total a Pagar:</span>
+              <span id="total">$0.00</span>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Guardar Cotización
+            </button>
+            <button type="button" class="btn btn-success" id="generatePdfBtn">
+              <i class="fas fa-file-pdf"></i> Generar PDF
+            </button>
+            <button type="button" class="btn btn-warning" id="sendEmailBtn">
+              <i class="fas fa-paper-plane"></i> Enviar por Email
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="historyTab" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-history"></i> Historial de Cotizaciones</h2>
+        <div id="cotizacionesList">
+          <!-- Lista de cotizaciones se cargará aquí -->
+        </div>
+      </div>
+    </div>
+
+    <div id="presetsTab" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-clipboard-list"></i> Plantillas Guardadas</h2>
+        <div id="presetsContainer">
+          <!-- Plantillas se cargarán aquí -->
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
