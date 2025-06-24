@@ -22,7 +22,7 @@ const generarPDF = async (cotizacion) => {
     const centerX = doc.page.margins.left + pageWidth / 2;
 
     // --- ENCABEZADO ---
-    doc.image("public/logo.png", 50, 40, { width: 60 });
+    doc.image("public/logo-sandra.png", 50, 40, { width: 60 });
 
     doc
       .fillColor("#2a9d8f")

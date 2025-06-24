@@ -1,112 +1,43 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Elementos del DOM
-  const cotizacionForm = document.getElementById("cotizacionForm");
-  const procedimientosContainer = document.getElementById(
-    "procedimientosContainer"
-  );
-  const agregarProcedimientoBtn = document.getElementById(
-    "agregarProcedimiento"
-  );
+  // Elementos del DOM necesarios
   const cotizacionesList = document.getElementById("cotizacionesList");
   const presetsContainer = document.getElementById("presetsContainer");
-  const generatePdfBtn = document.getElementById("generatePdfBtn");
-  const sendEmailBtn = document.getElementById("sendEmailBtn");
   const newQuoteBtn = document.getElementById("newQuoteBtn");
 
-  // Elementos de totales
-  const subtotalElement = document.getElementById("subtotal");
-  const descuentoElement = document.getElementById("descuento");
-  const totalElement = document.getElementById("total");
-
-  // Tabs
+  // Tabs y navegación
   const tabs = document.querySelectorAll(".tab");
   const tabContents = document.querySelectorAll(".tab-content");
+  const TAB_TO_DOM = {
+    new: "newQuoteTab",
+    edit: "newQuoteTab",
+    duplicate: "newQuoteTab",
+    history: "historyTab",
+    presets: "presetsTab",
+  };
 
   // Estado de la aplicación
   let currentQuoteId = null;
   let isEditing = false;
-  let cotizacionesDB =
-    JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
-  cargarCotizaciones();
+  let pacientes = [];
+  let categorias = [];
+  let servicios = [];
+  let currentFaseId = 0;
+  let presets = []; // Asumiendo que los presets se cargan desde algún lugar
 
-  // Servicios odontológicos especializados
-  const servicios = [
-    { id: "1", nombre: "Consulta odontológica inicial", precio: 80000 },
-    { id: "2", nombre: "Radiografía panorámica", precio: 120000 },
-    { id: "3", nombre: "Limpieza dental profesional", precio: 150000 },
-    { id: "4", nombre: "Blanqueamiento dental", precio: 350000 },
-    { id: "5", nombre: "Carilla de porcelana (unidad)", precio: 600000 },
-    { id: "6", nombre: "Corona dental", precio: 850000 },
-    { id: "7", nombre: "Implante dental (incluye cirugía)", precio: 2500000 },
-    { id: "8", nombre: "Ortodoncia metálica completa", precio: 4500000 },
-    { id: "9", nombre: "Tratamiento de conducto", precio: 500000 },
-    { id: "10", nombre: "Extracción dental simple", precio: 180000 },
-    { id: "11", nombre: "Prótesis dental removible", precio: 1200000 },
-    { id: "12", nombre: "Aplicación de flúor", precio: 70000 },
-  ];
-
-  // Plantillas/presets (simulados)
-
-  const presets = [
-    {
-      id: "p1",
-      nombre: "Chequeo Dental Completo",
-      descripcion: "Incluye consulta inicial, radiografía y limpieza",
-      procedimientos: [
-        { servicioId: "1", cantidad: 1 },
-        { servicioId: "2", cantidad: 1 },
-        { servicioId: "3", cantidad: 1 },
-      ],
-    },
-    {
-      id: "p2",
-      nombre: "Blanqueamiento Completo",
-      descripcion: "Paquete completo de blanqueamiento dental",
-      procedimientos: [
-        { servicioId: "4", cantidad: 1 },
-        { servicioId: "3", cantidad: 1 }, // Incluye limpieza previa
-      ],
-    },
-    {
-      id: "p3",
-      nombre: "Rehabilitación Oral Básica",
-      descripcion: "Para pacientes que requieren múltiples procedimientos",
-      procedimientos: [
-        { servicioId: "1", cantidad: 1 },
-        { servicioId: "9", cantidad: 1 }, // Tratamiento de conducto
-        { servicioId: "6", cantidad: 1 }, // Corona
-        { servicioId: "3", cantidad: 1 }, // Limpieza
-      ],
-    },
-    {
-      id: "p4",
-      nombre: "Ortodoncia Inicial",
-      descripcion: "Paquete inicial de ortodoncia metálica",
-      procedimientos: [
-        { servicioId: "1", cantidad: 1 }, // Consulta
-        { servicioId: "2", cantidad: 1 }, // Radiografía
-        { servicioId: "8", cantidad: 1 }, // Ortodoncia completa
-      ],
-    },
-  ];
-
-  // Inicializar la aplicación
+  // Inicialización
   init();
 
-  function init() {
-    // Cargar datos iniciales
+  async function init() {
+    await cargarPacientes();
+    await cargarCategorias();
+    await cargarServicios();
     cargarCotizaciones();
     cargarPresets();
-
-    // Agregar primer procedimiento por defecto
-    agregarProcedimiento();
-
-    // Configurar eventos
     setupEventListeners();
   }
 
   function setupEventListeners() {
-    // Tabs
+    // Navegación por tabs
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         const tabId = tab.getAttribute("data-tab");
@@ -114,43 +45,50 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-    // Formulario
-    agregarProcedimientoBtn.addEventListener("click", agregarProcedimiento);
-    cotizacionForm.addEventListener("submit", guardarCotizacion);
-    generatePdfBtn.addEventListener("click", generarPDF);
-    sendEmailBtn.addEventListener("click", enviarCotizacion);
+    // Botón nueva cotización
     newQuoteBtn.addEventListener("click", () => {
-      nuevaCotizacion(); // limpia y crea un renglón vacío
-      switchTab("new", true); // true = no recarga de nuevo
+      nuevaCotizacion();
+      switchTab("new", true);
     });
+
+    // Nuevos listeners para el formulario de cotización
+    document
+      .getElementById("nuevoPacienteBtn")
+      .addEventListener("click", toggleNuevoPacienteForm);
+    document
+      .getElementById("agregarFaseBtn")
+      .addEventListener("click", agregarFase);
+    document
+      .getElementById("pacienteSelect")
+      .addEventListener("change", handlePacienteSelectChange);
+    document
+      .getElementById("cotizacionForm")
+      .addEventListener("submit", guardarCotizacion);
+    document
+      .getElementById("generatePdfBtn")
+      .addEventListener("click", generarPDFDesdeFormulario);
+    document
+      .getElementById("sendEmailBtn")
+      .addEventListener("click", enviarDesdeFormulario);
   }
 
-  /* =====  Tabla lógica → contenedor  ===== */
-  const TAB_TO_DOM = {
-    new: "newQuoteTab", // formulario en blanco
-    edit: "newQuoteTab", // con datos cargados
-    duplicate: "newQuoteTab", // con datos copiados
-    history: "historyTab",
-    presets: "presetsTab",
-  };
-
+  // Función principal de navegación
   function switchTab(view, { reset = false, skipLoad = false } = {}) {
-    /* 1. Normalizar vista solicitada */
     if (!TAB_TO_DOM[view]) view = "new";
     const destinoId = TAB_TO_DOM[view];
 
-    /* 2. Apagar todas las secciones (display:none) y quitar .active */
+    // Ocultar todos los contenidos
     tabContents.forEach((sec) => {
       sec.style.display = "none";
       sec.classList.remove("active");
     });
 
-    /* 3. Encender SOLO la sección destino */
+    // Mostrar contenido seleccionado
     const destino = document.getElementById(destinoId);
-    destino.style.display = ""; // deja que el CSS decida (block/flex…)
+    destino.style.display = "";
     destino.classList.add("active");
 
-    /* 4. Pintar pestaña menú (edit / duplicate iluminan “new”) */
+    // Resaltar tab activo
     const menuFocus = view === "edit" || view === "duplicate" ? "new" : view;
     tabs.forEach((tab) => {
       tab.classList.toggle(
@@ -159,347 +97,33 @@ document.addEventListener("DOMContentLoaded", function () {
       );
     });
 
-    /* 5. Cargas dinámicas */
+    // Cargar datos si es necesario
     if (!skipLoad) {
       if (view === "history") cargarCotizaciones();
       if (view === "presets") cargarPresets();
     }
-    /* 6. Reset de formulario SOLO cuando se pida explícitamente */
+
+    // Resetear formulario si se solicita
     if (reset) nuevaCotizacion();
   }
 
   function nuevaCotizacion() {
-    // 1. Reiniciar estado
     currentQuoteId = null;
     isEditing = false;
-
-    // 2. Actualizar título
     document.getElementById("quoteTitle").textContent = "Nueva Cotización";
+    document.getElementById("cotizacionForm").reset();
+    document.getElementById("nuevoPacienteForm").style.display = "none";
+    document.getElementById("fasesContainer").innerHTML = "";
+    currentFaseId = 0;
 
-    // 3. Limpiar formulario
-    cotizacionForm.reset();
-
-    // 4. Limpiar procedimientos y agregar uno nuevo
-    procedimientosContainer.innerHTML = "";
-    agregarProcedimiento();
-
-    // 5. Calcular totales (para mostrar $0.00)
-    calcularTotales();
-
-    // 6. Cambiar a la pestaña "new" (FORZAR MOSTRAR EL FORMULARIO)
     switchTab("new");
-
-    // 7. Asegurarse de que el contenedor esté visible [NUEVO]
-    document.getElementById("newQuoteTab").classList.add("active"); // Forzar clase
-    document.querySelector('.tab[data-tab="new"]').classList.add("active"); // Pestaña activa
   }
 
-  function agregarProcedimiento(procedimientoData = null) {
-    const procedimientoDiv = document.createElement("div");
-    procedimientoDiv.className = "procedimiento-item";
-
-    // Generar un ID único para este grupo de radios
-    const radioGroupName = `discountType-${Date.now()}`;
-
-    const servicioOptions = servicios
-      .map(
-        (s) =>
-          `<option value="${s.id}" ${
-            procedimientoData?.servicioId === s.id ? "selected" : ""
-          }>${s.nombre} ($${s.precio.toLocaleString()})</option>`
-      )
-      .join("");
-
-    procedimientoDiv.innerHTML = `
-    <button class="remove-procedimiento" title="Eliminar procedimiento">&times;</button>
-    
-    <div class="form-group">
-      <label>Servicio:</label>
-      <select class="form-control servicioSelect" required>
-        <option value="">Seleccione un servicio</option>
-        ${servicioOptions}
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label>Precio Unitario:</label>
-      <input type="number" class="form-control precioUnitario" min="0" step="0.01" required
-             value="${procedimientoData?.precio_unitario || ""}">
-    </div>
-    
-    <div class="form-group">
-      <label>Cantidad:</label>
-      <input type="number" class="form-control cantidad" min="1" value="${
-        procedimientoData?.cantidad || 1
-      }">
-    </div>
-    
-    <div class="form-group">
-      <label>Descuento:</label>
-      <input type="number" class="form-control descuento" min="0" 
-             value="${
-               procedimientoData?.descuento_individual || 0
-             }" step="0.01">
-      
-      <div class="discount-options">
-        <div class="discount-option">
-          <input type="radio" name="${radioGroupName}" value="amount" ${
-      !procedimientoData || procedimientoData.discount_type !== "percent"
-        ? "checked"
-        : ""
-    }>
-          <label>Monto fijo</label>
-        </div>
-        <div class="discount-option">
-          <input type="radio" name="${radioGroupName}" value="percent" ${
-      procedimientoData && procedimientoData.discount_type === "percent"
-        ? "checked"
-        : ""
-    }>
-          <label>Porcentaje</label>
-        </div>
-      </div>
-    </div>
-  `;
-
-    procedimientosContainer.appendChild(procedimientoDiv);
-
-    // Configurar eventos
-    const select = procedimientoDiv.querySelector(".servicioSelect");
-    const precioInput = procedimientoDiv.querySelector(".precioUnitario");
-    const removeBtn = procedimientoDiv.querySelector(".remove-procedimiento");
-
-    // Seleccionar servicio
-    select.addEventListener("change", function () {
-      if (this.value) {
-        const selectedService = servicios.find((s) => s.id === this.value);
-        precioInput.value = selectedService.precio;
-      }
-      calcularTotales();
-    });
-
-    // Eliminar procedimiento
-    removeBtn.addEventListener("click", function () {
-      if (document.querySelectorAll(".procedimiento-item").length > 1) {
-        procedimientoDiv.remove();
-        calcularTotales();
-      } else {
-        alert("Debe haber al menos un procedimiento");
-      }
-    });
-
-    // Calcular totales cuando cambian los valores
-    ["input", "change"].forEach((event) => {
-      select.addEventListener(event, calcularTotales);
-      precioInput.addEventListener(event, calcularTotales);
-      procedimientoDiv
-        .querySelector(".cantidad")
-        .addEventListener(event, calcularTotales);
-      procedimientoDiv
-        .querySelector(".descuento")
-        .addEventListener(event, calcularTotales);
-      procedimientoDiv
-        .querySelectorAll('input[type="radio"]')
-        .forEach((radio) => {
-          radio.addEventListener(event, calcularTotales);
-        });
-    });
-
-    if (procedimientoData) {
-      calcularTotales();
-    }
-  }
-
-  // En app.js (frontend)
-  function calcularTotales() {
-    let subtotal = 0;
-    let descuentoTotal = 0;
-
-    document.querySelectorAll(".procedimiento-item").forEach((procDiv) => {
-      const precio =
-        parseFloat(procDiv.querySelector(".precioUnitario").value) || 0;
-      const cantidad = parseInt(procDiv.querySelector(".cantidad").value) || 1;
-      const descuentoValor =
-        parseFloat(procDiv.querySelector(".descuento").value) || 0;
-      const esPorcentaje = procDiv.querySelector(
-        'input[type="radio"][value="percent"]'
-      ).checked;
-
-      const subtotalProcedimiento = precio * cantidad;
-      subtotal += subtotalProcedimiento;
-
-      // Calcular descuento (si es porcentaje o monto fijo)
-      const descuento = esPorcentaje
-        ? subtotalProcedimiento * (descuentoValor / 100) // % sobre el subtotal
-        : descuentoValor; // Monto fijo
-
-      descuentoTotal += descuento;
-    });
-
-    const total = subtotal - descuentoTotal;
-
-    // Actualizar la UI
-    subtotalElement.textContent = formatearMoneda(subtotal);
-    descuentoElement.textContent = formatearMoneda(descuentoTotal);
-    totalElement.textContent = formatearMoneda(total);
-
-    return { subtotal, descuentoTotal, total };
-  }
-
-  // Función auxiliar para formato de moneda
-  function formatearMoneda(valor) {
-    return `$${valor.toLocaleString("es-CO", { minimumFractionDigits: 2 })}`;
-  }
-
-  async function guardarCotizacion(e) {
-    e.preventDefault();
-
-    // 1. Validación básica
-    const nombrePaciente = document
-      .getElementById("nombrePaciente")
-      .value.trim();
-    if (!nombrePaciente) {
-      alert("El nombre del paciente es requerido");
-      return;
-    }
-
-    // 2. Recoger datos del formulario
-    const cotizacionData = {
-      nombre_paciente: nombrePaciente,
-      correo_paciente: document.getElementById("correoPaciente").value.trim(),
-      observaciones: document.getElementById("observaciones").value.trim(),
-      procedimientos: [],
-      estado: "borrador",
-      fecha_creacion: new Date().toISOString(),
-    };
-
-    // 3. Recoger procedimientos con validación
-    let hayProcedimientosValidos = false;
-
-    document.querySelectorAll(".procedimiento-item").forEach((procDiv) => {
-      try {
-        const servicioSelect = procDiv.querySelector(".servicioSelect");
-        if (!servicioSelect || !servicioSelect.value) return; // Saltar si no hay servicio
-
-        const servicio = servicios.find((s) => s.id === servicioSelect.value);
-        if (!servicio) return;
-
-        const precio =
-          parseFloat(procDiv.querySelector(".precioUnitario").value) ||
-          servicio.precio;
-        const cantidad =
-          parseInt(procDiv.querySelector(".cantidad").value) || 1;
-        const descuento =
-          parseFloat(procDiv.querySelector(".descuento").value) || 0;
-        const discountType = procDiv.querySelector(
-          'input[type="radio"]:checked'
-        ).value;
-
-        cotizacionData.procedimientos.push({
-          nombre_servicio: servicio.nombre,
-          precio_unitario: precio,
-          cantidad: cantidad,
-          descuento_individual: descuento,
-          discount_type: discountType,
-        });
-
-        hayProcedimientosValidos = true;
-      } catch (error) {
-        console.error("Error procesando procedimiento:", error);
-      }
-    });
-
-    if (!hayProcedimientosValidos) {
-      alert("Debe agregar al menos un procedimiento válido");
-      return;
-    }
-
-    // 4. Calcular totales (simulado)
-    const { total_bruto, total_descuento, total_neto } = calcularTotalesObjeto(
-      cotizacionData.procedimientos
-    );
-    cotizacionData.total_bruto = total_bruto;
-    cotizacionData.total_descuento = total_descuento;
-    cotizacionData.total_neto = total_neto;
-
-    // 5. Guardado simulado
-    try {
-      if (isEditing && currentQuoteId) {
-        // Actualizar cotización existente
-        const index = cotizacionesDB.findIndex((c) => c.id === currentQuoteId);
-        if (index !== -1) {
-          cotizacionesDB[index] = {
-            ...cotizacionesDB[index],
-            ...cotizacionData,
-          };
-        } else {
-          throw new Error("Cotización no encontrada para editar");
-        }
-      } else {
-        // Nueva cotización
-        const nuevaCotizacion = {
-          id: "sim-" + Date.now(), // ID simulado
-          ...cotizacionData,
-        };
-        cotizacionesDB.push(nuevaCotizacion);
-        currentQuoteId = nuevaCotizacion.id;
-        isEditing = true;
-      }
-
-      // 6. Feedback al usuario
-      alert(
-        `Cotización ${
-          isEditing ? "actualizada" : "guardada"
-        } correctamente (modo simulado)`
-      );
-      document.getElementById(
-        "quoteTitle"
-      ).textContent = `Editando Cotización #${currentQuoteId.slice(-6)}`; // Mostrar ID corto
-
-      // 7. Actualizar lista y cambiar pestaña
-      cargarCotizaciones();
-      // Dentro del bloque try, después de actualizar cotizacionesDB:
-      localStorage.setItem(
-        "cotizacionesSimuladas",
-        JSON.stringify(cotizacionesDB)
-      );
-      switchTab("history");
-    } catch (error) {
-      console.error("Error en guardado simulado:", error);
-      alert(`Error al guardar: ${error.message}`);
-    }
-  }
-
-  // Función auxiliar para calcular totales desde objeto
-  function calcularTotalesObjeto(procedimientos) {
-    let totalBruto = 0;
-    let totalDescuento = 0;
-
-    procedimientos.forEach((proc) => {
-      const subtotal = proc.precio_unitario * proc.cantidad;
-      totalBruto += subtotal;
-
-      const descuento =
-        proc.discount_type === "percent"
-          ? subtotal * (proc.descuento_individual / 100)
-          : proc.descuento_individual;
-
-      totalDescuento += descuento;
-    });
-
-    return {
-      total_bruto: totalBruto,
-      total_descuento: totalDescuento,
-      total_neto: totalBruto - totalDescuento,
-    };
-  }
-
-  //Historial , aqui se muestra en la seccion historial lo que se guarda en nuevas cotizaciones
+  // Cargar historial de cotizaciones
   async function cargarCotizaciones() {
     try {
-      // Cargar desde localStorage en lugar de hacer fetch
-      const cotizaciones =
-        JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
+      const response = await fetch("/api/cotizaciones");
+      const cotizaciones = await response.json();
 
       cotizacionesList.innerHTML = "";
 
@@ -508,82 +132,79 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // Ordenar por fecha más reciente primero
       cotizaciones.sort(
         (a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
       );
 
-      // Crear tabla de cotizaciones
       const table = document.createElement("table");
       table.className = "table";
       table.innerHTML = `
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Paciente</th>
-          <th>Fecha</th>
-          <th>Total</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${cotizaciones
-          .map(
-            (cotizacion) => `
-          <tr>
-            <td>${cotizacion.id.slice(-6)}</td>
-            <td>${cotizacion.nombre_paciente}</td>
-            <td>${new Date(cotizacion.fecha_creacion).toLocaleDateString()}</td>
-            <td>$${
-              cotizacion.total_neto?.toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-              }) || "0.00"
-            }</td>
-            <td>
-              <span class="badge ${getBadgeClass(cotizacion.estado)}">
-                ${cotizacion.estado}
-              </span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-sm btn-primary" onclick="editarCotizacion('${
-                  cotizacion.id
-                }')">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-success" onclick="descargarPDF('${
-                  cotizacion.id
-                }')">
-                  <i class="fas fa-file-pdf"></i>
-                </button>
-                <button class="btn btn-sm btn-warning" onclick="enviarCotizacion('${
-                  cotizacion.id
-                }')">
-                  <i class="fas fa-paper-plane"></i>
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="duplicarCotizacion('${
-                  cotizacion.id
-                }')">
-                  <i class="fas fa-copy"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    `;
-
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Paciente</th>
+      <th>Fecha</th>
+      <th>Total</th>
+      <th>Estado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${cotizaciones
+      .map(
+        (cotizacion) => `
+      <tr>
+        <td>${String(cotizacion.id).slice(-6)}</td>
+        <td>${cotizacion.nombre_paciente}</td>
+        <td>${new Date(cotizacion.fecha_creacion).toLocaleDateString()}</td>
+        <td>$${
+          cotizacion.total_neto?.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+          }) || "0.00"
+        }</td>
+        <td>
+          <span class="badge ${getBadgeClass(cotizacion.estado)}">
+            ${cotizacion.estado}
+          </span>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn btn-sm btn-primary" title="Editar" onclick="editarCotizacion('${
+              cotizacion.id
+            }')">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-success" title="Descargar PDF" onclick="descargarPDF('${
+              cotizacion.id
+            }')">
+              <i class="fas fa-file-pdf"></i>
+            </button>
+            <button class="btn btn-sm btn-warning" title="Enviar" onclick="enviarCotizacion('${
+              cotizacion.id
+            }')">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+            <button class="btn btn-sm btn-secondary" title="Duplicar" onclick="duplicarCotizacion('${
+              cotizacion.id
+            }')">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `
+      )
+      .join("")}
+  </tbody>
+`;
       cotizacionesList.appendChild(table);
     } catch (error) {
       console.error("Error al cargar cotizaciones:", error);
       cotizacionesList.innerHTML = `
-      <div class="alert alert-danger">
-        Error al cargar cotizaciones: ${error.message}
-      </div>
-    `;
+        <div class="alert alert-danger">
+          Error al cargar cotizaciones: ${error.message}
+        </div>
+      `;
     }
   }
 
@@ -600,9 +221,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // Cargar presets
   async function cargarPresets() {
     try {
-      // En una app real, esto vendría de una API
+      const response = await fetch("/api/presets");
+      presets = await response.json();
       presetsContainer.innerHTML = "";
 
       if (presets.length === 0) {
@@ -616,13 +239,12 @@ document.addEventListener("DOMContentLoaded", function () {
         presetCard.innerHTML = `
           <div class="preset-name">${preset.nombre}</div>
           <div class="preset-desc">${preset.descripcion}</div>
-          <div class="action-buttons" style="margin-top: 10px;">
+          <div class="action-buttons">
             <button class="btn btn-sm btn-primary" onclick="usarPreset('${preset.id}')">
               <i class="fas fa-check"></i> Usar
             </button>
           </div>
         `;
-
         presetsContainer.appendChild(presetCard);
       });
     } catch (error) {
@@ -632,321 +254,755 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  async function generarPDF() {
+  // Funciones para el nuevo formulario de cotización
+  async function cargarPacientes() {
     try {
-      // Obtener datos básicos de validación
-      const nombrePaciente = document
-        .getElementById("nombrePaciente")
-        .value.trim();
-      if (!nombrePaciente) {
-        alert("Debe ingresar al menos el nombre del paciente");
-        return;
-      }
-
-      // Preparar objeto cotización según el caso
-      const cotizacionData = {
-        id: currentQuoteId || "temp-" + Date.now(),
-        nombre_paciente: nombrePaciente,
-        correo_paciente: document.getElementById("correoPaciente").value.trim(),
-        observaciones: document.getElementById("observaciones").value.trim(),
-        procedimientos: obtenerProcedimientosActuales(),
-        fecha_creacion: new Date().toISOString(),
-        estado: "borrador",
-        ...calcularTotalesObjeto(obtenerProcedimientosActuales()),
-      };
-
-      // Llamar a la función de generación de PDF
-      await generarYDescargarPDF(cotizacionData);
+      const response = await fetch("/api/pacientes");
+      pacientes = await response.json();
+      actualizarSelectPacientes();
     } catch (error) {
-      console.error("Error al generar PDF:", error);
-      alert(`Error al generar PDF: ${error.message}`);
+      console.error("Error al cargar pacientes:", error);
     }
   }
 
-  async function generarYDescargarPDF(cotizacion) {
-    const res = await fetch("/api/generar-pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cotizacion }),
-    });
-    if (!res.ok) throw new Error("Error al generar PDF");
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    // Descarga
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `cotizacion_${cotizacion.id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  async function cargarCategorias() {
+    try {
+      const response = await fetch("/api/categorias");
+      categorias = await response.json();
+    } catch (error) {
+      console.error("Error al cargar categorías:", error);
+    }
   }
 
-  // Función auxiliar para obtener los procedimientos actuales del formulario
-  function obtenerProcedimientosActuales() {
-    const procedimientos = [];
+  async function cargarServicios() {
+    try {
+      const response = await fetch("/api/servicios");
+      servicios = await response.json();
+    } catch (error) {
+      console.error("Error al cargar servicios:", error);
+    }
+  }
 
-    document.querySelectorAll(".procedimiento-item").forEach((procDiv) => {
-      const servicioSelect = procDiv.querySelector(".servicioSelect");
-      const servicio = servicios.find((s) => s.id === servicioSelect.value);
+  function actualizarSelectPacientes() {
+    const select = document.getElementById("pacienteSelect");
+    select.innerHTML = '<option value="">Buscar paciente existente...</option>';
 
+    pacientes.forEach((paciente) => {
+      const option = document.createElement("option");
+      option.value = paciente.id;
+      option.textContent = `${paciente.nombre} - ${
+        paciente.correo || "Sin correo"
+      }`;
+      select.appendChild(option);
+    });
+  }
+
+  function toggleNuevoPacienteForm() {
+    const form = document.getElementById("nuevoPacienteForm");
+    form.style.display = form.style.display === "none" ? "block" : "none";
+    if (form.style.display === "block") {
+      document.getElementById("pacienteSelect").value = "";
+    }
+  }
+
+  function handlePacienteSelectChange(e) {
+    if (e.target.value) {
+      document.getElementById("nuevoPacienteForm").style.display = "none";
+    }
+  }
+
+  function agregarFase() {
+    currentFaseId++;
+    const template = document.getElementById("faseTemplate");
+    const clone = template.content.cloneNode(true);
+    const faseCard = clone.querySelector(".fase-card");
+    faseCard.dataset.faseId = currentFaseId;
+
+    const faseNumero = faseCard.querySelector(".fase-numero");
+    faseNumero.textContent = currentFaseId;
+
+    // Llenar categorías en el select
+    const categoriaSelect = faseCard.querySelector(".categoria-select");
+    categorias.forEach((categoria) => {
+      const option = document.createElement("option");
+      option.value = categoria.id;
+      option.textContent = categoria.nombre_categoria;
+      categoriaSelect.appendChild(option);
+    });
+
+    // Evento para agregar servicio
+    faseCard
+      .querySelector(".agregar-servicio")
+      .addEventListener("click", () => {
+        agregarServicioAFase(faseCard);
+      });
+
+    // Evento para eliminar fase
+    faseCard.querySelector(".remove-fase").addEventListener("click", () => {
+      faseCard.remove();
+      calcularTotalesGenerales();
+    });
+
+    document.getElementById("fasesContainer").appendChild(faseCard);
+    agregarServicioAFase(faseCard);
+  }
+
+  function agregarServicioAFase(faseCard) {
+    const template = document.getElementById("servicioTemplate");
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
+
+    // Evento para eliminar servicio
+    servicioItem
+      .querySelector(".remove-servicio")
+      .addEventListener("click", () => {
+        servicioItem.remove();
+        calcularTotalesFase(faseCard);
+        calcularTotalesGenerales();
+      });
+
+    // Eventos para cálculos
+    const cantidadInput = servicioItem.querySelector(".cantidad");
+    const descuentoInput = servicioItem.querySelector(".descuento");
+
+    const calcularServicio = () => {
+      const precioUnitario =
+        parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
+      const cantidad = parseInt(cantidadInput.value) || 1;
+      const descuento = parseFloat(descuentoInput.value) || 0;
+
+      const subtotal = precioUnitario * cantidad;
+      const descuentoMonto = subtotal * (descuento / 100);
+      const total = subtotal - descuentoMonto;
+
+      servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
+      calcularTotalesFase(faseCard);
+      calcularTotalesGenerales();
+    };
+
+    cantidadInput.addEventListener("change", calcularServicio);
+    descuentoInput.addEventListener("change", calcularServicio);
+
+    // Evento para cambio de categoría
+    const categoriaSelect = servicioItem.querySelector(".categoria-select");
+    categoriaSelect.addEventListener("change", (e) => {
+      const servicioSelect = e.target
+        .closest(".servicio-item")
+        .querySelector(".servicio-select");
+      actualizarServiciosSelect(e.target.value, servicioSelect);
+    });
+
+    // Evento para cambio de servicio
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    servicioSelect.addEventListener("change", (e) => {
+      const servicioId = e.target.value;
+      const servicio = servicios.find((s) => s.id == servicioId);
       if (servicio) {
-        const precio =
-          parseFloat(procDiv.querySelector(".precioUnitario").value) ||
-          servicio.precio;
-        const cantidad =
-          parseInt(procDiv.querySelector(".cantidad").value) || 1;
-        const descuento =
-          parseFloat(procDiv.querySelector(".descuento").value) || 0;
-        const discountType = procDiv.querySelector(
-          'input[type="radio"]:checked'
-        ).value;
-
-        procedimientos.push({
-          nombre_servicio: servicio.nombre,
-          precio_unitario: precio,
-          cantidad: cantidad,
-          descuento_individual: descuento,
-          discount_type: discountType,
-        });
+        servicioItem.querySelector(".precio-unitario").value =
+          servicio.precio_neto.toFixed(2);
+        calcularServicio();
       }
     });
 
-    return procedimientos;
+    faseCard.querySelector(".servicios-container").appendChild(servicioItem);
   }
 
-  async function enviarCotizacion(quoteId = null) {
-    const id = quoteId || currentQuoteId;
-    if (!id) {
-      alert("Primero guarde la cotización");
+  function actualizarServiciosSelect(categoriaId, servicioSelect) {
+    servicioSelect.innerHTML =
+      '<option value="">Seleccionar servicio...</option>';
+    servicioSelect.disabled = !categoriaId;
+
+    if (categoriaId) {
+      const serviciosCategoria = servicios.filter(
+        (s) => s.categoria_id == categoriaId
+      );
+      serviciosCategoria.forEach((servicio) => {
+        const option = document.createElement("option");
+        option.value = servicio.id;
+        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+        servicioSelect.appendChild(option);
+      });
+    }
+  }
+
+  function calcularTotalesFase(faseCard) {
+    let subtotal = 0;
+    let descuentoTotal = 0;
+
+    faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
+      const precioUnitario =
+        parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
+      const cantidad =
+        parseInt(servicioItem.querySelector(".cantidad").value) || 1;
+      const descuento =
+        parseFloat(servicioItem.querySelector(".descuento").value) || 0;
+
+      const subtotalServicio = precioUnitario * cantidad;
+      const descuentoServicio = subtotalServicio * (descuento / 100);
+
+      subtotal += subtotalServicio;
+      descuentoTotal += descuentoServicio;
+    });
+
+    const total = subtotal - descuentoTotal;
+
+    faseCard.querySelector(".fase-subtotal").textContent = `$${subtotal.toFixed(
+      2
+    )}`;
+    faseCard.querySelector(
+      ".fase-descuento"
+    ).textContent = `$${descuentoTotal.toFixed(2)}`;
+    faseCard.querySelector(
+      ".fase-total-amount"
+    ).textContent = `$${total.toFixed(2)}`;
+  }
+
+  function calcularTotalesGenerales() {
+    let subtotal = 0;
+    let descuentoTotal = 0;
+
+    document.querySelectorAll(".fase-card").forEach((faseCard) => {
+      const faseSubtotal =
+        parseFloat(
+          faseCard.querySelector(".fase-subtotal").textContent.replace("$", "")
+        ) || 0;
+      const faseDescuento =
+        parseFloat(
+          faseCard.querySelector(".fase-descuento").textContent.replace("$", "")
+        ) || 0;
+
+      subtotal += faseSubtotal;
+      descuentoTotal += faseDescuento;
+    });
+
+    const total = subtotal - descuentoTotal;
+
+    document.getElementById(
+      "subtotal-cotizacion"
+    ).textContent = `$${subtotal.toFixed(2)}`;
+    document.getElementById(
+      "descuento-cotizacion"
+    ).textContent = `$${descuentoTotal.toFixed(2)}`;
+    document.getElementById("total-cotizacion").textContent = `$${total.toFixed(
+      2
+    )}`;
+  }
+
+  async function guardarCotizacion(e) {
+    e.preventDefault();
+
+    // Validar que haya al menos una fase con servicios
+    const fases = document.querySelectorAll(".fase-card");
+    if (fases.length === 0) {
+      alert("Debe agregar al menos una fase con servicios");
       return;
     }
 
-    try {
-      const response = await fetch(`/api/cotizaciones/${id}/enviar`, {
-        method: "POST",
-      });
+    // Obtener datos del paciente
+    let pacienteId = document.getElementById("pacienteSelect").value;
+    const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
 
-      const result = await response.json();
+    // Si es un nuevo paciente
+    if (nuevoPacienteForm.style.display !== "none") {
+      const nuevoPaciente = {
+        nombre: document.getElementById("nombrePaciente").value,
+        correo: document.getElementById("correoPaciente").value,
+        telefono: document.getElementById("telefonoPaciente").value,
+        direccion: document.getElementById("direccionPaciente").value,
+      };
 
-      if (response.ok) {
-        alert(
-          `Cotización enviada a: ${result.emailSimulado.details.to}\n\n(Simulado - no se envió realmente)`
-        );
-        cargarCotizaciones();
-      } else {
-        alert(`Error: ${result.error || "No se pudo enviar la cotización"}`);
+      if (!nuevoPaciente.nombre) {
+        alert("El nombre del paciente es obligatorio");
+        return;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al enviar la cotización");
-    }
-  }
 
-  window.usarPreset = function (presetId) {
-    const preset = presets.find((p) => p.id === presetId);
-    if (!preset) return;
-
-    // Limpiar formulario
-    currentQuoteId = null;
-    isEditing = false;
-    document.getElementById("quoteTitle").textContent = "Nueva Cotización";
-    document.getElementById("nombrePaciente").value = "";
-    document.getElementById("correoPaciente").value = "";
-    document.getElementById("observaciones").value = "";
-    procedimientosContainer.innerHTML = "";
-
-    // Agregar procedimientos del preset
-    preset.procedimientos.forEach((proc) => {
-      const servicio = servicios.find((s) => s.id === proc.servicioId);
-      if (servicio) {
-        agregarProcedimiento({
-          servicioId: servicio.id,
-          precio_unitario: servicio.precio,
-          cantidad: proc.cantidad,
-          descuento_individual: 0,
+      try {
+        const response = await fetch("/api/pacientes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nuevoPaciente),
         });
+
+        const result = await response.json();
+        pacienteId = result.id;
+      } catch (error) {
+        console.error("Error al guardar paciente:", error);
+        alert("Error al guardar paciente");
+        return;
       }
-    });
-
-    switchTab("new");
-  };
-
-  ////
-  //
-  //
-  // SECCION DE BOTONES DE ACCION
-  ////
-  //
-  //
-
-  window.descargarPDF = async function (id) {
-    try {
-      // Obtener cotización de localStorage
-      const cotizaciones =
-        JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
-      const cotizacion = cotizaciones.find((c) => c.id === id);
-
-      if (!cotizacion) {
-        throw new Error("Cotización no encontrada");
-      }
-
-      // Usar la misma función de generación
-      await generarYDescargarPDF(cotizacion);
-    } catch (error) {
-      console.error("Error al descargar PDF:", error);
-      alert(`Error al descargar PDF: ${error.message}`);
     }
-  };
 
-  window.editarCotizacion = async function (id) {
-    try {
-      const cotizaciones =
-        JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
-      const cotizacion = cotizaciones.find((c) => c.id === id);
+    if (!pacienteId) {
+      alert("Debe seleccionar o crear un paciente");
+      return;
+    }
 
-      if (!cotizacion) {
-        throw new Error("Cotización no encontrada en el historial");
-      }
+    // Recolectar datos de la cotización
+    const cotizacion = {
+      id: currentQuoteId,
+      paciente_id: pacienteId,
+      observaciones: document.getElementById("observaciones").value,
+      total: parseFloat(
+        document.getElementById("total-cotizacion").textContent.replace("$", "")
+      ),
+      fases: [],
+    };
 
-      // Configurar estado de edición
-      currentQuoteId = id;
-      isEditing = true;
-      document.getElementById(
-        "quoteTitle"
-      ).textContent = `Editando Cotización #${id.slice(-6)}`;
+    // Recolectar datos de las fases
+    fases.forEach((faseCard) => {
+      const fase = {
+        numero_fase: parseInt(
+          faseCard.querySelector(".fase-numero").textContent
+        ),
+        servicios: [],
+      };
 
-      // Llenar datos básicos del formulario
-      document.getElementById("nombrePaciente").value =
-        cotizacion.nombre_paciente;
-      document.getElementById("correoPaciente").value =
-        cotizacion.correo_paciente;
-      document.getElementById("observaciones").value =
-        cotizacion.observaciones || "";
-
-      // Limpiar y reconstruir procedimientos
-      procedimientosContainer.innerHTML = "";
-      cotizacion.procedimientos.forEach((proc) => {
-        const servicio = servicios.find(
-          (s) => s.nombre === proc.nombre_servicio
-        );
-        if (servicio) {
-          agregarProcedimiento({
-            servicioId: servicio.id,
-            precio_unitario: proc.precio_unitario,
-            cantidad: proc.cantidad,
-            descuento_individual: proc.descuento_individual,
-            discount_type: proc.discount_type || "amount",
+      faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
+        const servicioId = servicioItem.querySelector(".servicio-select").value;
+        if (servicioId) {
+          fase.servicios.push({
+            servicio_id: servicioId,
+            cantidad:
+              parseInt(servicioItem.querySelector(".cantidad").value) || 1,
+            precio_unitario:
+              parseFloat(
+                servicioItem.querySelector(".precio-unitario").value
+              ) || 0,
+            descuento:
+              parseFloat(servicioItem.querySelector(".descuento").value) || 0,
+            total:
+              parseFloat(servicioItem.querySelector(".total-servicio").value) ||
+              0,
           });
         }
       });
 
-      // Calcular y mostrar totales
-      calcularTotales();
+      cotizacion.fases.push(fase);
+    });
 
-      // Cambiar a pestaña new sin ejecutar acciones adicionales
-      switchTab("new", true);
+    // Enviar al servidor
+    try {
+      const url =
+        isEditing && currentQuoteId
+          ? `/api/cotizaciones/${currentQuoteId}`
+          : "/api/cotizaciones";
+      const method = isEditing && currentQuoteId ? "PUT" : "POST";
 
-      // Forzar visualización del formulario
-      document.getElementById("newQuoteTab").style.display = "block";
+      const response = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cotizacion),
+      });
+
+      if (!response.ok) throw new Error("Error al guardar cotización");
+
+      const result = await response.json();
+      alert("Cotización guardada exitosamente");
+      switchTab("history");
+      cargarCotizaciones();
     } catch (error) {
-      console.error("Error al editar cotización:", error);
-      alert(`Error al editar: ${error.message}`);
+      console.error("Error al guardar cotización:", error);
+      alert(`Error: ${error.message}`);
+    }
+  }
+
+  async function generarPDFDesdeFormulario() {
+    // Validar que haya al menos una fase con servicios
+    const fases = document.querySelectorAll(".fase-card");
+    if (fases.length === 0) {
+      alert("Debe agregar al menos una fase con servicios para generar el PDF");
+      return;
+    }
+
+    // Recolectar datos del formulario para el PDF
+    const pacienteId = document.getElementById("pacienteSelect").value;
+    let paciente = pacientes.find((p) => p.id == pacienteId);
+
+    if (
+      !paciente &&
+      document.getElementById("nuevoPacienteForm").style.display !== "none"
+    ) {
+      paciente = {
+        nombre: document.getElementById("nombrePaciente").value,
+        correo: document.getElementById("correoPaciente").value,
+        telefono: document.getElementById("telefonoPaciente").value,
+        direccion: document.getElementById("direccionPaciente").value,
+      };
+    }
+
+    if (!paciente) {
+      alert("Debe seleccionar o crear un paciente");
+      return;
+    }
+
+    const datosCotizacion = {
+      paciente: paciente,
+      observaciones: document.getElementById("observaciones").value,
+      total: document.getElementById("total-cotizacion").textContent,
+      fases: [],
+    };
+
+    fases.forEach((faseCard) => {
+      const fase = {
+        numero: faseCard.querySelector(".fase-numero").textContent,
+        subtotal: faseCard.querySelector(".fase-subtotal").textContent,
+        descuento: faseCard.querySelector(".fase-descuento").textContent,
+        total: faseCard.querySelector(".fase-total-amount").textContent,
+        servicios: [],
+      };
+
+      faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
+        const servicioSelect = servicioItem.querySelector(".servicio-select");
+        if (servicioSelect.value) {
+          const servicio = servicios.find((s) => s.id == servicioSelect.value);
+          fase.servicios.push({
+            nombre: servicio.descripcion,
+            cantidad: servicioItem.querySelector(".cantidad").value,
+            precio: servicioItem.querySelector(".precio-unitario").value,
+            descuento: servicioItem.querySelector(".descuento").value + "%",
+            total: servicioItem.querySelector(".total-servicio").value,
+          });
+        }
+      });
+
+      datosCotizacion.fases.push(fase);
+    });
+
+    try {
+      const res = await fetch("/api/generar-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cotizacion: datosCotizacion }),
+      });
+
+      if (!res.ok) throw new Error("Error al generar PDF");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cotizacion_${paciente.nombre.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      alert(`Error: ${error.message}`);
+    }
+  }
+
+  async function enviarDesdeFormulario() {
+    // Validar que haya al menos una fase con servicios
+    const fases = document.querySelectorAll(".fase-card");
+    if (fases.length === 0) {
+      alert("Debe agregar al menos una fase con servicios para enviar");
+      return;
+    }
+
+    const pacienteId = document.getElementById("pacienteSelect").value;
+    let paciente = pacientes.find((p) => p.id == pacienteId);
+
+    if (
+      !paciente &&
+      document.getElementById("nuevoPacienteForm").style.display !== "none"
+    ) {
+      paciente = {
+        nombre: document.getElementById("nombrePaciente").value,
+        correo: document.getElementById("correoPaciente").value,
+        telefono: document.getElementById("telefonoPaciente").value,
+        direccion: document.getElementById("direccionPaciente").value,
+      };
+    }
+
+    if (!paciente) {
+      alert("Debe seleccionar o crear un paciente");
+      return;
+    }
+
+    if (!paciente.correo) {
+      alert(
+        "El paciente debe tener un correo electrónico para enviar la cotización"
+      );
+      return;
+    }
+
+    const confirmacion = confirm(
+      `¿Enviar cotización a ${paciente.correo}?\n\n` +
+        `Paciente: ${paciente.nombre}\n` +
+        `Total: ${document.getElementById("total-cotizacion").textContent}`
+    );
+
+    if (confirmacion) {
+      try {
+        // Primero guardamos la cotización si no está guardada
+        if (!currentQuoteId) {
+          await guardarCotizacion(new Event("submit"));
+          return; // El guardado recargará la página y podremos enviar después
+        }
+
+        // Si ya está guardada, procedemos a enviar
+        const response = await fetch(
+          `/api/cotizaciones/${currentQuoteId}/enviar`,
+          {
+            method: "POST",
+          }
+        );
+
+        if (!response.ok) throw new Error("Error al enviar");
+
+        alert(`Cotización enviada a ${paciente.correo}`);
+        cargarCotizaciones();
+      } catch (error) {
+        console.error("Error al enviar:", error);
+        alert(`Error: ${error.message}`);
+      }
+    }
+  }
+
+  // Funciones globales para acciones del historial
+  window.usarPreset = function (presetId) {
+    const preset = presets.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    currentQuoteId = null;
+    isEditing = false;
+    switchTab("new", true);
+
+    // Aquí podrías implementar la carga de los servicios del preset en el formulario
+    // dependiendo de cómo estén estructurados tus presets
+  };
+
+  window.editarCotizacion = async function (id) {
+    try {
+      const response = await fetch(`/api/cotizaciones/${id}`);
+      const cotizacion = await response.json();
+
+      if (!cotizacion) throw new Error("Cotización no encontrada");
+
+      // Limpiar formulario
+      document.getElementById("cotizacionForm").reset();
+      document.getElementById("fasesContainer").innerHTML = "";
+      currentFaseId = 0;
+
+      // Establecer paciente
+      document.getElementById("pacienteSelect").value = cotizacion.paciente_id;
+
+      // Establecer observaciones
+      document.getElementById("observaciones").value =
+        cotizacion.observaciones || "";
+
+      // Cargar fases y servicios
+      if (cotizacion.fases && cotizacion.fases.length > 0) {
+        cotizacion.fases.forEach((faseData) => {
+          agregarFase();
+          const faseCard = document.querySelector(
+            `.fase-card[data-fase-id="${currentFaseId}"]`
+          );
+          const faseNumero = faseCard.querySelector(".fase-numero");
+          faseNumero.textContent = faseData.numero_fase;
+
+          if (faseData.servicios && faseData.servicios.length > 0) {
+            faseData.servicios.forEach((servicioData) => {
+              agregarServicioAFase(faseCard);
+              const servicioItem = faseCard.querySelector(
+                ".servicio-item:last-child"
+              );
+
+              // Buscar el servicio para obtener categoría y detalles
+              const servicio = servicios.find(
+                (s) => s.id == servicioData.servicio_id
+              );
+              if (servicio) {
+                const categoriaSelect =
+                  servicioItem.querySelector(".categoria-select");
+                categoriaSelect.value = servicio.categoria_id;
+
+                // Disparar evento change para cargar servicios
+                const event = new Event("change");
+                categoriaSelect.dispatchEvent(event);
+
+                // Esperar un momento para que se carguen los servicios
+                setTimeout(() => {
+                  const servicioSelect =
+                    servicioItem.querySelector(".servicio-select");
+                  servicioSelect.value = servicioData.servicio_id;
+
+                  // Disparar evento change para cargar precio
+                  const servicioEvent = new Event("change");
+                  servicioSelect.dispatchEvent(servicioEvent);
+
+                  // Establecer cantidad y descuento
+                  servicioItem.querySelector(".cantidad").value =
+                    servicioData.cantidad;
+                  servicioItem.querySelector(".descuento").value =
+                    servicioData.descuento;
+
+                  // Calcular totales
+                  const calcularEvent = new Event("change");
+                  servicioItem
+                    .querySelector(".cantidad")
+                    .dispatchEvent(calcularEvent);
+                }, 100);
+              }
+            });
+          }
+        });
+      }
+
+      currentQuoteId = id;
+      isEditing = true;
+      document.getElementById("quoteTitle").textContent = "Editar Cotización";
+      switchTab("new");
+    } catch (error) {
+      console.error("Error al editar:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
   window.duplicarCotizacion = async function (id) {
     try {
-      const cotizaciones =
-        JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
-      const original = cotizaciones.find((c) => c.id === id);
+      const response = await fetch(`/api/cotizaciones/${id}`);
+      const original = await response.json();
 
-      if (!original) {
-        throw new Error("Cotización original no encontrada");
-      }
+      if (!original) throw new Error("Cotización no encontrada");
 
-      // Configurar estado como nueva cotización
-      currentQuoteId = null;
-      isEditing = false;
-      document.getElementById("quoteTitle").textContent =
-        "Nueva Cotización (Duplicado)";
+      // Limpiar formulario
+      document.getElementById("cotizacionForm").reset();
+      document.getElementById("fasesContainer").innerHTML = "";
+      currentFaseId = 0;
 
-      // Llenar datos básicos
-      document.getElementById(
-        "nombrePaciente"
-      ).value = `${original.nombre_paciente} (Copia)`;
-      document.getElementById("correoPaciente").value =
-        original.correo_paciente;
+      // Establecer paciente
+      document.getElementById("pacienteSelect").value = original.paciente_id;
+
+      // Establecer observaciones
       document.getElementById("observaciones").value =
         original.observaciones || "";
 
-      // Limpiar y reconstruir procedimientos
-      procedimientosContainer.innerHTML = "";
-      original.procedimientos.forEach((proc) => {
-        const servicio = servicios.find(
-          (s) => s.nombre === proc.nombre_servicio
-        );
-        if (servicio) {
-          agregarProcedimiento({
-            servicioId: servicio.id,
-            precio_unitario: proc.precio_unitario,
-            cantidad: proc.cantidad,
-            descuento_individual: proc.descuento_individual,
-            discount_type: proc.discount_type || "amount",
-          });
-        }
+      // Cargar fases y servicios
+      if (original.fases && original.fases.length > 0) {
+        original.fases.forEach((faseData) => {
+          agregarFase();
+          const faseCard = document.querySelector(
+            `.fase-card[data-fase-id="${currentFaseId}"]`
+          );
+          const faseNumero = faseCard.querySelector(".fase-numero");
+          faseNumero.textContent = faseData.numero_fase;
+
+          if (faseData.servicios && faseData.servicios.length > 0) {
+            faseData.servicios.forEach((servicioData) => {
+              agregarServicioAFase(faseCard);
+              const servicioItem = faseCard.querySelector(
+                ".servicio-item:last-child"
+              );
+
+              // Buscar el servicio para obtener categoría y detalles
+              const servicio = servicios.find(
+                (s) => s.id == servicioData.servicio_id
+              );
+              if (servicio) {
+                const categoriaSelect =
+                  servicioItem.querySelector(".categoria-select");
+                categoriaSelect.value = servicio.categoria_id;
+
+                // Disparar evento change para cargar servicios
+                const event = new Event("change");
+                categoriaSelect.dispatchEvent(event);
+
+                // Esperar un momento para que se carguen los servicios
+                setTimeout(() => {
+                  const servicioSelect =
+                    servicioItem.querySelector(".servicio-select");
+                  servicioSelect.value = servicioData.servicio_id;
+
+                  // Disparar evento change para cargar precio
+                  const servicioEvent = new Event("change");
+                  servicioSelect.dispatchEvent(servicioEvent);
+
+                  // Establecer cantidad y descuento
+                  servicioItem.querySelector(".cantidad").value =
+                    servicioData.cantidad;
+                  servicioItem.querySelector(".descuento").value =
+                    servicioData.descuento;
+
+                  // Calcular totales
+                  const calcularEvent = new Event("change");
+                  servicioItem
+                    .querySelector(".cantidad")
+                    .dispatchEvent(calcularEvent);
+                }, 100);
+              }
+            });
+          }
+        });
+      }
+
+      currentQuoteId = null;
+      isEditing = false;
+      document.getElementById("quoteTitle").textContent = "Duplicar Cotización";
+      switchTab("new");
+    } catch (error) {
+      console.error("Error al duplicar:", error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  window.descargarPDF = async function (id) {
+    try {
+      const response = await fetch(`/api/cotizaciones/${id}`);
+      const cotizacion = await response.json();
+
+      if (!cotizacion) throw new Error("Cotización no encontrada");
+
+      const res = await fetch("/api/generar-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cotizacion }),
       });
 
-      // Calcular y mostrar totales
-      calcularTotales();
+      if (!res.ok) throw new Error("Error al generar PDF");
 
-      // Cambiar a pestaña new sin ejecutar acciones adicionales
-      switchTab("new", true);
-
-      // Forzar visualización del formulario
-      document.getElementById("newQuoteTab").style.display = "block";
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cotizacion_${cotizacion.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error al duplicar cotización:", error);
-      alert(`Error al duplicar: ${error.message}`);
+      console.error("Error al descargar PDF:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
   window.enviarCotizacion = async function (id) {
     try {
-      // Obtener cotización de localStorage
-      const cotizaciones =
-        JSON.parse(localStorage.getItem("cotizacionesSimuladas")) || [];
-      const cotizacion = cotizaciones.find((c) => c.id === id);
+      const response = await fetch(`/api/cotizaciones/${id}`);
+      const cotizacion = await response.json();
 
-      if (!cotizacion) {
-        throw new Error("Cotización no encontrada");
-      }
+      if (!cotizacion) throw new Error("Cotización no encontrada");
 
-      // Simular envío (en un caso real harías una petición al servidor)
       const confirmacion = confirm(
-        `¿Enviar cotización a ${cotizacion.correo_paciente}?\n\nPaciente: ${
-          cotizacion.nombre_paciente
-        }\nTotal: $${cotizacion.total_neto.toLocaleString("es-CO")}`
+        `¿Enviar cotización a ${cotizacion.correo_paciente}?\n\n` +
+          `Paciente: ${cotizacion.nombre_paciente}\n` +
+          `Total: $${cotizacion.total_neto.toLocaleString("es-CO")}`
       );
 
       if (confirmacion) {
-        // Actualizar estado en localStorage
-        const updatedCotizaciones = cotizaciones.map((c) =>
-          c.id === id ? { ...c, estado: "enviada" } : c
-        );
-        localStorage.setItem(
-          "cotizacionesSimuladas",
-          JSON.stringify(updatedCotizaciones)
-        );
+        const updateResponse = await fetch(`/api/cotizaciones/${id}/enviar`, {
+          method: "POST",
+        });
 
-        // Actualizar UI
+        if (!updateResponse.ok) throw new Error("Error al enviar");
+
+        alert(`Cotización enviada a ${cotizacion.correo_paciente}`);
         cargarCotizaciones();
-        alert(`Cotización enviada a ${cotizacion.correo_paciente} (simulado)`);
       }
     } catch (error) {
-      console.error("Error al enviar cotización:", error);
-      alert(`Error al enviar: ${error.message}`);
+      console.error("Error al enviar:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 });

@@ -13,9 +13,10 @@
     "joi": "^17.9.2",
     "pdfkit": "^0.13.0",
     "pdfkit-table": "^0.1.99",
+    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.1.10"
   }
 }
