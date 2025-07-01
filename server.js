@@ -19,6 +19,109 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// GET /api/categorias
+// En tu server.js
+app.get("/api/categorias", (req, res) => {
+  const query = `SELECT id, nombre_categoria, descripcion FROM Categorias ORDER BY id`;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error("Error al obtener categorías:", err.message);
+      return res
+        .status(500)
+        .json({ error: "Error interno al obtener categorías" });
+    }
+    res.json(rows);
+  });
+});
+
+// GET /api/servicios?categoria_id=#
+app.get("/api/servicios", (req, res) => {
+  const { categoria_id } = req.query;
+
+  let query = `
+        SELECT 
+            id, 
+            codigo, 
+            descripcion, 
+            precio_neto AS precio,
+            categoria_id
+        FROM Servicios
+    `;
+
+  const params = [];
+
+  if (categoria_id) {
+    query += ` WHERE categoria_id = ?`;
+    params.push(categoria_id);
+  }
+
+  query += ` ORDER BY codigo, descripcion`;
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error("Error al obtener servicios:", err.message);
+      return res
+        .status(500)
+        .json({ error: "Error interno al obtener servicios" });
+    }
+
+    // Formatear respuesta para incluir todos los datos necesarios
+    const serviciosFormateados = rows.map((servicio) => ({
+      id: servicio.id,
+      codigo: servicio.codigo,
+      descripcion: servicio.descripcion,
+      precio_neto: servicio.precio,
+      categoria_id: servicio.categoria_id,
+    }));
+
+    res.json(serviciosFormateados);
+  });
+});
+
+// GET /api/servicios/search?q=blanqueamiento
+app.get("/api/servicios/search", (req, res) => {
+  const { q } = req.query;
+  if (!q)
+    return res
+      .status(400)
+      .json({ error: "Debe incluir un término de búsqueda" });
+
+  const query = `
+    SELECT id, descripcion AS nombre, precio_neto AS precio
+    FROM Servicios
+    WHERE descripcion LIKE ?
+    ORDER BY descripcion
+  `;
+  const param = `%${q}%`;
+
+  db.all(query, [param], (err, rows) => {
+    if (err) {
+      console.error("Error al buscar servicios:", err.message);
+      return res
+        .status(500)
+        .json({ error: "Error interno al buscar servicios" });
+    }
+    res.json(rows);
+  });
+});
+
+app.post("/api/fases", (req, res) => {
+  const { cotizacion_id, numero_fase } = req.body;
+
+  db.run(
+    `INSERT INTO Fases (cotizacion_id, numero_fase) VALUES (?, ?)`,
+    [cotizacion_id, numero_fase],
+    function (err) {
+      if (err) {
+        console.error("Error al guardar fase:", err.message);
+        return res.status(500).json({ error: "Error al guardar fase" });
+      }
+      res.status(201).json({ id: this.lastID });
+    }
+  );
+});
+
 // Ruta para obtener todos los pacientes
 app.get("/api/pacientes", (req, res) => {
   db.all("SELECT * FROM Pacientes", [], (err, rows) => {
@@ -56,6 +159,68 @@ app.get("/api/cotizaciones", (req, res) => {
   });
 });
 
+app.get("/api/cotizaciones/:id", (req, res) => {
+  const cotizacionId = req.params.id;
+
+  const queryCotizacion = `
+    SELECT c.*, p.nombre AS paciente_nombre, p.correo, p.telefono, p.direccion
+    FROM Cotizaciones c
+    JOIN Pacientes p ON c.paciente_id = p.id
+    WHERE c.id = ?
+  `;
+
+  const queryFases = `
+    SELECT * FROM Fases WHERE cotizacion_id = ?
+  `;
+
+  const queryServicios = `
+    SELECT dc.*, s.descripcion AS nombre_servicio, s.codigo, s.categoria_id
+    FROM DetallesCotizacion dc
+    JOIN Servicios s ON dc.servicio_id = s.id
+    WHERE dc.cotizacion_id = ?
+  `;
+
+  // Paso 1: Obtener la cotización y el paciente
+  db.get(queryCotizacion, [cotizacionId], (err, cotizacion) => {
+    if (err) {
+      console.error("Error al obtener cotización:", err.message);
+      return res.status(500).json({ error: "Error al obtener cotización" });
+    }
+    if (!cotizacion) {
+      return res.status(404).json({ error: "Cotización no encontrada" });
+    }
+
+    // Paso 2: Obtener fases
+    db.all(queryFases, [cotizacionId], (err, fases) => {
+      if (err) {
+        console.error("Error al obtener fases:", err.message);
+        return res.status(500).json({ error: "Error al obtener fases" });
+      }
+
+      // Paso 3: Obtener servicios
+      db.all(queryServicios, [cotizacionId], (err, servicios) => {
+        if (err) {
+          console.error("Error al obtener servicios:", err.message);
+          return res.status(500).json({ error: "Error al obtener servicios" });
+        }
+
+        // Organizar servicios dentro de cada fase
+        const fasesConServicios = fases.map((fase) => {
+          const serviciosDeFase = servicios.filter(
+            (s) => s.fase_id === fase.id
+          );
+          return { ...fase, servicios: serviciosDeFase };
+        });
+
+        res.json({
+          cotizacion,
+          fases: fasesConServicios,
+        });
+      });
+    });
+  });
+});
+
 // Ruta para crear una nueva cotización
 app.post("/api/cotizaciones", (req, res) => {
   const { paciente_id, total, estado, descuento, total_con_descuento } =
@@ -75,6 +240,39 @@ app.post("/api/cotizaciones", (req, res) => {
         descuento,
         total_con_descuento,
       });
+    }
+  );
+});
+
+app.post("/api/detalles-cotizacion", (req, res) => {
+  const {
+    cotizacion_id,
+    fase_id,
+    servicio_id,
+    cantidad,
+    precio_unitario,
+    descuento,
+    total,
+  } = req.body;
+
+  db.run(
+    `INSERT INTO DetallesCotizacion (cotizacion_id, fase_id, servicio_id, cantidad, precio_unitario, descuento, total)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      cotizacion_id,
+      fase_id,
+      servicio_id,
+      cantidad,
+      precio_unitario,
+      descuento,
+      total,
+    ],
+    function (err) {
+      if (err) {
+        console.error("Error al guardar detalle:", err.message);
+        return res.status(500).json({ error: "Error al guardar detalle" });
+      }
+      res.status(201).json({ id: this.lastID });
     }
   );
 });

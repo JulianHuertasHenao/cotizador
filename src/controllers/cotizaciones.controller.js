@@ -1,4 +1,4 @@
-const db = require("../utils/db");
+/*const db = require("../utils/db");
 
 // Obtener todas las cotizaciones
 const getCotizaciones = (req, res) => {
@@ -96,3 +96,4 @@ module.exports = {
     deleteCotizacion,
     createPaciente,
 };
+*/

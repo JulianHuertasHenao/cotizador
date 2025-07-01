@@ -450,6 +450,41 @@ textarea.form-control {
 .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
 .col-md-6 { flex: 0 0 50%; max-width: 50%; }
 
+/* Asegura que el texto sea visible en los dropdowns */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #333 !important;
+    line-height: 38px !important;
+}
+
+.select2-container--default .select2-results__option {
+    color: #333 !important;
+    padding: 8px 12px;
+}
+
+/* Soluciona problemas de superposición */
+.select2-container--open .select2-dropdown {
+    z-index: 999999 !important;
+}
+
+/* Estilo para cuando hay opciones pero no son visibles */
+.select2-results__option[aria-selected=true] {
+    background-color: #f8f9fa !important;
+    color: #333 !important;
+}
+/* Estilos específicos para el dropdown de servicios */
+.select2-container--servicios .select2-results__option {
+    padding: 8px 4px;
+}
+
+.select2-container--servicios .select2-results__option--highlighted {
+    background-color: #f8f9fa !important;
+    color: #333 !important;
+}
+
+/* Asegurar que el dropdown sea suficientemente ancho */
+.select2-dropdown--servicios {
+    min-width: 400px;
+}
 
 
 /* Animaciones */
