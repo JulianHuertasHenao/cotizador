@@ -38,16 +38,20 @@
                     <form id="cotizacionForm">
                         <!-- Sección de paciente -->
                         <div class="form-group">
-                            <label><i class="fas fa-user"></i> Paciente</label>
+                            <label class="patient-selection-label"
+                                ><i class="fas fa-user"></i> Paciente</label
+                            >
                             <div class="patient-selection">
                                 <select
                                     id="pacienteSelect"
                                     class="form-control"
-                                >
-                                    <option value=""
-                                        >Buscar paciente existente...</option
-                                    >
-                                </select>
+                                    style="width: 100%"
+                                ></select>
+                                <div
+                                    id="pacienteSearchResults"
+                                    class="search-dropdown"
+                                    style="display: none; width: 50%"
+                                ></div>
                                 <button
                                     type="button"
                                     id="nuevoPacienteBtn"
@@ -88,14 +92,6 @@
                                         />
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <input
-                                        type="text"
-                                        id="direccionPaciente"
-                                        class="form-control"
-                                        placeholder="Dirección"
-                                    />
-                                </div>
                                 <button
                                     type="button"
                                     class="btn btn-success"
@@ -106,8 +102,51 @@
                             </div>
                         </div>
 
+                        <div class="categorias" id="categoriasContainer">
+                            <h4>Categorías de tratamiento</h4>
+                            <div
+                                class="row align-items-end mb-2"
+                                id="categoriaServiciosRow"
+                            >
+                                <div class="col-md-4">
+                                    <div class="form-group mb-2">
+                                        <select
+                                            class="form-control categoria-unica-select"
+                                            name="categoriaUnicaSelect"
+                                            id="categoriaUnicaSelect"
+                                        >
+                                            <option value=""
+                                                >Seleccionar
+                                                categoría...</option
+                                            >
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div
+                                        class="form-group mb-2 d-flex align-items-center gap-2 flex-wrap servicios-categorias-container"
+                                    ></div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                id="agregarCategoriaBtn"
+                                class="btn btn-outline-primary mb-2"
+                            >
+                                <i class="fas fa-plus"></i> Agregar otra
+                                categoría
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            id="confirmacionFases"
+                            class="btn btn-secondary"
+                        >
+                            <i class="fas fa-eye"></i> Activar/Desactivar fases
+                        </button>
+
                         <!-- Sección de fases -->
-                        <div class="form-group">
+                        <div class="form-group" id="div-fases">
                             <label
                                 ><i class="fas fa-layer-group"></i> Fases del
                                 tratamiento</label
@@ -170,79 +209,28 @@
 
                         <!-- Plantilla para servicio (hidden) -->
                         <template id="servicioTemplate">
-                            <div class="servicio-item">
-                                <div class="servicio-header">
-                                    <div class="form-row">
-                                        <div class="form-group col-md-5">
-                                            <select
-                                                class="form-control categoria-select"
-                                            >
-                                                <option value=""
-                                                    >Seleccionar
-                                                    categoría...</option
-                                                >
-                                            </select>
-                                        </div>
-                                        <div class="form-group col-md-5">
-                                            <select
-                                                class="form-control servicio-select"
-                                                disabled
-                                            >
-                                                <option value=""
-                                                    >Seleccionar
-                                                    servicio...</option
-                                                >
-                                            </select>
-                                        </div>
-                                        <div class="form-group col-md-2">
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-danger remove-servicio"
-                                            >
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="servicio-details">
-                                    <div class="form-row">
-                                        <div class="form-group col-md-3">
-                                            <label>Precio unitario</label>
-                                            <input
-                                                type="text"
-                                                class="form-control precio-unitario"
-                                                readonly
-                                            />
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Cantidad</label>
-                                            <input
-                                                type="number"
-                                                class="form-control cantidad"
-                                                min="1"
-                                                value="1"
-                                            />
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Descuento (%)</label>
-                                            <input
-                                                type="number"
-                                                class="form-control descuento"
-                                                min="0"
-                                                max="100"
-                                                value="0"
-                                            />
-                                        </div>
-                                        <div class="form-group col-md-3">
-                                            <label>Total servicio</label>
-                                            <input
-                                                type="text"
-                                                class="form-control total-servicio"
-                                                readonly
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="servicio-item d-flex align-items-center gap-2 mb-2">
+                                <select class="form-control servicio-select mb-2" style="min-width: 200px">
+                                    <option value="">Seleccionar servicio...</option>
+                                </select>
+                                <span title="Cantidad" style="display: flex; align-items: center; gap: 2px;">
+                                    <i class="fas fa-sort-numeric-up"></i>
+                                    <input type="number" class="cantidad-servicio form-control" min="1" value="1" style="width: 60px" title="Cantidad" />
+                                </span>
+                                <span title="Descuento" style="display: flex; align-items: center; gap: 2px;">
+                                    <i class="fas fa-percent"></i>
+                                    <input type="number" class="descuento-servicio form-control" min="0" max="100" value="0" style="width: 70px" title="Descuento (%)" placeholder="% desc" />
+                                </span>
+                                <span class="precio-unitario-servicio" style="min-width: 90px; display: inline-block; color: #28a745; font-weight: 500;">
+                                </span>
+                                <span class="precio-servicio" style="min-width: 80px; display: inline-block; color: #007bff; font-weight: 500;">
+                                </span>
+                                <button type="button" class="btn btn-sm btn-success agregar-servicio" title="Agregar otro servicio">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger remove-servicio" title="Eliminar este servicio">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </template>
 
@@ -326,6 +314,14 @@
             </div>
         </div>
 
+        <!-- jQuery necesario para Select2 -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <!-- Select2 CSS y JS desde CDN -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

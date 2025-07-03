@@ -74,11 +74,11 @@ const deleteCotizacion = (req, res) => {
 
 // Crear un nuevo paciente
 const createPaciente = (req, res) => {
-    const { nombre, correo, telefono, direccion } = req.body;
+    const { nombre, correo, telefono } = req.body;
 
     db.run(
-        "INSERT INTO Pacientes (nombre, correo, telefono, direccion) VALUES (?, ?, ?, ?)",
-        [nombre, correo, telefono, direccion],
+        "INSERT INTO Pacientes (nombre, correo, telefono) VALUES (?, ?, ?)",
+        [nombre, correo, telefono],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });

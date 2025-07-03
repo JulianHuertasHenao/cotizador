@@ -2,29 +2,28 @@ const sqlite3 = require("sqlite3").verbose();
 
 // Crear y abrir la base de datos
 const db = new sqlite3.Database("./cotizador.db", (err) => {
-  if (err) {
-    console.error("Error al abrir la base de datos: ", err.message);
-  } else {
-    console.log("Conexión a la base de datos SQLite establecida");
-  }
+    if (err) {
+        console.error("Error al abrir la base de datos: ", err.message);
+    } else {
+        console.log("Conexión a la base de datos SQLite establecida");
+    }
 });
 
 // Crear tablas si no existen
 db.serialize(() => {
-  // Tabla de Pacientes
-  db.run(`
+    // Tabla de Pacientes
+    db.run(`
     CREATE TABLE IF NOT EXISTS Pacientes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
       correo TEXT,
       telefono TEXT,
-      direccion TEXT,
       fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Tabla de Categorías
-  db.run(`
+    // Tabla de Categorías
+    db.run(`
     CREATE TABLE IF NOT EXISTS Categorias (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre_categoria TEXT NOT NULL,
@@ -32,8 +31,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Servicios
-  db.run(`
+    // Tabla de Servicios
+    db.run(`
     CREATE TABLE IF NOT EXISTS Servicios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       codigo INTEGER NOT NULL,
@@ -44,8 +43,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Cotizaciones
-  db.run(`
+    // Tabla de Cotizaciones
+    db.run(`
     CREATE TABLE IF NOT EXISTS Cotizaciones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       paciente_id INTEGER,
@@ -58,8 +57,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Fases
-  db.run(`
+    // Tabla de Fases
+    db.run(`
     CREATE TABLE IF NOT EXISTS Fases (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cotizacion_id INTEGER,
@@ -69,8 +68,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla intermedia FaseCategorias (relaciona fases con categorías)
-  db.run(`
+    // Tabla intermedia FaseCategorias (relaciona fases con categorías)
+    db.run(`
     CREATE TABLE IF NOT EXISTS FaseCategorias (
       fase_id INTEGER,
       categoria_id INTEGER,
@@ -80,8 +79,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Detalles de Cotización
-  db.run(`
+    // Tabla de Detalles de Cotización
+    db.run(`
     CREATE TABLE IF NOT EXISTS DetallesCotizacion (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cotizacion_id INTEGER,
@@ -97,8 +96,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Plantillas
-  db.run(`
+    // Tabla de Plantillas
+    db.run(`
     CREATE TABLE IF NOT EXISTS Plantillas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre_plantilla TEXT,
@@ -107,8 +106,8 @@ db.serialize(() => {
     )
   `);
 
-  // Tabla de Historial de Cotizaciones
-  db.run(`
+    // Tabla de Historial de Cotizaciones
+    db.run(`
     CREATE TABLE IF NOT EXISTS HistorialCotizaciones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cotizacion_id INTEGER,
