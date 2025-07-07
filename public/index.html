@@ -13,15 +13,12 @@
     </head>
     <body>
         <div class="header">
+            <img src="logo-sandra.png" alt="Logo Sandra" class="logo" />
             <h1
-                ><i class="fas fa-file-invoice-dollar"></i> Cotizador
+                ></i> Cotizador
                 Odontologico</h1
             >
-            <div>
-                <button class="btn btn-primary" id="newQuoteBtn">
-                    <i class="fas fa-plus"></i> Nueva Cotización
-                </button>
-            </div>
+    
         </div>
 
         <div class="tabs">
@@ -30,77 +27,45 @@
             <div class="tab" data-tab="presets">Plantillas</div>
         </div>
 
-        <div id="newQuoteTab" class="tab-content active">
-            <!-- Reemplaza el contenido de #newQuoteTab con este código -->
+
             <div id="newQuoteTab" class="tab-content active">
                 <div class="card">
                     <h2 id="quoteTitle">Nueva Cotización</h2>
                     <form id="cotizacionForm">
-                        <!-- Sección de paciente -->
-                        <div class="form-group">
-                            <label class="patient-selection-label"
-                                ><i class="fas fa-user"></i> Paciente</label
-                            >
-                            <div class="patient-selection">
-                                <select
-                                    id="pacienteSelect"
-                                    class="form-control"
-                                    style="width: 100%"
-                                ></select>
-                                <div
-                                    id="pacienteSearchResults"
-                                    class="search-dropdown"
-                                    style="display: none; width: 50%"
-                                ></div>
-                                <button
-                                    type="button"
-                                    id="nuevoPacienteBtn"
-                                    class="btn btn-outline-secondary"
-                                >
-                                    <i class="fas fa-plus"></i> Nuevo paciente
-                                </button>
-                            </div>
+                                        <!-- Sección de paciente mejorada -->
+<div class="form-group">
+    <label class="patient-selection-label"><i class="fas fa-user"></i> Paciente</label>
+    <div class="patient-selection">
+        <div class="search-wrapper" style="width: 100%">
+            <input type="text" id="pacienteSearchInput" class="form-control" 
+                   placeholder="Buscar por nombre, correo o teléfono..." autocomplete="off">
+            <div id="pacienteSearchResults" class="search-dropdown" style="display: none; width: 100%"></div>
+        </div>
+        <button type="button" id="nuevoPacienteBtn" class="btn btn-outline-secondary">
+            <i class="fas fa-plus"></i> Nuevo paciente
+        </button>
+    </div>
 
-                            <div
-                                id="nuevoPacienteForm"
-                                style="display: none; margin-top: 1rem"
-                            >
-                                <div class="form-group">
-                                    <input
-                                        type="text"
-                                        id="nombrePaciente"
-                                        class="form-control"
-                                        placeholder="Nombre completo"
-                                        required
-                                    />
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <input
-                                            type="email"
-                                            id="correoPaciente"
-                                            class="form-control"
-                                            placeholder="Correo electrónico"
-                                        />
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <input
-                                            type="tel"
-                                            id="telefonoPaciente"
-                                            class="form-control"
-                                            placeholder="Teléfono"
-                                        />
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    class="btn btn-success"
-                                    id="guardarPacienteBtn"
-                                >
-                                    Guardar Paciente
-                                </button>
-                            </div>
-                        </div>
+    <div id="nuevoPacienteForm" style="display: none; margin-top: 1rem">
+        <div class="form-group">
+            <input type="text" id="nombrePaciente" class="form-control" 
+                   placeholder="Nombre completo" required>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <input type="email" id="correoPaciente" class="form-control" 
+                       placeholder="Correo electrónico">
+            </div>
+            <div class="form-group col-md-6">
+                <input type="tel" id="telefonoPaciente" class="form-control" 
+                       placeholder="Teléfono">
+            </div>
+        </div>
+        <button type="button" class="btn btn-success" id="guardarPacienteBtn">
+            Guardar Paciente
+        </button>
+    </div>
+</div>
 
                         <div class="categorias" id="categoriasContainer">
                             <h4>Categorías de tratamiento</h4>
@@ -266,10 +231,7 @@
 
                         <!-- Botones de acción -->
                         <div class="action-buttons">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Guardar Cotización
-                            </button>
-                            <button
+                                                 <button
                                 type="button"
                                 class="btn btn-success"
                                 id="generatePdfBtn"
@@ -283,6 +245,9 @@
                             >
                                 <i class="fas fa-paper-plane"></i> Enviar por
                                 Email
+                            </button>
+                              <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cotización
                             </button>
                         </div>
                     </form>
