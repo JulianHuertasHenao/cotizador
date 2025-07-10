@@ -96,7 +96,7 @@
           </div>
 
           <div class="form-section">
-            <!-- Toggle para activar/desactivar fases -->
+            <!-- Toggle para activar/desactivar fases (igual en ambos) -->
             <div class="toggle-container">
               <label class="toggle-switch">
                 <input type="checkbox" id="use-phases" />
@@ -127,7 +127,7 @@
                         >
                       </div>
                       <button
-                        class="remove-btn remove-phase-btn"
+                        class="btn btn-sm btn-danger remove-phase-btn"
                         title="Eliminar fase"
                       >
                         ×
@@ -146,27 +146,52 @@
                       <span>meses</span>
                     </div>
 
-                    <div class="service-list">
-                      <!-- Los servicios se agregarán aquí -->
+                    <!-- Categorías dentro de la fase -->
+                    <div class="category-group">
+                      <div class="category-header">
+                        <select
+                          class="form-control categoria-fase-select"
+                          style="flex: 1; min-width: 150px"
+                        >
+                          <option value="">Seleccionar categoría...</option>
+                        </select>
+
+                        <div class="category-actions">
+                          <button
+                            class="btn btn-sm btn-primary add-service-btn"
+                          >
+                            Añadir Servicio
+                          </button>
+                          <button
+                            class="btn btn-sm btn-danger remove-category-btn"
+                            title="Eliminar categoría"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                      <div class="service-list">
+                        <!-- Los servicios se agregarán aquí -->
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-primary agregar-servicio"
-                    >
-                      <i class="fas fa-plus"></i> Agregar servicio
-                    </button>
+                    <div style="margin-top: 0.75rem">
+                      <button class="btn btn-primary add-category-btn">
+                        + Añadir Categoría
+                      </button>
+                    </div>
 
-                    <div class="phase-totals">
-                      <div class="total-row">
+                    <!-- Sección de totales por fase (añadido) -->
+                    <div class="fase-totals">
+                      <div class="totals-row">
                         <span>Subtotal Fase:</span>
                         <span class="fase-subtotal">$0.00</span>
                       </div>
-                      <div class="total-row">
+                      <div class="totals-row">
                         <span>Descuento Fase:</span>
                         <span class="fase-descuento">$0.00</span>
                       </div>
-                      <div class="total-row fase-total">
+                      <div class="totals-row fase-total">
                         <span>Total Fase:</span>
                         <span class="fase-total-amount">$0.00</span>
                       </div>
@@ -182,33 +207,29 @@
               </div>
             </div>
 
-            <!-- Sección sin fases (visible inicialmente) -->
+            <!-- Sección sin fases (visible inicialmente) - ahora idéntica al otro HTML -->
             <div id="no-phase-categories">
               <div class="category-group">
                 <div class="category-header">
                   <select
                     class="form-control categoria-unica-select"
-                    name="categoriaUnicaSelect"
-                    id="categoriaUnicaSelect"
+                    style="flex: 1; min-width: 150px"
                   >
                     <option value="">Seleccionar categoría...</option>
                   </select>
-
                   <div class="category-actions">
                     <button class="btn btn-sm btn-primary add-service-btn">
                       Añadir Servicio
                     </button>
-
                     <button
                       class="btn btn-sm btn-danger remove-category-btn"
                       title="Eliminar categoría"
                     >
-                      x
+                      ×
                     </button>
                   </div>
                 </div>
-
-                <div class="service-list servicios-categorias-container">
+                <div class="service-list">
                   <!-- Los servicios se agregarán aquí -->
                 </div>
               </div>
@@ -221,79 +242,58 @@
             </div>
           </div>
 
-          <!-- Plantilla para servicio (hidden) -->
+          <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
           <template id="service-template">
-            <div class="service-item d-flex align-items-center gap-2 mb-2">
-              <select
-                class="form-control servicio-select mb-2"
-                style="min-width: 200px"
-              >
+            <div class="service-item">
+              <select class="form-control servicio-select" style="flex: 1">
                 <option value="">Seleccionar servicio...</option>
               </select>
-              <span
-                title="Cantidad"
-                style="display: flex; align-items: center; gap: 2px"
-              >
-                <i class="fas fa-sort-numeric-up"></i>
-                <input
-                  type="number"
-                  class="cantidad-servicio form-control"
-                  min="1"
-                  value="1"
-                  style="width: 60px"
-                  title="Cantidad"
-                />
-              </span>
-              <span
-                title="Descuento"
-                style="display: flex; align-items: center; gap: 2px"
-              >
-                <i class="fas fa-percent"></i>
-                <input
-                  type="number"
-                  class="descuento-servicio form-control"
-                  min="0"
-                  max="100"
-                  value="0"
-                  style="width: 70px"
-                  title="Descuento (%)"
-                  placeholder="% desc"
-                />
-              </span>
-              <span
-                class="precio-unitario-servicio"
-                style="
-                  min-width: 90px;
-                  display: inline-block;
-                  color: #28a745;
-                  font-weight: 500;
-                "
-              >
-              </span>
+              <input
+                type="text"
+                class="form-control service-description"
+                placeholder="Descripción"
+              />
+              <input
+                type="number"
+                class="form-control cantidad-servicio"
+                placeholder="Cantidad"
+                min="1"
+                value=""
+              />
+              <input
+                type="number"
+                class="form-control descuento-servicio"
+                placeholder="Descuento %"
+                min="0"
+                max="100"
+                value=""
+              />
+              <input
+                type="number"
+                class="form-control precio-unitario-servicio"
+                placeholder="Precio"
+                min="0"
+                step="0.01"
+              />
               <span
                 class="precio-servicio"
-                style="
-                  min-width: 80px;
-                  display: inline-block;
-                  color: #007bff;
-                  font-weight: 500;
-                "
+                style="min-width: 60px; text-align: center"
               >
+                <div class="service-actions">
+                  <button
+                    class="btn btn-sm btn-success agregar-servicio"
+                    title="Agregar otro servicio"
+                  >
+                    <i class="fas fa-plus"></i>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-danger remove-servicio"
+                    title="Eliminar este servicio"
+                  >
+                    ×
+                  </button>
+                </div>
               </span>
-              <button
-                type="button"
-                class="btn btn-sm btn-success agregar-servicio"
-                title="Agregar otro servicio"
-              >
-                <i class="fas fa-plus"></i>
-              </button>
-              <button
-                type="button"
-                class="btn btn-sm btn-danger remove-servicio"
-                title="Eliminar este servicio"
-              >
-                <i class="fas fa-times"></i>
-              </button>
             </div>
           </template>
 

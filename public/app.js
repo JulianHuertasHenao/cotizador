@@ -87,90 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
   }
-  // Refactor: función genérica para agregar un servicio a un contenedor de servicios de categoría
-  function agregarServicioEnCategoriasDinamico(
-    serviciosContainer,
-    categoriaId
-  ) {
-    const template = document.getElementById("servicioTemplate");
-    if (!template) {
-      console.error("No se encontró el template de servicio");
-      return;
-    }
-    const clone = template.content.cloneNode(true);
-    const servicioItem = clone.querySelector(".servicio-item");
-    // Llenar servicios SOLO de la categoría seleccionada
-    const servicioSelect = servicioItem.querySelector(".servicio-select");
-    if (servicioSelect) {
-      servicioSelect.innerHTML =
-        '<option value="">Seleccionar servicio...</option>';
-      const serviciosCategoria = servicios.filter(
-        (s) => s.categoria_id == categoriaId
-      );
-      serviciosCategoria.forEach((servicio, idx) => {
-        const option = document.createElement("option");
-        option.value = servicio.id;
-        option.textContent = `${servicio.codigo} - ${
-          servicio.descripcion
-        } ($${Number(servicio.precio_neto).toLocaleString("es-CO", {
-          minimumFractionDigits: 2,
-        })})`;
-        option.dataset.precio = servicio.precio_neto;
-        servicioSelect.appendChild(option);
-      });
-      servicioSelect.addEventListener("change", () => {
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-      // Selecciona automáticamente el primer servicio si existe
-      if (serviciosCategoria.length > 0) {
-        servicioSelect.value = serviciosCategoria[0].id;
-        // Mostrar el precio unitario de una vez
-        const precioUnitarioSpan = servicioItem.querySelector(
-          ".precio-unitario-servicio"
-        );
-        if (precioUnitarioSpan) {
-          precioUnitarioSpan.textContent = `$${Number(
-            serviciosCategoria[0].precio_neto
-          ).toLocaleString("es-CO", { minimumFractionDigits: 2 })}`;
-        }
-        actualizarPrecioServicio(servicioItem);
-      }
-    }
-    // Eventos de cantidad y descuento
-    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
-    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-    if (cantidadInput) {
-      cantidadInput.addEventListener("input", () => {
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-    }
-    if (descuentoInput) {
-      descuentoInput.addEventListener("input", () => {
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-    }
-    // Botón para agregar más servicios dentro de la misma categoría
-    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
-    if (agregarBtn) {
-      agregarBtn.addEventListener("click", () => {
-        agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId);
-      });
-    }
-    // Botón para eliminar servicio
-    const removeBtn = servicioItem.querySelector(".remove-servicio");
-    if (removeBtn) {
-      removeBtn.addEventListener("click", () => {
-        servicioItem.remove();
-        actualizarTotalCategorias();
-      });
-    }
-    serviciosContainer.appendChild(servicioItem);
-    actualizarPrecioServicio(servicioItem);
-    actualizarTotalCategorias();
-  }
 });
 function setupEventListeners() {
   // Función helper mejorada para agregar listeners
@@ -443,7 +359,7 @@ function seleccionarPaciente(paciente) {
 // Fin De pacientes
 
 // Inicio --- Cotizaciones / quote tab ---
-
+/*
 function nuevaCotizacion() {
   currentQuoteId = null;
   isEditing = false;
@@ -842,7 +758,7 @@ function agregarServicioAFase(faseCard) {
     throw error; // Re-lanzar el error para manejo superior
   }
 }
-
+*/
 function actualizarServiciosSelect(categoriaId, servicioSelect) {
   servicioSelect.innerHTML =
     '<option value="">Seleccionar servicio...</option>';

@@ -416,17 +416,16 @@
   /* Totals Section */
   .totals-section, .totals-display, .fase-totals {
     background-color: rgba(42, 157, 143, 0.1);
-    padding: 1.5rem;
+    padding: 0.5rem;
     border-radius: var(--border-radius);
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
     border: 1px solid var(--primary);
   }
 
   .total-row, .totals-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
+    padding-bottom: 0.1rem;
     border-bottom: 1px dashed var(--light-gray);
   }
 
@@ -435,8 +434,8 @@
     font-size: 1.2rem;
     border-top: 2px solid var(--primary);
     border-bottom: none;
-    padding-top: 1rem;
-    margin-top: 1rem;
+    padding-top: 0.2rem;
+    margin-top: 0.2rem;
     color: var(--primary);
   }
 
