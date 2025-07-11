@@ -12,6 +12,399 @@ const TAB_TO_DOM = {
   history: "historyTab",
   presets: "presetsTab",
 };
+document.addEventListener("DOMContentLoaded", function () {
+  // Set up phase toggle
+
+  const phaseToggle = document.getElementById("use-phases");
+
+  phaseToggle.addEventListener("change", function () {
+    togglePhases(this.checked);
+  });
+
+  // Set initial state
+
+  togglePhases(false);
+
+  // Set up event listeners
+
+  document
+
+    .getElementById("add-first-phase-btn")
+
+    .addEventListener("click", function () {
+      addNewPhase();
+
+      document.getElementById("no-phases-message").classList.add("hidden");
+    });
+
+  document
+    .getElementById("add-phase-btn")
+    .addEventListener("click", addNewPhase);
+
+  document
+    .getElementById("add-category-btn")
+    .addEventListener("click", addNewCategory);
+
+  // Set up first category in non-phase mode
+
+  setupCategoryEvents(
+    document.querySelector("#no-phase-categories .category-group")
+  );
+
+  addNewService(document.querySelector("#no-phase-categories .service-list"));
+
+  // Demo buttons
+
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    if (confirm("¿Está seguro de que desea reiniciar el formulario?")) {
+      window.location.reload();
+    }
+  });
+
+  document
+    .getElementById("generate-quote-btn")
+    .addEventListener("click", function () {
+      alert("¡Plan de tratamiento generado!");
+    });
+});
+
+// Toggle phases on/off
+
+function togglePhases(usePhases) {
+  const phasesContainer = document.getElementById("phases-container");
+
+  const noPhaseCategories = document.getElementById("no-phase-categories");
+
+  if (usePhases) {
+    phasesContainer.classList.remove("hidden");
+
+    noPhaseCategories.classList.add("hidden");
+  } else {
+    phasesContainer.classList.add("hidden");
+
+    noPhaseCategories.classList.remove("hidden");
+  }
+}
+
+// Add a new treatment phase
+
+function addNewPhase() {
+  const phasesContainer = document.getElementById("phases-container");
+
+  const phaseTemplate = document.getElementById("phase-template");
+
+  const phaseCount =
+    (phasesContainer.querySelectorAll(".phase-container:not(.hidden)").length ||
+      0) + 1;
+
+  const newPhase = phaseTemplate.content.cloneNode(true);
+
+  const phaseContainer = newPhase.querySelector(".phase-container");
+
+  phaseContainer.classList.remove("hidden");
+
+  phaseContainer.querySelector(".phase-number-badge").textContent = phaseCount;
+
+  phaseContainer.querySelector(".phase-number-text").textContent = phaseCount;
+
+  // Set up event listeners for the new phase
+
+  phaseContainer
+
+    .querySelector(".remove-phase-btn")
+
+    .addEventListener("click", function () {
+      if (confirm("¿Eliminar esta fase y todos sus servicios?")) {
+        phaseContainer.remove();
+
+        updatePhaseNumbers();
+
+        const phasesGrid = document.getElementById("phases-grid");
+
+        // Show "no phases" message if last phase was removed
+
+        if (
+          !phasesGrid ||
+          phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
+            .length === 0
+        ) {
+          document
+            .getElementById("no-phases-message")
+            .classList.remove("hidden");
+        }
+      }
+    });
+
+  phaseContainer
+
+    .querySelector(".add-category-btn")
+
+    .addEventListener("click", function () {
+      addNewCategoryToPhase(phaseContainer);
+    });
+
+  // Add first service to the first category
+
+  const firstCategory = phaseContainer.querySelector(".category-group");
+
+  setupCategoryEvents(firstCategory);
+
+  addNewService(firstCategory.querySelector(".service-list"));
+
+  // Get or create the phases grid
+
+  let phasesGrid = document.getElementById("phases-grid");
+
+  if (!phasesGrid) {
+    phasesGrid = document.createElement("div");
+
+    phasesGrid.id = "phases-grid";
+
+    phasesGrid.className = "phases-grid";
+
+    phasesContainer.insertBefore(
+      phasesGrid,
+
+      document.getElementById("add-phase-btn").parentNode
+    );
+  }
+
+  // Hide "no phases" message
+
+  document.getElementById("no-phases-message").classList.add("hidden");
+
+  // Add the new phase to the grid
+
+  phasesGrid.appendChild(phaseContainer);
+
+  updatePhaseNumbers();
+}
+
+// Add a new category to a phase
+
+function addNewCategoryToPhase(phase) {
+  const newCategory = phase.querySelector(".category-group").cloneNode(true);
+
+  // Clear any existing services
+
+  newCategory.querySelector(".service-list").innerHTML = "";
+
+  setupCategoryEvents(newCategory);
+
+  addNewService(newCategory.querySelector(".service-list"));
+
+  phase.insertBefore(
+    newCategory,
+
+    phase.querySelector(".add-category-btn").parentNode
+  );
+}
+
+// Add a new general category (non-phase)
+
+function addNewCategory() {
+  const container = document.getElementById("no-phase-categories");
+
+  const firstCategory = container.querySelector(".category-group");
+
+  const newCategory = firstCategory.cloneNode(true);
+
+  // Clear any existing services
+
+  newCategory.querySelector(".service-list").innerHTML = "";
+
+  setupCategoryEvents(newCategory);
+
+  addNewService(newCategory.querySelector(".service-list"));
+
+  container.appendChild(newCategory);
+}
+
+// Set up event listeners for a category
+
+function setupCategoryEvents(category) {
+  category
+
+    .querySelector(".remove-category-btn")
+
+    .addEventListener("click", function () {
+      const container = category.parentNode;
+
+      const categories = container.querySelectorAll(".category-group");
+
+      if (categories.length > 1) {
+        if (confirm("¿Eliminar esta categoría y todos sus servicios?")) {
+          category.remove();
+        }
+      } else {
+        alert("Cada tratamiento debe tener al menos una categoría.");
+      }
+    });
+
+  category
+
+    .querySelector(".add-service-btn")
+
+    .addEventListener("click", function () {
+      addNewService(category.querySelector(".service-list"));
+    });
+
+  // Set up category change handler to update subcategories
+
+  const categorySelect =
+    category.querySelector(".categoria-fase-select") ||
+    category.querySelector(".categoria-unica-select");
+
+  if (categorySelect) {
+    categorySelect.addEventListener("change", function () {
+      updateSubcategoryOptions(this);
+    });
+  }
+}
+
+// Add a new service to a service list
+
+function addNewService(serviceList) {
+  const template = document.getElementById("service-template");
+
+  const newService = template.content.cloneNode(true);
+
+  // Set up remove button
+
+  newService
+
+    .querySelector(".remove-servicio")
+
+    .addEventListener("click", function () {
+      const services = serviceList.querySelectorAll(".service-item");
+
+      if (services.length > 1) {
+        this.closest(".service-item").remove();
+      } else {
+        alert("Cada categoría debe tener al menos un servicio.");
+      }
+    });
+
+  // Set up add button
+
+  newService
+
+    .querySelector(".agregar-servicio")
+
+    .addEventListener("click", function () {
+      addNewService(serviceList);
+    });
+
+  // Llenar servicios SOLO de la categoría seleccionada (para la fila estática)
+  const categorySelect = serviceList
+    .closest(".category-group")
+    ?.querySelector(".categoria-fase-select, .categoria-unica-select");
+  const servicioSelect = newService.querySelector(".servicio-select");
+  if (categorySelect && servicioSelect) {
+    servicioSelect.innerHTML =
+      '<option value="">Seleccionar servicio...</option>';
+    if (categorySelect.value) {
+      const serviciosCategoria = servicios.filter(
+        (s) => String(s.categoria_id) === String(categorySelect.value)
+      );
+      serviciosCategoria.forEach((servicio) => {
+        const option = document.createElement("option");
+        option.value = servicio.id;
+        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+        option.setAttribute("data-precio", servicio.precio_neto);
+        servicioSelect.appendChild(option);
+      });
+    }
+    // Cuando cambie la categoría, actualizar el select de servicios
+    if (!categorySelect._listenerServicios) {
+      categorySelect.addEventListener("change", function () {
+        servicioSelect.innerHTML =
+          '<option value="">Seleccionar servicio...</option>';
+        if (this.value) {
+          const serviciosCategoria = servicios.filter(
+            (s) => String(s.categoria_id) === String(this.value)
+          );
+          serviciosCategoria.forEach((servicio) => {
+            const option = document.createElement("option");
+            option.value = servicio.id;
+            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+            option.setAttribute("data-precio", servicio.precio_neto);
+            servicioSelect.appendChild(option);
+          });
+        }
+      });
+      categorySelect._listenerServicios = true;
+    }
+  }
+
+  serviceList.appendChild(newService);
+
+  // Focus on the description field for quick entry
+
+  setTimeout(() => {
+    newService.querySelector(".service-description")?.focus();
+  }, 10);
+}
+
+// Update subcategory options when category changes
+
+function updateSubcategoryOptions(categorySelect, subcategorySelect = null) {
+  const selectedCategory = categorySelect.value;
+
+  const targetSelect =
+    subcategorySelect ||
+    categorySelect.closest(".service-item")?.querySelector(".servicio-select");
+
+  if (!targetSelect) return;
+
+  // Clear existing options except the first
+
+  targetSelect.innerHTML = '<option value="">Seleccionar servicio...</option>';
+
+  // Add subcategories based on category
+
+  if (selectedCategory === "general-dentistry") {
+    addSubcategoryOption(targetSelect, "assessments", "Evaluaciones");
+
+    addSubcategoryOption(targetSelect, "hygiene", "Higiene");
+
+    addSubcategoryOption(targetSelect, "resins", "Resinas");
+
+    addSubcategoryOption(targetSelect, "fillings", "Empastes");
+
+    addSubcategoryOption(targetSelect, "extractions", "Extracciones");
+  } else if (selectedCategory === "cosmetic-dentistry") {
+    addSubcategoryOption(targetSelect, "whitening", "Blanqueamiento");
+
+    addSubcategoryOption(targetSelect, "veneers", "Carillas");
+
+    addSubcategoryOption(targetSelect, "bonding", "Bonding");
+  }
+}
+
+function addSubcategoryOption(select, value, text) {
+  const option = document.createElement("option");
+
+  option.value = value;
+
+  option.textContent = text;
+
+  select.appendChild(option);
+}
+
+// Update phase numbers when phases are added/removed
+
+function updatePhaseNumbers() {
+  const phases = document.querySelectorAll(".phase-container:not(.hidden)");
+
+  phases.forEach((phase, index) => {
+    const phaseNumber = index + 1;
+
+    phase.querySelector(".phase-number-badge").textContent = phaseNumber;
+
+    phase.querySelector(".phase-number-text").textContent = phaseNumber;
+  });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   let currentQuoteId = null;
@@ -59,11 +452,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function inicializarPrimeraCategoria() {
     // Inicializa la fila estática de categoría y sus eventos
-    const categoriaSelect = document.querySelector(
-      "#categoriaServiciosRow .categoria-unica-select"
-    );
+    const categoriaSelect = document.getElementById("categoriaUnicaSelect");
     const serviciosContainer = document.querySelector(
-      "#categoriaServiciosRow .servicios-categorias-container"
+      "#no-phase-categories .servicios-categorias-container"
     );
     if (categoriaSelect) {
       categoriaSelect.innerHTML =
@@ -74,18 +465,101 @@ document.addEventListener("DOMContentLoaded", function () {
         option.textContent = cat.nombre_categoria;
         categoriaSelect.appendChild(option);
       });
+      // Handler para cambio de categoría
       categoriaSelect.addEventListener("change", function () {
-        serviciosContainer.innerHTML = "";
-        if (this.value) {
+        if (serviciosContainer) serviciosContainer.innerHTML = "";
+        if (this.value && serviciosContainer) {
           agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
         }
       });
+      // Handler para botón "Añadir Servicio" de la fila estática
+      const addServiceBtn = document.querySelector(
+        "#no-phase-categories .add-service-btn"
+      );
+      if (addServiceBtn) {
+        addServiceBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          if (categoriaSelect.value && serviciosContainer) {
+            agregarServicioEnCategoriasDinamico(
+              serviciosContainer,
+              categoriaSelect.value
+            );
+          }
+        });
+      }
       // Selecciona automáticamente la primera categoría si existe
       if (categorias.length > 0) {
         categoriaSelect.value = categorias[0].id;
         categoriaSelect.dispatchEvent(new Event("change"));
       }
     }
+  }
+  // Refactor: función genérica para agregar un servicio a un contenedor de servicios de categoría
+  function agregarServicioEnCategoriasDinamico(
+    serviciosContainer,
+    categoriaId
+  ) {
+    const template = document.getElementById("servicioTemplate");
+    if (!template) {
+      console.error("No se encontró el template de servicio");
+      return;
+    }
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
+    // Llenar servicios SOLO de la categoría seleccionada
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    if (servicioSelect) {
+      servicioSelect.innerHTML =
+        '<option value="">Seleccionar servicio...</option>';
+      const serviciosCategoria = servicios.filter(
+        (s) => String(s.categoria_id) === String(categoriaId)
+      );
+      serviciosCategoria.forEach((servicio) => {
+        const option = document.createElement("option");
+        option.value = servicio.id;
+        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+        option.dataset.precio = servicio.precio_neto;
+        servicioSelect.appendChild(option);
+      });
+      servicioSelect.addEventListener("change", () => {
+        actualizarPrecioServicio(servicioItem);
+        actualizarTotalCategorias();
+      });
+      // No seleccionar automáticamente el primer servicio, dejar vacío
+    }
+    // Eventos de cantidad y descuento
+    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+    if (cantidadInput) {
+      cantidadInput.addEventListener("input", () => {
+        actualizarPrecioServicio(servicioItem);
+        actualizarTotalCategorias();
+      });
+    }
+    if (descuentoInput) {
+      descuentoInput.addEventListener("input", () => {
+        actualizarPrecioServicio(servicioItem);
+        actualizarTotalCategorias();
+      });
+    }
+    // Botón para agregar más servicios dentro de la misma categoría
+    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+    if (agregarBtn) {
+      agregarBtn.addEventListener("click", () => {
+        agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId);
+      });
+    }
+    // Botón para eliminar servicio
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        servicioItem.remove();
+        actualizarTotalCategorias();
+      });
+    }
+    serviciosContainer.appendChild(servicioItem);
+    actualizarPrecioServicio(servicioItem);
+    actualizarTotalCategorias();
   }
 });
 function setupEventListeners() {
@@ -361,402 +835,456 @@ function seleccionarPaciente(paciente) {
 // Inicio --- Cotizaciones / quote tab ---
 /*
 function nuevaCotizacion() {
-  currentQuoteId = null;
-  isEditing = false;
-  document.getElementById("quoteTitle").textContent = "Nueva Cotización";
-  document.getElementById("cotizacionForm").reset();
-  document.getElementById("nuevoPacienteForm").style.display = "none";
-  document.getElementById("fasesContainer").innerHTML = "";
-  currentFaseId = 0;
+    currentQuoteId = null;
+    isEditing = false;
+    document.getElementById("quoteTitle").textContent = "Nueva Cotización";
+    document.getElementById("cotizacionForm").reset();
+    document.getElementById("nuevoPacienteForm").style.display = "none";
+    document.getElementById("fasesContainer").innerHTML = "";
+    currentFaseId = 0;
 
-  switchTab("new");
+    switchTab("new");
 }
 
 function getBadgeClass(estado) {
-  switch (estado) {
-    case "enviada":
-      return "badge-success";
-    case "aceptada":
-      return "badge-primary";
-    case "rechazada":
-      return "badge-danger";
-    default:
-      return "badge-warning";
-  }
+    switch (estado) {
+        case "enviada":
+            return "badge-success";
+        case "aceptada":
+            return "badge-primary";
+        case "rechazada":
+            return "badge-danger";
+        default:
+            return "badge-warning";
+    }
 }
 
 function agregarCategoriaDeTratamiento() {
-  // Agrega una nueva fila dinámica de categoría (no la estática)
-  const categoriasContainer = document.getElementById("categoriasContainer");
-  const row = document.createElement("div");
-  row.className = "row align-items-end mb-2 categoria-dinamica-row";
-  row.innerHTML = `
-        <div class="col-md-4">
-            <div class="form-group mb-2">
-                <select class="form-control categoria-unica-select">
-                    <option value="">Seleccionar categoría...</option>
-                </select>
-            </div>
-        </div>
-        <div class="col-md-8">
-            <div class="form-group mb-2 d-flex align-items-center gap-2 flex-wrap servicios-categorias-container"></div>
-        </div>
-    `;
-  // Llenar el select de categorías
-  const select = row.querySelector(".categoria-unica-select");
-  categorias.forEach((cat) => {
-    const option = document.createElement("option");
-    option.value = cat.id;
-    option.textContent = cat.nombre_categoria;
-    select.appendChild(option);
-  });
-  // Evento de cambio de categoría
-  select.addEventListener("change", function () {
-    const serviciosContainer = row.querySelector(
-      ".servicios-categorias-container"
-    );
-    serviciosContainer.innerHTML = "";
-    if (this.value) {
-      agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
-    }
-  });
-  // Selecciona automáticamente la primera categoría disponible
-  if (categorias.length > 0) {
-    select.value = categorias[0].id;
-    select.dispatchEvent(new Event("change"));
-  }
-  // Buscar el botón de agregar categoría de forma robusta
-  const btnAgregar = categoriasContainer.querySelector("#agregarCategoriaBtn");
-  if (btnAgregar) {
-    categoriasContainer.insertBefore(row, btnAgregar);
-  } else {
-    categoriasContainer.appendChild(row);
-  }
+    // Agrega una nueva fila dinámica de categoría (no la estática)
+    const categoriasContainer = document.getElementById("categoriasContainer");
+    const row = document.createElement("div");
+    row.className = "row align-items-end mb-2 categoria-dinamica-row";
+    row.innerHTML = `
+    <div class="col-md-4">
+      <div class="form-group mb-2">
+        <select class="form-control categoria-unica-select">
+          <option value="">Seleccionar categoría...</option>
+        </select>
+      </div>
+      <div class="categoria-info mt-2"></div>
+    </div>
+    <div class="col-md-8">
+      <div class="form-group mb-2 d-flex align-items-center gap-2 flex-wrap servicios-categorias-container"></div>
+    </div>
+  `;
+
+    // Llenar el select de categorías de forma asíncrona y SOLO insertar el row cuando esté listo
+    const select = row.querySelector(".categoria-unica-select");
+    (async () => {
+        // Siempre recarga las categorías para evitar caché corrupto
+        let categoriasData = [];
+        try {
+            const resp = await fetch("/api/categorias");
+            categoriasData = await resp.json();
+        } catch (e) {
+            categoriasData = [];
+        }
+        // Si no hay categorías, muestra mensaje y no inserta el row
+        if (!categoriasData || categoriasData.length === 0) {
+            select.innerHTML = '<option value="">No hay categorías disponibles</option>';
+            // Inserta el row igualmente para que el usuario vea el mensaje
+            const btnAgregar = categoriasContainer.querySelector("#agregarCategoriaBtn");
+            if (btnAgregar) {
+                categoriasContainer.insertBefore(row, btnAgregar);
+            } else {
+                categoriasContainer.appendChild(row);
+            }
+            return;
+        }
+        // Actualiza la variable global si es necesario
+        categorias = categoriasData;
+        select.innerHTML = '<option value="">Seleccionar categoría...</option>';
+        categorias.forEach((cat) => {
+            const option = document.createElement("option");
+            option.value = cat.id;
+            option.textContent = cat.nombre_categoria;
+            select.appendChild(option);
+        });
+        // Inserta el row SOLO después de llenar el select
+        const btnAgregar = categoriasContainer.querySelector("#agregarCategoriaBtn");
+        if (btnAgregar) {
+            categoriasContainer.insertBefore(row, btnAgregar);
+        } else {
+            categoriasContainer.appendChild(row);
+        }
+        // Selecciona automáticamente la primera categoría disponible
+        if (categorias.length > 0) {
+            select.value = categorias[0].id;
+            select.dispatchEvent(new Event("change"));
+        }
+    })();
+    // Evento de cambio de categoría (debe estar fuera del async para no duplicar listeners)
+    select.addEventListener("change", async function () {
+        const serviciosContainer = row.querySelector(".servicios-categorias-container");
+        const categoriaInfoDiv = row.querySelector(".categoria-info");
+        serviciosContainer.innerHTML = "";
+        categoriaInfoDiv.innerHTML = "";
+        if (this.value) {
+            // Mostrar el nombre de la categoría
+            const cat = categorias.find((c) => String(c.id) === String(this.value));
+            if (cat) {
+                categoriaInfoDiv.innerHTML = `<strong>Categoría:</strong> ${cat.nombre_categoria}`;
+            }
+            // Llamar al endpoint para obtener detalles de la categoría (si existe)
+            try {
+                const resp = await fetch(`/api/categorias/${this.value}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.descripcion) {
+                        categoriaInfoDiv.innerHTML += `<br><small>${data.descripcion}</small>`;
+                    }
+                }
+            } catch (err) {
+                // Silencioso
+            }
+            agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
+        }
+    });
 }
 
 function agregarServicioEnCategoriasDinamico(container, categoriaId) {
-  const template = document.getElementById("servicioTemplate");
-  if (!template) return;
-  const clone = template.content.cloneNode(true);
-  const servicioItem = clone.querySelector(".servicio-item");
-  // Llenar servicios SOLO de la categoría seleccionada
-  const servicioSelect = servicioItem.querySelector(".servicio-select");
-  if (servicioSelect) {
-    servicioSelect.innerHTML =
-      '<option value="">Seleccionar servicio...</option>';
-    servicios
-      .filter((s) => s.categoria_id == categoriaId)
-      .forEach((servicio) => {
-        const option = document.createElement("option");
-        option.value = servicio.id;
-        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-        option.setAttribute("data-precio", servicio.precio_neto);
-        servicioSelect.appendChild(option);
-      });
-    servicioSelect.addEventListener("change", (e) => {
-      actualizarPrecioServicio(servicioItem);
-      actualizarTotalCategorias();
-    });
-  }
-  // Eventos de cantidad y descuento
-  const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
-  const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-  if (cantidadInput) {
-    cantidadInput.addEventListener("input", () => {
-      actualizarPrecioServicio(servicioItem);
-      actualizarTotalCategorias();
-    });
-  }
-  if (descuentoInput) {
-    descuentoInput.addEventListener("input", () => {
-      actualizarPrecioServicio(servicioItem);
-      actualizarTotalCategorias();
-    });
-  }
-  // Botón para agregar más servicios dentro de la misma categoría
-  const agregarBtn = servicioItem.querySelector(".agregar-servicio");
-  if (agregarBtn) {
-    agregarBtn.addEventListener("click", () => {
-      agregarServicioEnCategoriasDinamico(container, categoriaId);
-    });
-  }
-  // Botón para eliminar servicio
-  const removeBtn = servicioItem.querySelector(".remove-servicio");
-  if (removeBtn) {
-    removeBtn.addEventListener("click", () => {
-      servicioItem.remove();
-      actualizarTotalCategorias();
-    });
-  }
-  container.appendChild(servicioItem);
-  actualizarPrecioServicio(servicioItem);
-  actualizarTotalCategorias();
+    const template = document.getElementById("servicioTemplate");
+    if (!template) return;
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
+    // Llenar servicios SOLO de la categoría seleccionada
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    if (servicioSelect) {
+        servicioSelect.innerHTML =
+            '<option value="">Seleccionar servicio...</option>';
+        servicios
+            .filter((s) => s.categoria_id == categoriaId)
+            .forEach((servicio) => {
+                const option = document.createElement("option");
+                option.value = servicio.id;
+                option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+                option.setAttribute("data-precio", servicio.precio_neto);
+                servicioSelect.appendChild(option);
+            });
+        servicioSelect.addEventListener("change", (e) => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+    // Eventos de cantidad y descuento
+    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+    if (cantidadInput) {
+        cantidadInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+    if (descuentoInput) {
+        descuentoInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+    // Botón para agregar más servicios dentro de la misma categoría
+    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+    if (agregarBtn) {
+        agregarBtn.addEventListener("click", () => {
+            agregarServicioEnCategoriasDinamico(container, categoriaId);
+        });
+    }
+    // Botón para eliminar servicio
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            servicioItem.remove();
+            actualizarTotalCategorias();
+        });
+    }
+    container.appendChild(servicioItem);
+    actualizarPrecioServicio(servicioItem);
+    actualizarTotalCategorias();
 }
 
 function agregarServicioLibre() {
-  const template = document.getElementById("servicioTemplate");
-  const clone = template.content.cloneNode(true);
-  const servicioItem = clone.querySelector(".servicio-item");
+    const template = document.getElementById("servicioTemplate");
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
 
-  // Eliminar
-  servicioItem
-    .querySelector(".remove-servicio")
-    .addEventListener("click", () => {
-      servicioItem.remove();
-      calcularTotalesGenerales();
+    // Eliminar
+    servicioItem
+        .querySelector(".remove-servicio")
+        .addEventListener("click", () => {
+            servicioItem.remove();
+            calcularTotalesGenerales();
+        });
+
+    // Cálculo
+    const cantidadInput = servicioItem.querySelector(".cantidad");
+    const descuentoInput = servicioItem.querySelector(".descuento");
+
+    const calcularServicio = () => {
+        const precioUnitario =
+            parseFloat(servicioItem.querySelector(".precio-unitario").value) ||
+            0;
+        const cantidad = parseInt(cantidadInput.value) || 1;
+        const descuento = parseFloat(descuentoInput.value) || 0;
+        const subtotal = precioUnitario * cantidad;
+        const descuentoMonto = subtotal * (descuento / 100);
+        const total = subtotal - descuentoMonto;
+
+        servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
+        calcularTotalesGenerales();
+    };
+
+    cantidadInput.addEventListener("change", calcularServicio);
+    descuentoInput.addEventListener("change", calcularServicio);
+
+    // Select de categorías
+    const categoriaSelect = servicioItem.querySelector(".categoria-select");
+    categoriaSelect.addEventListener("change", (e) => {
+        const servicioSelect = e.target
+            .closest(".servicio-item")
+            .querySelector(".servicio-select");
+        actualizarServiciosSelect(e.target.value, servicioSelect);
     });
 
-  // Cálculo
-  const cantidadInput = servicioItem.querySelector(".cantidad");
-  const descuentoInput = servicioItem.querySelector(".descuento");
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    servicioSelect.addEventListener("change", (e) => {
+        const servicioId = e.target.value;
+        const servicio = servicios.find((s) => s.id == servicioId);
+        if (servicio) {
+            servicioItem.querySelector(".precio-unitario").value =
+                servicio.precio_neto.toFixed(2);
+            calcularServicio();
+        }
+    });
 
-  const calcularServicio = () => {
-    const precioUnitario =
-      parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
-    const cantidad = parseInt(cantidadInput.value) || 1;
-    const descuento = parseFloat(descuentoInput.value) || 0;
-    const subtotal = precioUnitario * cantidad;
-    const descuentoMonto = subtotal * (descuento / 100);
-    const total = subtotal - descuentoMonto;
-
-    servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
-    calcularTotalesGenerales();
-  };
-
-  cantidadInput.addEventListener("change", calcularServicio);
-  descuentoInput.addEventListener("change", calcularServicio);
-
-  // Select de categorías
-  const categoriaSelect = servicioItem.querySelector(".categoria-select");
-  categoriaSelect.addEventListener("change", (e) => {
-    const servicioSelect = e.target
-      .closest(".servicio-item")
-      .querySelector(".servicio-select");
-    actualizarServiciosSelect(e.target.value, servicioSelect);
-  });
-
-  const servicioSelect = servicioItem.querySelector(".servicio-select");
-  servicioSelect.addEventListener("change", (e) => {
-    const servicioId = e.target.value;
-    const servicio = servicios.find((s) => s.id == servicioId);
-    if (servicio) {
-      servicioItem.querySelector(".precio-unitario").value =
-        servicio.precio_neto.toFixed(2);
-      calcularServicio();
-    }
-  });
-
-  document
-    .querySelector("#categoriasContainer .servicios-container")
-    .appendChild(servicioItem);
+    document
+        .querySelector("#categoriasContainer .servicios-container")
+        .appendChild(servicioItem);
 }
 function agregarFase() {
-  const fasesContainer = document.getElementById("fasesContainer");
-  if (!fasesContainer) return;
+    const fasesContainer = document.getElementById("fasesContainer");
+    if (!fasesContainer) return;
 
-  const template = document.getElementById("faseTemplate");
-  if (!template) return;
+    const template = document.getElementById("faseTemplate");
+    if (!template) return;
 
-  const clone = template.content.cloneNode(true);
-  const faseCard = clone.querySelector(".fase-card");
-  if (!faseCard) return;
+    const clone = template.content.cloneNode(true);
+    const faseCard = clone.querySelector(".fase-card");
+    if (!faseCard) return;
 
-  // Numeración automática
-  const faseNum = fasesContainer.querySelectorAll(".fase-card").length + 1;
-  faseCard.querySelector(".fase-numero").textContent = faseNum;
+    // Numeración automática
+    const faseNum = fasesContainer.querySelectorAll(".fase-card").length + 1;
+    faseCard.querySelector(".fase-numero").textContent = faseNum;
 
-  faseCard.querySelector(".remove-fase").addEventListener("click", () => {
-    faseCard.remove();
-    // Renumeración inmediata
-    fasesContainer.querySelectorAll(".fase-card").forEach((f, i) => {
-      f.querySelector(".fase-numero").textContent = i + 1;
+    faseCard.querySelector(".remove-fase").addEventListener("click", () => {
+        faseCard.remove();
+        // Renumeración inmediata
+        fasesContainer.querySelectorAll(".fase-card").forEach((f, i) => {
+            f.querySelector(".fase-numero").textContent = i + 1;
+        });
+        calcularTotalesGenerales();
     });
-    calcularTotalesGenerales();
-  });
 
-  // Resto de la lógica...
-  fasesContainer.appendChild(faseCard);
-  agregarServicioAFase(faseCard);
+    // Resto de la lógica...
+    fasesContainer.appendChild(faseCard);
+    agregarServicioAFase(faseCard);
 }
 function activarFases() {
-  const fasesContainer = document.getElementById("fasesContainer");
-  const divFases = document.getElementById("div-fases");
-  const boton = document.getElementById("confirmacionFases");
+    const fasesContainer = document.getElementById("fasesContainer");
+    const divFases = document.getElementById("div-fases");
+    const boton = document.getElementById("confirmacionFases");
 
-  // Verificar que los elementos existen
-  if (!fasesContainer || !divFases || !boton) {
-    console.error("Elementos necesarios no encontrados");
-    return;
-  }
+    // Verificar que los elementos existen
+    if (!fasesContainer || !divFases || !boton) {
+        console.error("Elementos necesarios no encontrados");
+        return;
+    }
 
-  // Determinar el estado actual (mejor que comparar solo con 'none')
-  const fasesVisibles = window.getComputedStyle(divFases).display !== "none";
+    // Determinar el estado actual (mejor que comparar solo con 'none')
+    const fasesVisibles = window.getComputedStyle(divFases).display !== "none";
 
-  // Alternar visibilidad
-  if (fasesVisibles) {
-    divFases.style.display = "none";
-    boton.innerHTML = '<i class="fas fa-eye"></i> Activar fases';
-    boton.classList.remove("btn-primary");
-    boton.classList.add("btn-secondary");
-  } else {
-    divFases.style.display = "block";
-    boton.innerHTML = '<i class="fas fa-eye-slash"></i> Desactivar fases';
-    boton.classList.remove("btn-secondary");
-    boton.classList.add("btn-primary");
-  }
+    // Alternar visibilidad
+    if (fasesVisibles) {
+        divFases.style.display = "none";
+        boton.innerHTML = '<i class="fas fa-eye"></i> Activar fases';
+        boton.classList.remove("btn-primary");
+        boton.classList.add("btn-secondary");
+    } else {
+        divFases.style.display = "block";
+        boton.innerHTML = '<i class="fas fa-eye-slash"></i> Desactivar fases';
+        boton.classList.remove("btn-secondary");
+        boton.classList.add("btn-primary");
+    }
 }
 function agregarServicioIndependienteEnCategorias() {
-  const template = document.getElementById("servicioTemplate");
-  const clone = template.content.cloneNode(true);
-  const servicioItem = clone.querySelector(".servicio-item");
+    const template = document.getElementById("servicioTemplate");
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
 
-  // Eventos
-  servicioItem
-    .querySelector(".remove-servicio")
-    .addEventListener("click", () => {
-      servicioItem.remove();
-      calcularTotalesGenerales(); // sin fases
+    // Eventos
+    servicioItem
+        .querySelector(".remove-servicio")
+        .addEventListener("click", () => {
+            servicioItem.remove();
+            calcularTotalesGenerales(); // sin fases
+        });
+
+    const cantidadInput = servicioItem.querySelector(".cantidad");
+    const descuentoInput = servicioItem.querySelector(".descuento");
+
+    const calcularServicio = () => {
+        const precioUnitario =
+            parseFloat(servicioItem.querySelector(".precio-unitario").value) ||
+            0;
+        const cantidad = parseInt(cantidadInput.value) || 1;
+        const descuento = parseFloat(descuentoInput.value) || 0;
+
+        const subtotal = precioUnitario * cantidad;
+        const descuentoMonto = subtotal * (descuento / 100);
+        const total = subtotal - descuentoMonto;
+
+        servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
+        calcularTotalesGenerales();
+    };
+
+    cantidadInput.addEventListener("change", calcularServicio);
+    descuentoInput.addEventListener("change", calcularServicio);
+
+    const categoriaSelect = servicioItem.querySelector(".categoria-select");
+    categoriaSelect.addEventListener("change", (e) => {
+        const servicioSelect = e.target
+            .closest(".servicio-item")
+            .querySelector(".servicio-select");
+        actualizarServiciosSelect(e.target.value, servicioSelect);
     });
 
-  const cantidadInput = servicioItem.querySelector(".cantidad");
-  const descuentoInput = servicioItem.querySelector(".descuento");
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    servicioSelect.addEventListener("change", (e) => {
+        const servicioId = e.target.value;
+        const servicio = servicios.find((s) => s.id == servicioId);
+        if (servicio) {
+            servicioItem.querySelector(".precio-unitario").value =
+                servicio.precio_neto.toFixed(2);
+            calcularServicio();
+        }
+    });
 
-  const calcularServicio = () => {
-    const precioUnitario =
-      parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
-    const cantidad = parseInt(cantidadInput.value) || 1;
-    const descuento = parseFloat(descuentoInput.value) || 0;
-
-    const subtotal = precioUnitario * cantidad;
-    const descuentoMonto = subtotal * (descuento / 100);
-    const total = subtotal - descuentoMonto;
-
-    servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
-    calcularTotalesGenerales();
-  };
-
-  cantidadInput.addEventListener("change", calcularServicio);
-  descuentoInput.addEventListener("change", calcularServicio);
-
-  const categoriaSelect = servicioItem.querySelector(".categoria-select");
-  categoriaSelect.addEventListener("change", (e) => {
-    const servicioSelect = e.target
-      .closest(".servicio-item")
-      .querySelector(".servicio-select");
-    actualizarServiciosSelect(e.target.value, servicioSelect);
-  });
-
-  const servicioSelect = servicioItem.querySelector(".servicio-select");
-  servicioSelect.addEventListener("change", (e) => {
-    const servicioId = e.target.value;
-    const servicio = servicios.find((s) => s.id == servicioId);
-    if (servicio) {
-      servicioItem.querySelector(".precio-unitario").value =
-        servicio.precio_neto.toFixed(2);
-      calcularServicio();
-    }
-  });
-
-  document.getElementById("categoriasContainer").appendChild(servicioItem);
+    document.getElementById("categoriasContainer").appendChild(servicioItem);
 }
 
 function agregarServicioAFase(faseCard) {
-  try {
-    // Verificar template
-    const template = document.getElementById("servicioTemplate");
-    if (!template) {
-      throw new Error("No se encontró el template de servicio");
-    }
-
-    const clone = template.content.cloneNode(true);
-    const servicioItem = clone.querySelector(".servicio-item");
-    if (!servicioItem) {
-      throw new Error("No se encontró el elemento .servicio-item");
-    }
-
-    // Verificar contenedor de servicios
-    const serviciosContainer = faseCard.querySelector(".servicios-container");
-    if (!serviciosContainer) {
-      throw new Error("No se encontró el contenedor de servicios en la fase");
-    }
-
-    // Configurar eventos
-    const removeBtn = servicioItem.querySelector(".remove-servicio");
-    if (removeBtn) {
-      removeBtn.addEventListener("click", () => {
-        servicioItem.remove();
-        calcularTotalesFase(faseCard);
-        calcularTotalesGenerales();
-      });
-    }
-
-    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
-    if (agregarBtn) {
-      agregarBtn.addEventListener("click", () => {
-        agregarServicioAFase(faseCard);
-      });
-    }
-
-    // Configurar select de categorías si existe
-    const categoriaSelect = servicioItem.querySelector(".categoria-select");
-    if (categoriaSelect) {
-      categoriaSelect.innerHTML =
-        '<option value="">Seleccionar categoría...</option>';
-
-      if (categorias && categorias.length > 0) {
-        categorias.forEach((cat) => {
-          const option = document.createElement("option");
-          option.value = cat.id;
-          option.textContent = cat.nombre_categoria;
-          categoriaSelect.appendChild(option);
-        });
-      }
-
-      categoriaSelect.addEventListener("change", function () {
-        const servicioSelect =
-          this.closest(".servicio-item").querySelector(".servicio-select");
-        actualizarServiciosSelect(this.value, servicioSelect);
-      });
-    }
-
-    // Configurar select de servicios
-    const servicioSelect = servicioItem.querySelector(".servicio-select");
-    if (servicioSelect) {
-      servicioSelect.addEventListener("change", function () {
-        const servicio = servicios.find((s) => s.id == this.value);
-        if (servicio) {
-          const precioInput =
-            this.closest(".servicio-item").querySelector(".precio-unitario");
-          if (precioInput) {
-            precioInput.value = servicio.precio_neto.toFixed(2);
-          }
+    try {
+        // Verificar template
+        const template = document.getElementById("servicioTemplate");
+        if (!template) {
+            throw new Error("No se encontró el template de servicio");
         }
+
+        const clone = template.content.cloneNode(true);
+        const servicioItem = clone.querySelector(".servicio-item");
+        if (!servicioItem) {
+            throw new Error("No se encontró el elemento .servicio-item");
+        }
+
+        // Verificar contenedor de servicios
+        const serviciosContainer = faseCard.querySelector(
+            ".servicios-container"
+        );
+        if (!serviciosContainer) {
+            throw new Error(
+                "No se encontró el contenedor de servicios en la fase"
+            );
+        }
+
+        // Configurar eventos
+        const removeBtn = servicioItem.querySelector(".remove-servicio");
+        if (removeBtn) {
+            removeBtn.addEventListener("click", () => {
+                servicioItem.remove();
+                calcularTotalesFase(faseCard);
+                calcularTotalesGenerales();
+            });
+        }
+
+        const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+        if (agregarBtn) {
+            agregarBtn.addEventListener("click", () => {
+                agregarServicioAFase(faseCard);
+            });
+        }
+
+        // Configurar select de categorías si existe
+        const categoriaSelect = servicioItem.querySelector(".categoria-select");
+        if (categoriaSelect) {
+            categoriaSelect.innerHTML =
+                '<option value="">Seleccionar categoría...</option>';
+
+            if (categorias && categorias.length > 0) {
+                categorias.forEach((cat) => {
+                    const option = document.createElement("option");
+                    option.value = cat.id;
+                    option.textContent = cat.nombre_categoria;
+                    categoriaSelect.appendChild(option);
+                });
+            }
+
+            categoriaSelect.addEventListener("change", function () {
+                const servicioSelect =
+                    this.closest(".servicio-item").querySelector(
+                        ".servicio-select"
+                    );
+                actualizarServiciosSelect(this.value, servicioSelect);
+            });
+        }
+
+        // Configurar select de servicios
+        const servicioSelect = servicioItem.querySelector(".servicio-select");
+        if (servicioSelect) {
+            servicioSelect.addEventListener("change", function () {
+                const servicio = servicios.find((s) => s.id == this.value);
+                if (servicio) {
+                    const precioInput =
+                        this.closest(".servicio-item").querySelector(
+                            ".precio-unitario"
+                        );
+                    if (precioInput) {
+                        precioInput.value = servicio.precio_neto.toFixed(2);
+                    }
+                }
+                calcularTotalesFase(faseCard);
+            });
+        }
+
+        // Configurar eventos de cantidad y descuento
+        const cantidadInput = servicioItem.querySelector(".cantidad");
+        if (cantidadInput) {
+            cantidadInput.addEventListener("input", () =>
+                calcularTotalesFase(faseCard)
+            );
+        }
+
+        const descuentoInput = servicioItem.querySelector(".descuento");
+        if (descuentoInput) {
+            descuentoInput.addEventListener("input", () =>
+                calcularTotalesFase(faseCard)
+            );
+        }
+
+        // Agregar al DOM
+        serviciosContainer.appendChild(servicioItem);
         calcularTotalesFase(faseCard);
-      });
+    } catch (error) {
+        console.error("Error en agregarServicioAFase:", error);
+        throw error; // Re-lanzar el error para manejo superior
     }
-
-    // Configurar eventos de cantidad y descuento
-    const cantidadInput = servicioItem.querySelector(".cantidad");
-    if (cantidadInput) {
-      cantidadInput.addEventListener("input", () =>
-        calcularTotalesFase(faseCard)
-      );
-    }
-
-    const descuentoInput = servicioItem.querySelector(".descuento");
-    if (descuentoInput) {
-      descuentoInput.addEventListener("input", () =>
-        calcularTotalesFase(faseCard)
-      );
-    }
-
-    // Agregar al DOM
-    serviciosContainer.appendChild(servicioItem);
-    calcularTotalesFase(faseCard);
-  } catch (error) {
-    console.error("Error en agregarServicioAFase:", error);
-    throw error; // Re-lanzar el error para manejo superior
-  }
 }
 */
 function actualizarServiciosSelect(categoriaId, servicioSelect) {
