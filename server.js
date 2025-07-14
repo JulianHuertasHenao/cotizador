@@ -32,6 +32,187 @@ app.get("/api/categorias", (req, res) => {
     res.json(rows);
   });
 });
+// Rutas para Fases
+app.post("/api/fases", async (req, res) => {
+  const { cotizacion_id, numero_fase, duracion_meses } = req.body;
+
+  try {
+    // Validaciones básicas
+    if (!cotizacion_id || !numero_fase) {
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
+    }
+
+    // Verificar si la cotización existe
+    const cotizacion = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT id FROM Cotizaciones WHERE id = ?",
+        [cotizacion_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!cotizacion) {
+      return res.status(404).json({ error: "Cotización no encontrada" });
+    }
+
+    // Insertar la nueva fase
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO Fases (cotizacion_id, numero_fase, duracion_meses) 
+         VALUES (?, ?, ?)`,
+        [cotizacion_id, numero_fase, duracion_meses || 1],
+        function (err) {
+          if (err) reject(err);
+          else resolve(this);
+        }
+      );
+    });
+
+    res.status(201).json({
+      id: result.lastID,
+      cotizacion_id,
+      numero_fase,
+      duracion_meses: duracion_meses || 1,
+    });
+  } catch (error) {
+    console.error("Error al crear fase:", error.message);
+
+    // Manejar error de fase duplicada
+    if (error.message.includes("UNIQUE constraint failed")) {
+      return res
+        .status(400)
+        .json({ error: "El número de fase ya existe para esta cotización" });
+    }
+
+    res.status(500).json({ error: "Error interno al crear fase" });
+  }
+});
+
+// Obtener fases por cotización
+app.get("/api/cotizaciones/:id/fases", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const fases = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT id, numero_fase, duracion_meses 
+         FROM Fases 
+         WHERE cotizacion_id = ? 
+         ORDER BY numero_fase`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    res.json(fases);
+  } catch (error) {
+    console.error("Error al obtener fases:", error.message);
+    res.status(500).json({ error: "Error interno al obtener fases" });
+  }
+});
+
+// Actualizar una fase
+app.put("/api/fases/:id", async (req, res) => {
+  const { id } = req.params;
+  const { numero_fase, duracion_meses } = req.body;
+
+  try {
+    // Validaciones
+    if (!numero_fase && !duracion_meses) {
+      return res.status(400).json({ error: "Nada que actualizar" });
+    }
+
+    // Obtener fase actual para validaciones
+    const faseActual = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM Fases WHERE id = ?", [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!faseActual) {
+      return res.status(404).json({ error: "Fase no encontrada" });
+    }
+
+    // Actualizar
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE Fases 
+         SET numero_fase = ?, duracion_meses = ?
+         WHERE id = ?`,
+        [
+          numero_fase !== undefined ? numero_fase : faseActual.numero_fase,
+          duracion_meses !== undefined
+            ? duracion_meses
+            : faseActual.duracion_meses,
+          id,
+        ],
+        function (err) {
+          if (err) reject(err);
+          else resolve(this);
+        }
+      );
+    });
+
+    res.json({
+      id,
+      numero_fase:
+        numero_fase !== undefined ? numero_fase : faseActual.numero_fase,
+      duracion_meses:
+        duracion_meses !== undefined
+          ? duracion_meses
+          : faseActual.duracion_meses,
+    });
+  } catch (error) {
+    console.error("Error al actualizar fase:", error.message);
+
+    if (error.message.includes("UNIQUE constraint failed")) {
+      return res
+        .status(400)
+        .json({ error: "El número de fase ya existe para esta cotización" });
+    }
+
+    res.status(500).json({ error: "Error interno al actualizar fase" });
+  }
+});
+
+// Eliminar una fase
+app.delete("/api/fases/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verificar si la fase existe
+    const fase = await new Promise((resolve, reject) => {
+      db.get("SELECT id FROM Fases WHERE id = ?", [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!fase) {
+      return res.status(404).json({ error: "Fase no encontrada" });
+    }
+
+    // Eliminar (el CASCADE en la BD se encargará de los detalles relacionados)
+    await new Promise((resolve, reject) => {
+      db.run("DELETE FROM Fases WHERE id = ?", [id], function (err) {
+        if (err) reject(err);
+        else resolve(this);
+      });
+    });
+
+    res.json({ message: "Fase eliminada correctamente" });
+  } catch (error) {
+    console.error("Error al eliminar fase:", error.message);
+    res.status(500).json({ error: "Error interno al eliminar fase" });
+  }
+});
 
 app.get("/api/servicios", (req, res) => {
   const { categoria_id } = req.query;
