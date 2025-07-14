@@ -841,22 +841,34 @@
     color: var(--primary);
     background: rgba(58, 172, 201, 0.1);
   }
+.phases-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
 
-  .phases-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  
+/* Primera fase ocupa todo el ancho */
+.phases-grid .phase-container:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Fase impar (excepto la primera) */
+.phases-grid .phase-container:nth-child(odd):not(:first-child) {
+  grid-column: 1 / -1;
+}
   .phase-container {
     margin-bottom: 0; /* Eliminamos el margen inferior ya que lo controla el grid */
   }
   
   @media (max-width: 768px) {
     .phases-grid {
-      grid-template-columns: 1fr;
-    }
+    grid-template-columns: 1fr;
+  }
+  
+  .phases-grid .phase-container {
+    grid-column: 1 / -1 !important;
+  }
   }
 
   /* Hidden Elements */

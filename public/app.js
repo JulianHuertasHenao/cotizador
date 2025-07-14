@@ -303,98 +303,97 @@ function togglePhases(usePhases) {
     noPhaseCategories.classList.remove("hidden");
   }
 }
-// Add a new treatment phase
+// Función para añadir nuevas fases
 function addNewPhase() {
   const phasesContainer = document.getElementById("phases-container");
-
   const phaseTemplate = document.getElementById("phase-template");
 
-  const phaseCount =
-    (phasesContainer.querySelectorAll(".phase-container:not(.hidden)").length ||
-      0) + 1;
+  // Obtener o crear el grid
+  let phasesGrid = document.getElementById("phases-grid") || createPhasesGrid();
 
+  // Clonar plantilla
   const newPhase = phaseTemplate.content.cloneNode(true);
-
   const phaseContainer = newPhase.querySelector(".phase-container");
-
   phaseContainer.classList.remove("hidden");
 
-  phaseContainer.querySelector(".phase-number-badge").textContent = phaseCount;
+  // Configurar fase
+  setupPhase(phaseContainer, phasesGrid);
 
+  // Añadir al grid
+  phasesGrid.appendChild(phaseContainer);
+  reorganizePhasesLayout();
+}
+
+function createPhasesGrid() {
+  const grid = document.createElement("div");
+  grid.id = "phases-grid";
+  grid.className = "phases-grid";
+  document
+    .getElementById("phases-container")
+    .insertBefore(grid, document.getElementById("add-phase-btn").parentNode);
+  return grid;
+}
+
+function setupPhase(phaseContainer, phasesGrid) {
+  const phaseCount =
+    phasesGrid.querySelectorAll(".phase-container:not(.hidden)").length + 1;
+
+  phaseContainer.querySelector(".phase-number-badge").textContent = phaseCount;
   phaseContainer.querySelector(".phase-number-text").textContent = phaseCount;
 
-  // Set up event listeners for the new phase
-
   phaseContainer
-
     .querySelector(".remove-phase-btn")
-
     .addEventListener("click", function () {
       if (confirm("¿Eliminar esta fase y todos sus servicios?")) {
         phaseContainer.remove();
-
         updatePhaseNumbers();
-
-        const phasesGrid = document.getElementById("phases-grid");
-
-        // Show "no phases" message if last phase was removed
-
-        if (
-          !phasesGrid ||
-          phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
-            .length === 0
-        ) {
-          document
-            .getElementById("no-phases-message")
-            .classList.remove("hidden");
-        }
+        reorganizePhasesLayout();
+        checkEmptyPhases();
       }
     });
 
-  phaseContainer
-
-    .querySelector(".add-category-btn")
-
-    .addEventListener("click", function () {
-      addNewCategoryToPhase(phaseContainer);
-    });
-
-  // Add first service to the first category
-
+  // Resto de configuración...
   const firstCategory = phaseContainer.querySelector(".category-group");
-
   setupCategoryEvents(firstCategory);
-
   addNewService(firstCategory.querySelector(".service-list"));
 
-  // Get or create the phases grid
+  document.getElementById("no-phases-message").classList.add("hidden");
+}
 
-  let phasesGrid = document.getElementById("phases-grid");
+// Reorganizar el layout de las fases
+function reorganizePhasesLayout() {
+  const phasesGrid = document.getElementById("phases-grid");
+  if (!phasesGrid) return;
 
-  if (!phasesGrid) {
-    phasesGrid = document.createElement("div");
+  const phases = Array.from(
+    phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
+  );
 
-    phasesGrid.id = "phases-grid";
+  // Resetear estilos
+  phases.forEach((phase) => {
+    phase.style.gridColumn = "";
+    phase.style.width = "";
+  });
 
-    phasesGrid.className = "phases-grid";
-
-    phasesContainer.insertBefore(
-      phasesGrid,
-
-      document.getElementById("add-phase-btn").parentNode
-    );
+  // Caso especial para 1 fase
+  if (phases.length === 1) {
+    phases[0].style.gridColumn = "1 / -1";
+    return;
   }
 
-  // Hide "no phases" message
-
-  document.getElementById("no-phases-message").classList.add("hidden");
-
-  // Add the new phase to the grid
-
-  phasesGrid.appendChild(phaseContainer);
-
-  updatePhaseNumbers();
+  // Organizar en pares
+  for (let i = 0; i < phases.length; i += 2) {
+    // Si es el último y el total es impar
+    if (i === phases.length - 1 && phases.length % 2 !== 0) {
+      phases[i].style.gridColumn = "1 / -1";
+    } else {
+      // Par de fases
+      phases[i].style.gridColumn = "1";
+      phases[i + 1].style.gridColumn = "2";
+    }
+  }
 }
+
 // Add a new category to a phase
 function addNewCategoryToPhase(phase) {
   const newCategory = phase.querySelector(".category-group").cloneNode(true);
@@ -586,17 +585,19 @@ function addSubcategoryOption(select, value, text) {
 
   select.appendChild(option);
 }
-// Update phase numbers when phases are added/removed
 function updatePhaseNumbers() {
   const phases = document.querySelectorAll(".phase-container:not(.hidden)");
-
   phases.forEach((phase, index) => {
-    const phaseNumber = index + 1;
-
-    phase.querySelector(".phase-number-badge").textContent = phaseNumber;
-
-    phase.querySelector(".phase-number-text").textContent = phaseNumber;
+    const num = index + 1;
+    phase.querySelector(".phase-number-badge").textContent = num;
+    phase.querySelector(".phase-number-text").textContent = num;
   });
+}
+
+function checkEmptyPhases() {
+  if (document.querySelectorAll(".phase-container:not(.hidden)").length === 0) {
+    document.getElementById("no-phases-message").classList.remove("hidden");
+  }
 }
 // Función principal de navegación
 function switchTab(view, options = {}) {
