@@ -1095,6 +1095,408 @@ function actualizarTotalCategorias() {
   })}`;
 }
 
+// Inicio --- Cotizaciones / quote tab ---
+/*
+function nuevaCotizacion() {
+  currentQuoteId = null;
+  isEditing = false;
+  document.getElementById("quoteTitle").textContent = "Nueva Cotización";
+  document.getElementById("cotizacionForm").reset();
+  document.getElementById("nuevoPacienteForm").style.display = "none";
+  document.getElementById("fasesContainer").innerHTML = "";
+  currentFaseId = 0;
+
+  switchTab("new");
+}
+
+function getBadgeClass(estado) {
+  switch (estado) {
+    case "enviada":
+      return "badge-success";
+    case "aceptada":
+      return "badge-primary";
+    case "rechazada":
+      return "badge-danger";
+    default:
+      return "badge-warning";
+  }
+}
+
+function agregarCategoriaDeTratamiento() {
+  // Agrega una nueva fila dinámica de categoría (no la estática)
+  const categoriasContainer = document.getElementById("categoriasContainer");
+  const row = document.createElement("div");
+  row.className = "row align-items-end mb-2 categoria-dinamica-row";
+  row.innerHTML = `
+        <div class="col-md-4">
+            <div class="form-group mb-2">
+                <select class="form-control categoria-unica-select">
+                    <option value="">Seleccionar categoría...</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="form-group mb-2 d-flex align-items-center gap-2 flex-wrap servicios-categorias-container"></div>
+        </div>
+    `;
+  // Llenar el select de categorías
+  const select = row.querySelector(".categoria-unica-select");
+  categorias.forEach((cat) => {
+    const option = document.createElement("option");
+    option.value = cat.id;
+    option.textContent = cat.nombre_categoria;
+    select.appendChild(option);
+  });
+  // Evento de cambio de categoría
+  select.addEventListener("change", function () {
+    const serviciosContainer = row.querySelector(
+      ".servicios-categorias-container"
+    );
+    serviciosContainer.innerHTML = "";
+    if (this.value) {
+      agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
+    }
+  });
+  // Selecciona automáticamente la primera categoría disponible
+  if (categorias.length > 0) {
+    select.value = categorias[0].id;
+    select.dispatchEvent(new Event("change"));
+  }
+  // Buscar el botón de agregar categoría de forma robusta
+  const btnAgregar = categoriasContainer.querySelector("#agregarCategoriaBtn");
+  if (btnAgregar) {
+    categoriasContainer.insertBefore(row, btnAgregar);
+  } else {
+    categoriasContainer.appendChild(row);
+  }
+}
+
+function agregarServicioEnCategoriasDinamico(container, categoriaId) {
+  const template = document.getElementById("servicioTemplate");
+  if (!template) return;
+  const clone = template.content.cloneNode(true);
+  const servicioItem = clone.querySelector(".servicio-item");
+  // Llenar servicios SOLO de la categoría seleccionada
+  const servicioSelect = servicioItem.querySelector(".servicio-select");
+  if (servicioSelect) {
+    servicioSelect.innerHTML =
+      '<option value="">Seleccionar servicio...</option>';
+    servicios
+      .filter((s) => s.categoria_id == categoriaId)
+      .forEach((servicio) => {
+        const option = document.createElement("option");
+        option.value = servicio.id;
+        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+        option.setAttribute("data-precio", servicio.precio_neto);
+        servicioSelect.appendChild(option);
+      });
+    servicioSelect.addEventListener("change", (e) => {
+      actualizarPrecioServicio(servicioItem);
+      actualizarTotalCategorias();
+    });
+  }
+  // Eventos de cantidad y descuento
+  const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+  const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+  if (cantidadInput) {
+    cantidadInput.addEventListener("input", () => {
+      actualizarPrecioServicio(servicioItem);
+      actualizarTotalCategorias();
+    });
+  }
+  if (descuentoInput) {
+    descuentoInput.addEventListener("input", () => {
+      actualizarPrecioServicio(servicioItem);
+      actualizarTotalCategorias();
+    });
+  }
+  // Botón para agregar más servicios dentro de la misma categoría
+  const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+  if (agregarBtn) {
+    agregarBtn.addEventListener("click", () => {
+      agregarServicioEnCategoriasDinamico(container, categoriaId);
+    });
+  }
+  // Botón para eliminar servicio
+  const removeBtn = servicioItem.querySelector(".remove-servicio");
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => {
+      servicioItem.remove();
+      actualizarTotalCategorias();
+    });
+  }
+  container.appendChild(servicioItem);
+  actualizarPrecioServicio(servicioItem);
+  actualizarTotalCategorias();
+}
+
+function agregarServicioLibre() {
+  const template = document.getElementById("servicioTemplate");
+  const clone = template.content.cloneNode(true);
+  const servicioItem = clone.querySelector(".servicio-item");
+
+  // Eliminar
+  servicioItem
+    .querySelector(".remove-servicio")
+    .addEventListener("click", () => {
+      servicioItem.remove();
+      calcularTotalesGenerales();
+    });
+
+  // Cálculo
+  const cantidadInput = servicioItem.querySelector(".cantidad");
+  const descuentoInput = servicioItem.querySelector(".descuento");
+
+  const calcularServicio = () => {
+    const precioUnitario =
+      parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
+    const cantidad = parseInt(cantidadInput.value) || 1;
+    const descuento = parseFloat(descuentoInput.value) || 0;
+    const subtotal = precioUnitario * cantidad;
+    const descuentoMonto = subtotal * (descuento / 100);
+    const total = subtotal - descuentoMonto;
+
+    servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
+    calcularTotalesGenerales();
+  };
+
+  cantidadInput.addEventListener("change", calcularServicio);
+  descuentoInput.addEventListener("change", calcularServicio);
+
+  // Select de categorías
+  const categoriaSelect = servicioItem.querySelector(".categoria-select");
+  categoriaSelect.addEventListener("change", (e) => {
+    const servicioSelect = e.target
+      .closest(".servicio-item")
+      .querySelector(".servicio-select");
+    actualizarServiciosSelect(e.target.value, servicioSelect);
+  });
+
+  const servicioSelect = servicioItem.querySelector(".servicio-select");
+  servicioSelect.addEventListener("change", (e) => {
+    const servicioId = e.target.value;
+    const servicio = servicios.find((s) => s.id == servicioId);
+    if (servicio) {
+      servicioItem.querySelector(".precio-unitario").value =
+        servicio.precio_neto.toFixed(2);
+      calcularServicio();
+    }
+  });
+
+  document
+    .querySelector("#categoriasContainer .servicios-container")
+    .appendChild(servicioItem);
+}
+function agregarFase() {
+  const fasesContainer = document.getElementById("fasesContainer");
+  if (!fasesContainer) return;
+
+  const template = document.getElementById("faseTemplate");
+  if (!template) return;
+
+  const clone = template.content.cloneNode(true);
+  const faseCard = clone.querySelector(".fase-card");
+  if (!faseCard) return;
+
+  // Numeración automática
+  const faseNum = fasesContainer.querySelectorAll(".fase-card").length + 1;
+  faseCard.querySelector(".fase-numero").textContent = faseNum;
+
+  faseCard.querySelector(".remove-fase").addEventListener("click", () => {
+    faseCard.remove();
+    // Renumeración inmediata
+    fasesContainer.querySelectorAll(".fase-card").forEach((f, i) => {
+      f.querySelector(".fase-numero").textContent = i + 1;
+    });
+    calcularTotalesGenerales();
+  });
+
+  // Resto de la lógica...
+  fasesContainer.appendChild(faseCard);
+  agregarServicioAFase(faseCard);
+}
+function activarFases() {
+  const fasesContainer = document.getElementById("fasesContainer");
+  const divFases = document.getElementById("div-fases");
+  const boton = document.getElementById("confirmacionFases");
+
+  // Verificar que los elementos existen
+  if (!fasesContainer || !divFases || !boton) {
+    console.error("Elementos necesarios no encontrados");
+    return;
+  }
+
+  // Determinar el estado actual (mejor que comparar solo con 'none')
+  const fasesVisibles = window.getComputedStyle(divFases).display !== "none";
+
+  // Alternar visibilidad
+  if (fasesVisibles) {
+    divFases.style.display = "none";
+    boton.innerHTML = '<i class="fas fa-eye"></i> Activar fases';
+    boton.classList.remove("btn-primary");
+    boton.classList.add("btn-secondary");
+  } else {
+    divFases.style.display = "block";
+    boton.innerHTML = '<i class="fas fa-eye-slash"></i> Desactivar fases';
+    boton.classList.remove("btn-secondary");
+    boton.classList.add("btn-primary");
+  }
+}
+function agregarServicioIndependienteEnCategorias() {
+  const template = document.getElementById("servicioTemplate");
+  const clone = template.content.cloneNode(true);
+  const servicioItem = clone.querySelector(".servicio-item");
+
+  // Eventos
+  servicioItem
+    .querySelector(".remove-servicio")
+    .addEventListener("click", () => {
+      servicioItem.remove();
+      calcularTotalesGenerales(); // sin fases
+    });
+
+  const cantidadInput = servicioItem.querySelector(".cantidad");
+  const descuentoInput = servicioItem.querySelector(".descuento");
+
+  const calcularServicio = () => {
+    const precioUnitario =
+      parseFloat(servicioItem.querySelector(".precio-unitario").value) || 0;
+    const cantidad = parseInt(cantidadInput.value) || 1;
+    const descuento = parseFloat(descuentoInput.value) || 0;
+
+    const subtotal = precioUnitario * cantidad;
+    const descuentoMonto = subtotal * (descuento / 100);
+    const total = subtotal - descuentoMonto;
+
+    servicioItem.querySelector(".total-servicio").value = total.toFixed(2);
+    calcularTotalesGenerales();
+  };
+
+  cantidadInput.addEventListener("change", calcularServicio);
+  descuentoInput.addEventListener("change", calcularServicio);
+
+  const categoriaSelect = servicioItem.querySelector(".categoria-select");
+  categoriaSelect.addEventListener("change", (e) => {
+    const servicioSelect = e.target
+      .closest(".servicio-item")
+      .querySelector(".servicio-select");
+    actualizarServiciosSelect(e.target.value, servicioSelect);
+  });
+
+  const servicioSelect = servicioItem.querySelector(".servicio-select");
+  servicioSelect.addEventListener("change", (e) => {
+    const servicioId = e.target.value;
+    const servicio = servicios.find((s) => s.id == servicioId);
+    if (servicio) {
+      servicioItem.querySelector(".precio-unitario").value =
+        servicio.precio_neto.toFixed(2);
+      calcularServicio();
+    }
+  });
+
+  document.getElementById("categoriasContainer").appendChild(servicioItem);
+}
+
+function agregarServicioAFase(faseCard) {
+  try {
+    // Verificar template
+    const template = document.getElementById("servicioTemplate");
+    if (!template) {
+      throw new Error("No se encontró el template de servicio");
+    }
+
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".servicio-item");
+    if (!servicioItem) {
+      throw new Error("No se encontró el elemento .servicio-item");
+    }
+
+    // Verificar contenedor de servicios
+    const serviciosContainer = faseCard.querySelector(".servicios-container");
+    if (!serviciosContainer) {
+      throw new Error("No se encontró el contenedor de servicios en la fase");
+    }
+
+    // Configurar eventos
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        servicioItem.remove();
+        calcularTotalesFase(faseCard);
+        calcularTotalesGenerales();
+      });
+    }
+
+    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+    if (agregarBtn) {
+      agregarBtn.addEventListener("click", () => {
+        agregarServicioAFase(faseCard);
+      });
+    }
+
+    // Configurar select de categorías si existe
+    const categoriaSelect = servicioItem.querySelector(".categoria-select");
+    if (categoriaSelect) {
+      categoriaSelect.innerHTML =
+        '<option value="">Seleccionar categoría...</option>';
+
+      if (categorias && categorias.length > 0) {
+        categorias.forEach((cat) => {
+          const option = document.createElement("option");
+          option.value = cat.id;
+          option.textContent = cat.nombre_categoria;
+          categoriaSelect.appendChild(option);
+        });
+      }
+
+      categoriaSelect.addEventListener("change", function () {
+        const servicioSelect =
+          this.closest(".servicio-item").querySelector(".servicio-select");
+        actualizarServiciosSelect(this.value, servicioSelect);
+      });
+    }
+
+    // Configurar select de servicios
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    if (servicioSelect) {
+      servicioSelect.addEventListener("change", function () {
+        const servicio = servicios.find((s) => s.id == this.value);
+        if (servicio) {
+          const precioInput =
+            this.closest(".servicio-item").querySelector(".precio-unitario");
+          if (precioInput) {
+            precioInput.value = servicio.precio_neto.toFixed(2);
+          }
+        }
+        calcularTotalesFase(faseCard);
+      });
+    }
+
+    // Configurar eventos de cantidad y descuento
+    const cantidadInput = servicioItem.querySelector(".cantidad");
+    if (cantidadInput) {
+      cantidadInput.addEventListener("input", () =>
+        calcularTotalesFase(faseCard)
+      );
+    }
+
+    const descuentoInput = servicioItem.querySelector(".descuento");
+    if (descuentoInput) {
+      descuentoInput.addEventListener("input", () =>
+        calcularTotalesFase(faseCard)
+      );
+    }
+
+    // Agregar al DOM
+    serviciosContainer.appendChild(servicioItem);
+    calcularTotalesFase(faseCard);
+  } catch (error) {
+    console.error("Error en agregarServicioAFase:", error);
+    throw error; // Re-lanzar el error para manejo superior
+  }
+}
+*/
+
 // Inicio Botones de accion final --- Cotizaciones / quote tab ---
 async function generarPDFDesdeFormulario() {
   // Validar que haya al menos una fase con servicios
