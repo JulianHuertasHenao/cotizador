@@ -46,55 +46,85 @@ const generarPDF = async (cotizacion) => {
       const accentColor = "#D6C39F"; // Beige
       const darkText = "#1B1B1B";
       const lightText = "#FFFFFF";
+      const margin = 40;
+      const contentWidth = doc.page.width - margin * 2;
 
-      // --- 4) Logo y versión ---
+      // --- 4) Logo grande (opcional) ---
       if (cotizacion.logoPath) {
-        doc.image(cotizacion.logoPath, 40, 40, { width: 100 });
+        doc.image(cotizacion.logoPath, margin, margin, { width: 100 });
       }
 
-      // --- 5) Logo pequeño y Título ajustado ---
-      // Logo 50x50 a la izquierda del título
-      const titleY = 80;
-      const contentWidth =
-        doc.page.width - doc.page.margins.left - doc.page.margins.right; // 515
-      const titleFontSize = 24; // reducido para no ocupar dos líneas
-      const logoSmallPath = path.join(
+      // --- 5) Logo pequeño + Título + Versión con línea rosa en la misma fila ---
+      const smallLogoPath = path.join(
         __dirname,
         "..",
         "..",
         "public",
         "logo-sandra.png"
       );
-      if (fs.existsSync(logoSmallPath)) {
-        doc.image(logoSmallPath, 40, titleY, { width: 80, height: 70 });
+      const hasSmallLogo = fs.existsSync(smallLogoPath);
+
+      // 5.1) Dibuja el logo pequeñito y ajusta offsets si existe
+      let titleX = margin;
+      let titleY = margin;
+      if (hasSmallLogo) {
+        const img = doc.openImage(smallLogoPath);
+        const logoW = 80;
+        const logoH = img.height * (logoW / img.width);
+        doc.image(img, margin, margin, { width: logoW });
+        titleX += logoW + 10; // separa 10px del logo
+        titleY += (logoH - 20) / 2; // centra el texto de 20pt en ese hueco
       }
-      // Título alineado a la derecha
+
+      // 5.2) Título
       doc
         .font("Poppins-Bold")
-        .fontSize(titleFontSize)
+        .fontSize(20)
         .fillColor(darkText)
-        .text("COTIZACIÓN DEL TRATAMIENTO", 40, titleY, {
-          align: "right",
-          width: contentWidth,
+        .text("COTIZACIÓN DEL TRATAMIENTO", titleX, titleY, {
+          width: contentWidth - (titleX - margin),
         });
 
-      doc
-        .font("OpenSans-Bold")
-        .fontSize(12)
-        .fillColor(darkText)
-        .text("MV-F-001 VERSIÓN 01; 03 DE JULIO DE 2025", 40, 40);
+      const titleBottom = doc.y;
+      const versionText = `MV-F-001 VERSIÓN 01; ${formatoFecha(
+        cotizacion.fecha_creacion
+      ).toUpperCase()}`;
 
-      // Línea rosa bajo el título
+      // 1) Configuramos fuente más pequeña
+      doc.font("OpenSans-Regular").fontSize(10);
+
+      // 2) Medimos altura y ancho de la línea de texto
+      const lineHeight = doc.currentLineHeight();
+      const textWidth = doc.widthOfString(versionText);
+
+      // 3) Posiciones
+      const versionX = margin + contentWidth - textWidth; // empieza aquí
+      const versionY = titleBottom + 10; // 10px bajo el título
+
+      // 4) Línea rosa fina, centrada verticalmente en el texto,
+      //    que termina 5px antes del comienzo del texto
+      const gap = 30;
+      const lineY = versionY + lineHeight / 2; // mitad de altura
+      const lineEndX = versionX - gap;
+
       doc
-        .rect(
-          40,
-          titleY + logoSmallPath ? 54 : titleY + titleFontSize + 6,
-          contentWidth,
-          4
-        )
-        .fill(secondaryColor);
+        .save()
+        .lineWidth(2)
+        .strokeColor(secondaryColor)
+        .moveTo(margin, lineY)
+        .lineTo(lineEndX, lineY)
+        .stroke()
+        .restore();
+
+      // 5) Dibujamos el texto de versión SIN permitir salto de línea
+      doc.fillColor(darkText).text(versionText, versionX, versionY, {
+        lineBreak: false,
+      });
 
       // --- 6) Info clínica (izq) + cotización (der) ---
+      // Calculamos el Y de inicio 15px tras la línea de versión
+      const section6Y = versionY + lineHeight + 15;
+
       doc
         .font("OpenSans-Regular")
         .fontSize(10)
@@ -104,134 +134,169 @@ const generarPDF = async (cotizacion) => {
             "Bogotá D.C. Colombia\n" +
             "Email: spaortodoncia@hotmail.com\n" +
             "www.drasandraalarcon.com.co",
-          40,
-          150
+          margin,
+          section6Y
         );
 
       doc
         .font("Poppins-Bold")
-        .fontSize(14)
+        .fontSize(10)
         .fillColor(darkText)
-        .text(`COTIZACIÓN MV-${cotizacion.numero}`, 40, 150, {
+        .text(`COTIZACIÓN MV-${cotizacion.numero}`, margin, section6Y, {
           align: "right",
           width: contentWidth,
         });
 
+      // Para la fecha, aprovechamos doc.y que ya avanzó tras la dirección
       doc
         .font("OpenSans-Regular")
         .fontSize(10)
         .fillColor(darkText)
-        .text(`Bogotá, ${formatoFecha(cotizacion.fecha_creacion)}`, 40, 166, {
-          align: "right",
-          width: contentWidth,
-        });
+        .text(
+          `Bogotá, ${formatoFecha(cotizacion.fecha_creacion)}`,
+          margin,
+          doc.y + 4, // un pelín abajo de la dirección
+          {
+            align: "right",
+            width: contentWidth,
+          }
+        );
 
       // --- 7) Datos doctora/paciente ---
-      const dpY = 200;
+      // empezamos 15px tras donde quedó la fecha/dirección
+      const section7Y = doc.y + 40;
+      const labelX = margin; // 40px
+      const valueX = margin + 90; // 130px
+
       const dpLabels = ["DOCTORA:", "PACIENTE:", "DOCUMENTO:"];
       const dpValues = [
         cotizacion.doctora,
         cotizacion.nombre_paciente,
         cotizacion.documento,
       ];
-      let dpX = 40;
+
+      // configuramos la fuente y medimos la altura de cada fila
+      doc.font("Poppins-Bold").fontSize(10);
+      const rowHeight = doc.currentLineHeight();
+
       dpLabels.forEach((lbl, i) => {
-        doc
-          .font("Poppins-Bold")
-          .fontSize(12)
-          .fillColor(darkText)
-          .text(lbl, dpX, dpY + i * 18);
-        doc
-          .font("OpenSans-Regular")
-          .fontSize(12)
-          .text(dpValues[i], dpX + 90, dpY + i * 18);
-        dpX += 200;
+        const y = section7Y + i * rowHeight;
+        doc.fillColor(darkText).text(lbl, labelX, y);
+        doc.font("OpenSans-Regular").text(dpValues[i], valueX, y);
+        // volvemos a bold antes de la siguiente iteración
+        doc.font("Poppins-Bold");
       });
 
-      // --- 8) Tabla por fases y especialidades sin espacios extras ---
-      let y = dpY + 60;
+      // --- 8) Tabla por fases/secciones/categorías/servicios ---
+      // partimos de doc.y y un pequeño margen
+      let y = doc.y + 10;
       let totalGeneral = 0;
 
-      // Agrupar por fase
-      const fases = {};
+      // 1) Transformar cotizacion.procedimientos en la estructura deseada
+      const phaseMap = {};
       cotizacion.procedimientos.forEach((p) => {
-        if (!fases[p.fase])
-          fases[p.fase] = {
-            duracion: p.duracion,
-            unidad: p.duracion_unidad,
-            items: [],
+        // 1.1) Fase
+        if (!phaseMap[p.fase]) {
+          phaseMap[p.fase] = {
+            duration: p.duracion,
+            unit: p.duracion_unidad,
+            sections: {},
           };
-        fases[p.fase].items.push(p);
+        }
+        const ph = phaseMap[p.fase];
+
+        // 1.2) Sección (especialidad)
+        const secKey = `${p.especialidad_codigo}|${p.especialidad_nombre}`;
+        if (!ph.sections[secKey]) {
+          ph.sections[secKey] = {
+            title: `${p.especialidad_codigo} – ${p.especialidad_nombre}`,
+            categories: {},
+          };
+        }
+        const sec = ph.sections[secKey];
+
+        // 1.3) Categoría (subcategoría)
+        const catName = p.subcategoria_nombre || "OTROS";
+        if (!sec.categories[catName]) {
+          sec.categories[catName] = [];
+        }
+
+        // 1.4) Servicio
+        sec.categories[catName].push({
+          code: p.codigo,
+          desc: p.nombre_servicio,
+          units: p.unidad,
+          price: p.precio_unitario,
+          discount: p.descuento || "N.A",
+          total: p.total,
+        });
       });
 
-      Object.entries(fases).forEach(([faseKey, fase]) => {
-        // Fase bar
-        doc.rect(40, y, contentWidth, 28).fill(primaryColor);
+      // Convertimos mapas a arrays para iterar más cómodamente
+      const phases = Object.entries(phaseMap).map(([phaseKey, ph]) => ({
+        key: phaseKey,
+        duration: ph.duration,
+        unit: ph.unit,
+        sections: Object.values(ph.sections).map((sec) => ({
+          title: sec.title,
+          categories: Object.entries(sec.categories).map(
+            ([name, services]) => ({
+              name,
+              services,
+            })
+          ),
+        })),
+      }));
+
+      // 2) Dibujar cada fase con su estructura
+      phases.forEach((phase) => {
+        // 2.1) Cabecera de fase
+        doc.rect(margin, y, contentWidth, 28).fill(primaryColor);
         doc
           .font("Poppins-Bold")
           .fontSize(16)
           .fillColor(lightText)
-          .text(`FASE ${faseKey}`, 40, y + 6, {
+          .text(`FASE ${phase.key}`, margin, y + 6, {
             width: contentWidth / 2,
             align: "center",
           });
         doc
           .font("OpenSans-Regular")
-          .text(`${fase.duracion} ${fase.unidad}`, 40, y + 6, {
-            width: contentWidth,
-            align: "center",
-          });
+          .text(
+            `${phase.duration} ${phase.unit}`,
+            margin + contentWidth / 2,
+            y + 6,
+            {
+              width: contentWidth / 2,
+              align: "center",
+            }
+          );
         y += 32;
 
-        // Agrupar por especialidad
-        const specs = {};
-        fase.items.forEach((it) => {
-          const key = `${it.especialidad_codigo}|${it.especialidad_nombre}`;
-          if (!specs[key])
-            specs[key] = {
-              codigo: it.especialidad_codigo,
-              nombre: it.especialidad_nombre,
-              items: [],
-            };
-          specs[key].items.push(it);
-        });
-
-        Object.values(specs).forEach((spec) => {
-          // Especialidad header
-          doc.rect(40, y, contentWidth, 24).fill(darkText);
+        // 2.2) Cada sección (especialidad)
+        phase.sections.forEach((section) => {
+          // 2.2.1) Título de la sección
           doc
-            .font("Poppins-Bold")
-            .fontSize(13)
-            .fillColor(lightText)
-            .text(`${spec.codigo} - ${spec.nombre}`.toUpperCase(), 40, y + 5, {
-              width: contentWidth,
-              align: "center",
-            });
-          y += 28;
-
-          // Subcategoría
-          doc.rect(40, y, contentWidth, 20).fill(secondaryColor);
-          doc
-            .font("Poppins-Bold")
+            .font("OpenSans-Bold")
             .fontSize(12)
-            .fillColor(lightText)
-            .text(spec.nombre.toUpperCase(), 40, y + 5, {
+            .fillColor(darkText)
+            .text(section.title.toUpperCase(), margin, y, {
               width: contentWidth,
               align: "center",
             });
-          y += 24;
+          y += doc.currentLineHeight() + 4;
 
-          // Encabezado tabla
-          doc.rect(40, y, contentWidth, 28).fill(darkText);
-          const cols = [
-            { text: "CÓDIGO", width: 50, x: 40 },
-            { text: "DESCRIPCIÓN", width: 200, x: 90 },
-            { text: "UNDADES", width: 60, x: 300 },
-            { text: "PRECIO NETO", width: 80, x: 360 },
-            { text: "DESCUENTO", width: 60, x: 445 },
-            { text: "TOTAL", width: 50, x: 505 },
+          // 2.2.2) Encabezado de tabla
+          doc.rect(margin, y, contentWidth, 28).fill(darkText);
+          const headerCols = [
+            { text: "CÓDIGO", x: margin, width: 60 },
+            { text: "DESCRIPCIÓN", x: margin + 60, width: 200 },
+            { text: "UNIDADES", x: margin + 260, width: 60 },
+            { text: "PRECIO NETO", x: margin + 320, width: 80 },
+            { text: "DESCUENTO", x: margin + 400, width: 60 },
+            { text: "TOTAL", x: margin + 460, width: 50 },
           ];
-          cols.forEach((col) => {
+          headerCols.forEach((col) => {
             doc
               .font("Poppins-Bold")
               .fontSize(11)
@@ -243,71 +308,104 @@ const generarPDF = async (cotizacion) => {
           });
           y += 32;
 
-          // Filas de servicios
-          let subtotal = 0;
-          spec.items.forEach((item, idx) => {
-            if (idx % 2 === 0)
-              doc.rect(40, y, contentWidth, 24).fill("#F9F9F9");
-            const rowCols = [
-              { value: item.codigo, width: 50, x: 40 },
-              { value: item.nombre_servicio, width: 200, x: 90 },
-              { value: item.unidad, width: 60, x: 300 },
-              {
-                value: `$ ${item.precio_unitario.toLocaleString("es-CO")}`,
-                width: 80,
-                x: 360,
-              },
-              { value: item.descuento || "N.A", width: 60, x: 445 },
-              {
-                value: `$ ${item.total.toLocaleString("es-CO")}`,
-                width: 50,
-                x: 505,
-              },
-            ];
-            rowCols.forEach((col) => {
-              doc
-                .font("OpenSans-Regular")
-                .fontSize(10)
-                .fillColor(darkText)
-                .text(col.value, col.x, y + 5, {
-                  width: col.width,
-                  align: "center",
-                });
-            });
-            subtotal += item.total;
+          // 2.2.3) Cada categoría dentro de la sección
+          section.categories.forEach((category) => {
+            // barra rosa de categoría
+            doc.rect(margin, y, contentWidth, 20).fill(secondaryColor);
+            doc
+              .font("Poppins-Bold")
+              .fontSize(11)
+              .fillColor(lightText)
+              .text(category.name.toUpperCase(), margin, y + 5, {
+                width: contentWidth,
+                align: "center",
+              });
             y += 24;
+
+            // filas de servicios (beige en filas impares)
+            category.services.forEach((svc, idx) => {
+              if (idx % 2 === 1) {
+                doc.rect(margin, y, contentWidth, 24).fill(accentColor);
+              }
+              const rowCols = [
+                { value: svc.code, x: margin, width: 60 },
+                { value: svc.desc, x: margin + 60, width: 200 },
+                { value: svc.units, x: margin + 260, width: 60 },
+                {
+                  value: `$${svc.price.toLocaleString("es-CO")}`,
+                  x: margin + 320,
+                  width: 80,
+                },
+                { value: svc.discount, x: margin + 400, width: 60 },
+                {
+                  value: `$${svc.total.toLocaleString("es-CO")}`,
+                  x: margin + 460,
+                  width: 50,
+                },
+              ];
+              rowCols.forEach((col) => {
+                doc
+                  .font("OpenSans-Regular")
+                  .fontSize(10)
+                  .fillColor(darkText)
+                  .text(col.value, col.x, y + 5, {
+                    width: col.width,
+                    align: "center",
+                  });
+              });
+              y += 24;
+            });
           });
 
-          // Total sección
-          doc.rect(40, y, contentWidth, 28).fill(darkText);
+          // 2.2.4) Total de la sección (suma de todos sus services)
+          const totalSection = section.categories
+            .flatMap((c) => c.services)
+            .reduce((sum, s) => sum + s.total, 0);
+          doc.rect(margin, y, contentWidth, 28).fill(darkText);
           doc
             .font("Poppins-Bold")
             .fontSize(12)
             .fillColor(lightText)
-            .text("TOTAL", 40, y + 7, {
+            .text("TOTAL", margin, y + 7, {
               width: contentWidth - 60,
               align: "right",
             });
-          doc.text(`$ ${subtotal.toLocaleString("es-CO")}`, 40, y + 7, {
+          doc.text(`$ ${totalSection.toLocaleString("es-CO")}`, margin, y + 7, {
             width: contentWidth,
             align: "center",
           });
           y += 32;
-          totalGeneral += subtotal;
+          totalGeneral += totalSection;
         });
       });
 
-      // --- 9) Total General ---
-      doc.rect(40, y, contentWidth, 32).fill(primaryColor);
+      // 3) Total general al final
+      doc.rect(margin, y, contentWidth, 32).fill(primaryColor);
       doc
         .font("Poppins-Bold")
         .fontSize(16)
         .fillColor(lightText)
-        .text("TOTAL GENERAL", 40, y + 8, {
+        .text("TOTAL GENERAL", margin, y + 8, {
           width: contentWidth / 2,
           align: "center",
         })
-        .text(`$ ${totalGeneral.toLocaleString("es-CO")}`, 40, y + 8, {
+        .text(`$ ${totalGeneral.toLocaleString("es-CO")}`, margin, y + 8, {
+          width: contentWidth,
+          align: "center",
+        });
+      y += 48;
+
+      // --- 9) Total General al final ---
+      doc.rect(margin, y, contentWidth, 32).fill(primaryColor);
+      doc
+        .font("Poppins-Bold")
+        .fontSize(16)
+        .fillColor(lightText)
+        .text("TOTAL GENERAL", margin, y + 8, {
+          width: contentWidth / 2,
+          align: "center",
+        })
+        .text(`$ ${totalGeneral.toLocaleString("es-CO")}`, margin, y + 8, {
           width: contentWidth,
           align: "center",
         });
@@ -316,8 +414,8 @@ const generarPDF = async (cotizacion) => {
       // --- 10) Nota beige ---
       doc.rect(40, y, contentWidth, 20).fill(accentColor);
       doc
-        .font("OpenSans-Regular")
-        .fontSize(10)
+        .font("OpenSans-Bold")
+        .fontSize(8)
         .fillColor(darkText)
         .text(
           "NOTA: AQUI SE DEFINIRÁN LAS NOTAS QUE CONSIDEREN PERTINENTES EN SUS COTIZACIONES",
@@ -334,7 +432,7 @@ const generarPDF = async (cotizacion) => {
         .fillColor(darkText)
         .text("MÉTODO DE PAGO", 40, y, {
           width: contentWidth,
-          align: "center",
+          align: "left",
         });
       y += 24;
       doc.rect(40, y, 12, 12).stroke(darkText);
