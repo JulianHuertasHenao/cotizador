@@ -794,6 +794,282 @@
     border-color: var(--primary-dark);
     outline: none;
   }
+/* Data Management Specific Styles */
+#dataManagement .tab-content {
+  padding: 0;
+}
+
+#dataManagement .tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+#dataManagement .tab-button {
+  padding: 0.75rem 1.5rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--gray);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  transition: var(--transition);
+}
+
+#dataManagement .tab-button:hover {
+  color: var(--primary);
+  background-color: rgba(42, 157, 143, 0.1);
+}
+
+#dataManagement .tab-button.active {
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+  color: var(--primary);
+  background-color: rgba(42, 157, 143, 0.05);
+}
+
+/* Form Styles - Compact */
+#dataManagement {
+  .form-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--primary);
+  }
+
+  .form-title {
+    color: var(--primary);
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+  }
+
+  .form-grid {
+    display: grid;
+    gap: 0.2rem;
+    
+    &.three-cols { grid-template-columns: repeat(3, 1fr); }
+    &.two-cols { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .input, .select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--light-gray);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    box-sizing: border-box;
+    
+    &:focus {
+      border-color: var(--primary);
+      outline: none;
+      box-shadow: 0 0 0 0.2rem rgba(58, 172, 201, 0.25);
+    }
+  }
+
+  .input-with-prefix {
+    position: relative;
+    
+    .prefix {
+      position: absolute;
+      left: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      pointer-events: none;
+    }
+    
+    .input { padding-left: 1.5rem; }
+  }
+
+  .btn { 
+    align-self: flex-end;
+    margin-top: 0.5rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .full-width { grid-column: 1 / -1; }
+}
+/* Table Styles for Data Management */
+#dataManagement .table-container {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+#dataManagement .table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+#dataManagement .table th {
+  background-color: var(--light);
+  font-weight: 600;
+  color: var(--secondary);
+  padding: 1rem;
+  text-align: left;
+}
+
+#dataManagement .table td {
+  padding: 1rem;
+  border-top: 1px solid var(--light-gray);
+}
+
+#dataManagement .table tr:hover {
+  background-color: rgba(42, 157, 143, 0.05);
+}
+
+#dataManagement .center {
+  text-align: center;
+}
+
+/* Stats Grid */
+#dataManagement .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+#dataManagement .stat {
+  background: white;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+#dataManagement .stat p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--gray);
+}
+
+#dataManagement .stat span {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Empty State */
+#dataManagement .empty-state {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: 1.5rem;
+}
+
+#dataManagement .empty-state .icon-empty {
+  font-size: 3rem;
+  color: var(--light-gray);
+  margin-bottom: 1rem;
+}
+
+#dataManagement .empty-state h3 {
+  color: var(--gray);
+  margin-bottom: 0.5rem;
+}
+
+#dataManagement .empty-state p {
+  color: var(--gray);
+  margin: 0;
+}
+
+/* Modal Styles */
+#dataManagement .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#dataManagement .modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+#dataManagement .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* Toast Notification */
+#dataManagement .toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--success);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(100px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 1000;
+}
+
+#dataManagement .toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Full Width Button */
+#dataManagement .full-width {
+  width: 100%;
+}
+
+/* Utility Classes */
+#dataManagement .hidden {
+  display: none !important;
+}
+
+#dataManagement .fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  #dataManagement .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  #dataManagement .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  #dataManagement .tabs {
+    flex-wrap: wrap;
+  }
+  
+  #dataManagement .tab-button {
+    flex: 1;
+    text-align: center;
+  }
+}
 
   .search-dropdown {
     position: absolute;

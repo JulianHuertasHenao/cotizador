@@ -1,6 +1,6 @@
 // Elementos del DOM necesarios
 const cotizacionesList = document.getElementById("cotizacionesList");
-const presetsContainer = document.getElementById("presetsContainer");
+const dataManagementTab = document.getElementById("dataManagementTab");
 const newQuoteBtn = document.getElementById("newQuoteBtn");
 const tabs = document.querySelectorAll(".tab");
 const tabContents = document.querySelectorAll(".tab-content");
@@ -10,8 +10,9 @@ const TAB_TO_DOM = {
   edit: "newQuoteTab",
   duplicate: "newQuoteTab",
   history: "historyTab",
-  presets: "presetsTab",
+  dataManagement: "dataManagement",
 };
+
 document.addEventListener("DOMContentLoaded", function () {
   let currentQuoteId = null;
   let isEditing = false;
@@ -19,10 +20,21 @@ document.addEventListener("DOMContentLoaded", function () {
   let categorias = [];
   let servicios = [];
   let currentFaseId = 0;
-  let presets = [];
+
+  // Variables para gestión de datos
+  let nextCategoryId = 4;
+  let nextServiceId = 4;
+  let deleteId = null;
+  let deleteType = null; // 'category' or 'service'
+  let lastAddedCategory = "";
+  let lastUpdatedCategory = "-";
+  let lastAddedService = "";
+  let editingCategoryId = null;
+  let editingServiceId = null;
 
   // Inicialización
   init();
+
   async function init() {
     // Carga todo en paralelo y espera a que todo esté listo antes de inicializar selects y listeners
     await Promise.all([
@@ -30,9 +42,10 @@ document.addEventListener("DOMContentLoaded", function () {
       cargarCategorias(),
       cargarServicios(),
     ]);
+    // Inicializa la gestión de datos
+    setupDataManagement();
     inicializarPrimeraCategoria();
     cargarCotizaciones();
-    cargarPresets();
     setupEventListeners();
     setupPhaseToggleAndButtons();
     // Asegura que la barra de búsqueda de pacientes se inicialice después de cargar los datos
@@ -43,8 +56,33 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       const response = await fetch("/api/categorias");
       categorias = await response.json();
+
+      // Inicializar lastAddedCategory si hay categorías
+      if (categorias.length > 0) {
+        lastAddedCategory = categorias[categorias.length - 1].nombre_categoria;
+        nextCategoryId = Math.max(...categorias.map((c) => c.id)) + 1;
+      }
     } catch (error) {
       console.error("Error al cargar categorías:", error);
+      // Usar datos de ejemplo si la API falla
+      categorias = [
+        {
+          id: 1,
+          nombre_categoria: "Preventivo",
+          descripcion: "Tratamientos preventivos",
+        },
+        {
+          id: 2,
+          nombre_categoria: "Restaurativo",
+          descripcion: "Tratamientos restaurativos",
+        },
+        {
+          id: 3,
+          nombre_categoria: "Estético",
+          descripcion: "Tratamientos estéticos",
+        },
+      ];
+      nextCategoryId = 4;
     }
   }
 
@@ -52,9 +90,714 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       const response = await fetch("/api/servicios");
       servicios = await response.json();
-      console.log(servicios);
+
+      // Inicializar lastAddedService si hay servicios
+      if (servicios.length > 0) {
+        lastAddedService = servicios[servicios.length - 1].descripcion;
+        nextServiceId = Math.max(...servicios.map((s) => s.id)) + 1;
+      }
     } catch (error) {
       console.error("Error al cargar servicios:", error);
+      // Usar datos de ejemplo si la API falla
+      servicios = [
+        {
+          id: 1,
+          codigo: "LIM01",
+          descripcion: "Limpieza dental",
+          precio_neto: 1500,
+          categoria_id: 1,
+        },
+        {
+          id: 2,
+          codigo: "EMP01",
+          descripcion: "Empaste dental",
+          precio_neto: 2500,
+          categoria_id: 2,
+        },
+        {
+          id: 3,
+          codigo: "BLQ01",
+          descripcion: "Blanqueamiento dental",
+          precio_neto: 3500,
+          categoria_id: 3,
+        },
+      ];
+      nextServiceId = 4;
+    }
+  }
+
+  function setupDataManagement() {
+    // DOM elements - Categories
+    const categoryTableBody = document.getElementById("categoryTableBody");
+    const categoryEmptyState = document.getElementById("categoryEmptyState");
+    const addCategoryForm = document.getElementById("addCategoryForm");
+    const totalCategoriesEl = document.getElementById("totalCategories");
+    const lastAddedCategoryEl = document.getElementById("lastAddedCategory");
+    const lastUpdatedCategoryEl = document.getElementById(
+      "lastUpdatedCategory"
+    );
+
+    // DOM elements - Services
+    const serviceTableBody = document.getElementById("serviceTableBody");
+    const serviceEmptyState = document.getElementById("serviceEmptyState");
+    const addServiceForm = document.getElementById("addServiceForm");
+    const totalServicesEl = document.getElementById("totalServices");
+    const averagePriceEl = document.getElementById("averagePrice");
+    const lastAddedServiceEl = document.getElementById("lastAddedService");
+
+    // DOM elements - Shared
+    const deleteModal = document.getElementById("deleteModal");
+    const deleteMessage = document.getElementById("deleteMessage");
+    const toast = document.getElementById("toast");
+
+    // Sub Tab elements
+    const categoriesTab = document.getElementById("categoriesTab");
+    const servicesTab = document.getElementById("servicesTab");
+    const categoriesSection = document.getElementById("categoriesSection");
+    const servicesSection = document.getElementById("servicesSection");
+
+    // Initialize tables and stats
+    renderCategoryTable();
+    renderServiceTable();
+    updateCategoryStats();
+    updateServiceStats();
+    populateCategoryDropdowns();
+
+    // Sub Tab switching
+    categoriesTab.addEventListener("click", function () {
+      setActiveSubTab("categories");
+    });
+
+    servicesTab.addEventListener("click", function () {
+      setActiveSubTab("services");
+    });
+    categoriesTab.classList.add("active");
+    categoriesSection.classList.add("active");
+
+    categoriesTab.addEventListener("click", function () {
+      categoriesTab.classList.add("active");
+      servicesTab.classList.remove("active");
+      categoriesSection.classList.add("active");
+      servicesSection.classList.remove("active");
+    });
+
+    servicesTab.addEventListener("click", function () {
+      servicesTab.classList.add("active");
+      categoriesTab.classList.remove("active");
+      servicesSection.classList.add("active");
+      categoriesSection.classList.remove("active");
+    });
+
+    // Set active sub tab
+    function setActiveSubTab(tab) {
+      // Remove active class from all sub tabs
+      categoriesTab.classList.remove("sub-tab-active");
+      servicesTab.classList.remove("sub-tab-active");
+
+      // Hide all sub sections
+      categoriesSection.classList.add("hidden");
+      servicesSection.classList.add("hidden");
+
+      // Set active tab and show corresponding section
+      if (tab === "categories") {
+        categoriesTab.classList.add("sub-tab-active");
+        categoriesSection.classList.remove("hidden");
+      } else if (tab === "services") {
+        servicesTab.classList.add("sub-tab-active");
+        servicesSection.classList.remove("hidden");
+      }
+    }
+
+    // Add new category
+    addCategoryForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const name = document.getElementById("categoryName").value.trim();
+      const description = document
+        .getElementById("categoryDescription")
+        .value.trim();
+
+      if (name && description) {
+        const newCategory = {
+          id: nextCategoryId++,
+          nombre_categoria: name,
+          descripcion: description,
+        };
+
+        categorias.push(newCategory);
+        lastAddedCategory = name;
+        renderCategoryTable();
+        updateCategoryStats();
+        populateCategoryDropdowns();
+        showToast(`Categoría "${name}" añadida exitosamente`);
+
+        // Clear form
+        addCategoryForm.reset();
+
+        // Actualizar selects en el formulario de cotización
+        inicializarPrimeraCategoria();
+      }
+    });
+
+    // Add new service
+    addServiceForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const code = document.getElementById("serviceCode").value.trim();
+      const description = document
+        .getElementById("serviceDescription")
+        .value.trim();
+      const price = parseFloat(document.getElementById("servicePrice").value);
+      const categoryId = parseInt(
+        document.getElementById("serviceCategory").value
+      );
+
+      if (code && description && !isNaN(price) && !isNaN(categoryId)) {
+        const newService = {
+          id: nextServiceId++,
+          codigo: code,
+          descripcion: description,
+          precio_neto: price,
+          categoria_id: categoryId,
+        };
+
+        servicios.push(newService);
+        lastAddedService = description;
+        renderServiceTable();
+        updateServiceStats();
+        showToast(`Servicio "${description}" añadido exitosamente`);
+
+        // Clear form
+        addServiceForm.reset();
+
+        // Actualizar selects en el formulario de cotización
+        inicializarPrimeraCategoria();
+      }
+    });
+
+    // Delete confirmation
+    document
+      .getElementById("confirmDelete")
+      .addEventListener("click", function () {
+        if (deleteId !== null && deleteType) {
+          if (deleteType === "category") {
+            const index = categorias.findIndex((cat) => cat.id === deleteId);
+            if (index !== -1) {
+              const deletedName = categorias[index].nombre_categoria;
+
+              // Check if category is in use by any service
+              const inUse = servicios.some(
+                (service) => service.categoria_id === deleteId
+              );
+
+              if (inUse) {
+                showToast(
+                  `No se puede eliminar la categoría "${deletedName}" porque está en uso por servicios`
+                );
+                closeDeleteModal();
+                return;
+              }
+
+              categorias.splice(index, 1);
+              renderCategoryTable();
+              updateCategoryStats();
+              populateCategoryDropdowns();
+              showToast(`Categoría "${deletedName}" eliminada exitosamente`);
+
+              // Actualizar selects en el formulario de cotización
+              inicializarPrimeraCategoria();
+            }
+          } else if (deleteType === "service") {
+            const index = servicios.findIndex((srv) => srv.id === deleteId);
+            if (index !== -1) {
+              const deletedName = servicios[index].descripcion;
+              servicios.splice(index, 1);
+              renderServiceTable();
+              updateServiceStats();
+              showToast(`Servicio "${deletedName}" eliminado exitosamente`);
+
+              // Actualizar selects en el formulario de cotización
+              inicializarPrimeraCategoria();
+            }
+          }
+          closeDeleteModal();
+        }
+      });
+
+    // Cancel delete
+    document
+      .getElementById("cancelDelete")
+      .addEventListener("click", closeDeleteModal);
+
+    // Render category table function with inline editing
+    function renderCategoryTable() {
+      categoryTableBody.innerHTML = "";
+
+      if (categorias.length === 0) {
+        categoryEmptyState.classList.remove("hidden");
+      } else {
+        categoryEmptyState.classList.add("hidden");
+
+        categorias.forEach((category) => {
+          const row = document.createElement("tr");
+          row.setAttribute("data-category-id", category.id);
+          row.className = "border-t hover:bg-light-gray transition-colors";
+
+          if (editingCategoryId === category.id) {
+            // Render editable row
+            row.classList.add("table-row-editing");
+            row.innerHTML = `
+              <td class="py-3 px-4 text-dark">${category.id}</td>
+              <td class="py-2 px-4">
+                <input type="text" class="edit-input" id="edit-category-name-${
+                  category.id
+                }" value="${escapeHtml(category.nombre_categoria)}">
+              </td>
+              <td class="py-2 px-4">
+                <input type="text" class="edit-input" id="edit-category-description-${
+                  category.id
+                }" value="${escapeHtml(category.descripcion)}">
+              </td>
+              <td class="py-2 px-4">
+                <div class="edit-controls flex justify-center">
+                  <button class="btn btn-sm btn-success save-category-btn" data-id="${
+                    category.id
+                  }">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-gray cancel-edit-category-btn" data-id="${
+                    category.id
+                  }">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+          } else {
+            // Render normal row
+            row.innerHTML = `
+              <td class="py-3 px-4 text-dark">${category.id}</td>
+              <td class="py-3 px-4 font-medium text-dark">${escapeHtml(
+                category.nombre_categoria
+              )}</td>
+              <td class="py-3 px-4 text-dark">${escapeHtml(
+                category.descripcion
+              )}</td>
+              <td class="py-2 px-4">
+                <div class="flex justify-center space-x-2">
+                  <button class="btn btn-sm btn-primary edit-category-btn" data-id="${
+                    category.id
+                  }">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger delete-category-btn" data-id="${
+                    category.id
+                  }">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+          }
+
+          categoryTableBody.appendChild(row);
+        });
+
+        // Add event listeners
+        setupCategoryTableEventListeners();
+      }
+    }
+
+    // Render service table function with inline editing
+    function renderServiceTable() {
+      serviceTableBody.innerHTML = "";
+
+      if (servicios.length === 0) {
+        serviceEmptyState.classList.remove("hidden");
+      } else {
+        serviceEmptyState.classList.add("hidden");
+
+        servicios.forEach((service) => {
+          const row = document.createElement("tr");
+          row.setAttribute("data-service-id", service.id);
+          row.className = "border-t hover:bg-light-gray transition-colors";
+
+          // Find category name
+          const category = categorias.find(
+            (cat) => cat.id === service.categoria_id
+          );
+          const categoryName = category
+            ? category.nombre_categoria
+            : "Desconocido";
+
+          if (editingServiceId === service.id) {
+            // Render editable row
+            row.classList.add("table-row-editing");
+
+            // Create category options HTML
+            let categoryOptionsHtml = "";
+            categorias.forEach((cat) => {
+              const selected =
+                cat.id === service.categoria_id ? "selected" : "";
+              categoryOptionsHtml += `<option value="${
+                cat.id
+              }" ${selected}>${escapeHtml(cat.nombre_categoria)}</option>`;
+            });
+
+            row.innerHTML = `
+              <td class="py-3 px-4 text-dark">${service.id}</td>
+              <td class="py-2 px-4">
+                <input type="text" class="edit-input" id="edit-service-code-${
+                  service.id
+                }" value="${escapeHtml(service.codigo)}">
+              </td>
+              <td class="py-2 px-4">
+                <input type="text" class="edit-input" id="edit-service-description-${
+                  service.id
+                }" value="${escapeHtml(service.descripcion)}">
+              </td>
+              <td class="py-2 px-4">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                    <span class="text-gray">$</span>
+                  </div>
+                  <input type="number" class="edit-input pl-6" id="edit-service-price-${
+                    service.id
+                  }" value="${service.precio_neto}" min="0" step="0.01">
+                </div>
+              </td>
+              <td class="py-2 px-4">
+                <select class="edit-input" id="edit-service-category-${
+                  service.id
+                }">
+                  ${categoryOptionsHtml}
+                </select>
+              </td>
+              <td class="py-2 px-4">
+                <div class="edit-controls flex justify-center">
+                  <button class="btn btn-sm btn-success save-service-btn" data-id="${
+                    service.id
+                  }">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-gray cancel-edit-service-btn" data-id="${
+                    service.id
+                  }">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+          } else {
+            // Render normal row
+            row.innerHTML = `
+              <td class="py-3 px-4 text-dark">${service.id}</td>
+              <td class="py-3 px-4 font-medium text-dark">${escapeHtml(
+                service.codigo
+              )}</td>
+              <td class="py-3 px-4 text-dark">${escapeHtml(
+                service.descripcion
+              )}</td>
+              <td class="py-3 px-4 text-dark">$${service.precio_neto.toFixed(
+                2
+              )}</td>
+              <td class="py-3 px-4 text-dark">${escapeHtml(categoryName)}</td>
+              <td class="py-2 px-4">
+                <div class="flex justify-center space-x-2">
+                  <button class="btn btn-sm btn-primary edit-service-btn" data-id="${
+                    service.id
+                  }">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-danger delete-service-btn" data-id="${
+                    service.id
+                  }">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+          }
+
+          serviceTableBody.appendChild(row);
+        });
+
+        // Add event listeners
+        setupServiceTableEventListeners();
+      }
+    }
+
+    function setupCategoryTableEventListeners() {
+      // Add event listeners for edit mode
+      document.querySelectorAll(".edit-category-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          startEditingCategory(id);
+        });
+      });
+
+      // Add event listeners for save
+      document.querySelectorAll(".save-category-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          saveCategory(id);
+        });
+      });
+
+      // Add event listeners for cancel edit
+      document.querySelectorAll(".cancel-edit-category-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          cancelEditCategory(id);
+        });
+      });
+
+      // Add event listeners for delete
+      document.querySelectorAll(".delete-category-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          openDeleteModal(id, "category");
+        });
+      });
+    }
+
+    function setupServiceTableEventListeners() {
+      // Add event listeners for edit mode
+      document.querySelectorAll(".edit-service-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          startEditingService(id);
+        });
+      });
+
+      // Add event listeners for save
+      document.querySelectorAll(".save-service-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          saveService(id);
+        });
+      });
+
+      // Add event listeners for cancel edit
+      document.querySelectorAll(".cancel-edit-service-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          cancelEditService(id);
+        });
+      });
+
+      // Add event listeners for delete
+      document.querySelectorAll(".delete-service-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          const id = parseInt(this.getAttribute("data-id"));
+          openDeleteModal(id, "service");
+        });
+      });
+    }
+
+    // Start editing a category
+    function startEditingCategory(id) {
+      // Cancel any existing edits first
+      if (editingCategoryId !== null) {
+        cancelEditCategory(editingCategoryId);
+      }
+
+      editingCategoryId = id;
+      renderCategoryTable();
+
+      // Focus on the name input
+      setTimeout(() => {
+        const nameInput = document.getElementById(`edit-category-name-${id}`);
+        if (nameInput) nameInput.focus();
+      }, 100);
+    }
+
+    // Save category changes
+    function saveCategory(id) {
+      const nameInput = document.getElementById(`edit-category-name-${id}`);
+      const descriptionInput = document.getElementById(
+        `edit-category-description-${id}`
+      );
+
+      if (nameInput && descriptionInput) {
+        const name = nameInput.value.trim();
+        const description = descriptionInput.value.trim();
+
+        if (name && description) {
+          const index = categorias.findIndex((cat) => cat.id === id);
+          if (index !== -1) {
+            categorias[index].nombre_categoria = name;
+            categorias[index].descripcion = description;
+            lastUpdatedCategory = name;
+
+            editingCategoryId = null;
+            renderCategoryTable();
+            renderServiceTable(); // Update service table to reflect category name changes
+            updateCategoryStats();
+            populateCategoryDropdowns();
+            showToast(`Categoría "${name}" actualizada exitosamente`);
+
+            // Actualizar selects en el formulario de cotización
+            inicializarPrimeraCategoria();
+          }
+        }
+      }
+    }
+
+    // Cancel category editing
+    function cancelEditCategory(id) {
+      editingCategoryId = null;
+      renderCategoryTable();
+    }
+
+    // Start editing a service
+    function startEditingService(id) {
+      // Cancel any existing edits first
+      if (editingServiceId !== null) {
+        cancelEditService(editingServiceId);
+      }
+
+      editingServiceId = id;
+      renderServiceTable();
+
+      // Focus on the code input
+      setTimeout(() => {
+        const codeInput = document.getElementById(`edit-service-code-${id}`);
+        if (codeInput) codeInput.focus();
+      }, 100);
+    }
+
+    // Save service changes
+    function saveService(id) {
+      const codeInput = document.getElementById(`edit-service-code-${id}`);
+      const descriptionInput = document.getElementById(
+        `edit-service-description-${id}`
+      );
+      const priceInput = document.getElementById(`edit-service-price-${id}`);
+      const categoryInput = document.getElementById(
+        `edit-service-category-${id}`
+      );
+
+      if (codeInput && descriptionInput && priceInput && categoryInput) {
+        const code = codeInput.value.trim();
+        const description = descriptionInput.value.trim();
+        const price = parseFloat(priceInput.value);
+        const categoryId = parseInt(categoryInput.value);
+
+        if (code && description && !isNaN(price) && !isNaN(categoryId)) {
+          const index = servicios.findIndex((srv) => srv.id === id);
+          if (index !== -1) {
+            servicios[index].codigo = code;
+            servicios[index].descripcion = description;
+            servicios[index].precio_neto = price;
+            servicios[index].categoria_id = categoryId;
+
+            editingServiceId = null;
+            renderServiceTable();
+            updateServiceStats();
+            showToast(`Servicio "${description}" actualizado exitosamente`);
+
+            // Actualizar selects en el formulario de cotización
+            inicializarPrimeraCategoria();
+          }
+        }
+      }
+    }
+
+    // Cancel service editing
+    function cancelEditService(id) {
+      editingServiceId = null;
+      renderServiceTable();
+    }
+
+    // Populate category dropdowns
+    function populateCategoryDropdowns() {
+      const serviceCategory = document.getElementById("serviceCategory");
+
+      // Clear existing options except the first one
+      while (serviceCategory.options.length > 1) {
+        serviceCategory.remove(1);
+      }
+
+      // Add category options
+      categorias.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category.id;
+        option.textContent = category.nombre_categoria;
+        serviceCategory.appendChild(option);
+      });
+    }
+
+    // Open delete modal
+    function openDeleteModal(id, type) {
+      deleteId = id;
+      deleteType = type;
+
+      if (type === "category") {
+        const category = categorias.find((cat) => cat.id === id);
+        if (category) {
+          deleteMessage.textContent = `¿Estás seguro de que quieres eliminar la categoría "${category.nombre_categoria}"? Esta acción no se puede deshacer.`;
+        }
+      } else if (type === "service") {
+        const service = servicios.find((srv) => srv.id === id);
+        if (service) {
+          deleteMessage.textContent = `¿Estás seguro de que quieres eliminar el servicio "${service.descripcion}"? Esta acción no se puede deshacer.`;
+        }
+      }
+
+      deleteModal.classList.remove("hidden");
+    }
+
+    // Close delete modal
+    function closeDeleteModal() {
+      deleteModal.classList.add("hidden");
+      deleteId = null;
+      deleteType = null;
+    }
+
+    // Show toast notification
+    function showToast(message) {
+      const toastMessage = document.getElementById("toastMessage");
+      toastMessage.textContent = message;
+
+      toast.classList.remove("hidden");
+      toast.classList.add("flex");
+      setTimeout(() => {
+        toast.classList.remove("flex");
+        toast.classList.add("hidden");
+      }, 3000);
+    }
+
+    // Update category statistics
+    function updateCategoryStats() {
+      totalCategoriesEl.textContent = categorias.length;
+      lastAddedCategoryEl.textContent = lastAddedCategory || "-";
+      lastUpdatedCategoryEl.textContent = lastUpdatedCategory || "-";
+    }
+
+    // Update service statistics
+    function updateServiceStats() {
+      totalServicesEl.textContent = servicios.length;
+      lastAddedServiceEl.textContent = lastAddedService || "-";
+
+      // Calculate average price
+      if (servicios.length > 0) {
+        const totalPrice = servicios.reduce(
+          (sum, service) => sum + service.precio_neto,
+          0
+        );
+        const average = totalPrice / servicios.length;
+        averagePriceEl.textContent = `$${average.toFixed(2)}`;
+      } else {
+        averagePriceEl.textContent = "$0.00";
+      }
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
     }
   }
 
@@ -649,7 +1392,6 @@ function switchTab(view, options = {}) {
   // Cargar datos si es necesario
   if (!skipLoad) {
     if (view === "history") cargarCotizaciones();
-    if (view === "presets") cargarPresets();
   }
 
   // Resetear formulario si se solicita
@@ -1565,39 +2307,6 @@ async function cargarCotizaciones() {
   }
 }
 
-// Cargar presets
-async function cargarPresets() {
-  try {
-    const response = await fetch("/api/presets");
-    presets = await response.json();
-    presetsContainer.innerHTML = "";
-
-    if (presets.length === 0) {
-      presetsContainer.innerHTML = "<p>No hay plantillas guardadas</p>";
-      return;
-    }
-
-    presets.forEach((preset) => {
-      const presetCard = document.createElement("div");
-      presetCard.className = "preset-card";
-      presetCard.innerHTML = `
-          <div class="preset-name">${preset.nombre}</div>
-          <div class="preset-desc">${preset.descripcion}</div>
-          <div class="action-buttons">
-            <button class="btn btn-sm btn-primary" onclick="usarPreset('${preset.id}')">
-              <i class="fas fa-check"></i> Usar
-            </button>
-          </div>
-        `;
-      presetsContainer.appendChild(presetCard);
-    });
-  } catch (error) {
-    console.error("Error:", error);
-    presetsContainer.innerHTML =
-      '<div class="alert alert-danger">Error al cargar plantillas</div>';
-  }
-}
-
 async function cargarCategorias() {
   try {
     const response = await fetch("/api/categorias");
@@ -1616,19 +2325,6 @@ async function cargarServicios() {
     console.error("Error al cargar servicios:", error);
   }
 }
-
-// Funciones globales para acciones del historial
-window.usarPreset = function (presetId) {
-  const preset = presets.find((p) => p.id === presetId);
-  if (!preset) return;
-
-  currentQuoteId = null;
-  isEditing = false;
-  switchTab("new", true);
-
-  // Aquí podrías implementar la carga de los servicios del preset en el formulario
-  // dependiendo de cómo estén estructurados tus presets
-};
 
 window.editarCotizacion = async function (id) {
   try {
