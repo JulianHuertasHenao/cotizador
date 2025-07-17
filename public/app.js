@@ -64,25 +64,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (error) {
       console.error("Error al cargar categorías:", error);
-      // Usar datos de ejemplo si la API falla
-      categorias = [
-        {
-          id: 1,
-          nombre_categoria: "Preventivo",
-          descripcion: "Tratamientos preventivos",
-        },
-        {
-          id: 2,
-          nombre_categoria: "Restaurativo",
-          descripcion: "Tratamientos restaurativos",
-        },
-        {
-          id: 3,
-          nombre_categoria: "Estético",
-          descripcion: "Tratamientos estéticos",
-        },
-      ];
-      nextCategoryId = 4;
     }
   }
 
@@ -98,31 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (error) {
       console.error("Error al cargar servicios:", error);
-      // Usar datos de ejemplo si la API falla
-      servicios = [
-        {
-          id: 1,
-          codigo: "LIM01",
-          descripcion: "Limpieza dental",
-          precio_neto: 1500,
-          categoria_id: 1,
-        },
-        {
-          id: 2,
-          codigo: "EMP01",
-          descripcion: "Empaste dental",
-          precio_neto: 2500,
-          categoria_id: 2,
-        },
-        {
-          id: 3,
-          codigo: "BLQ01",
-          descripcion: "Blanqueamiento dental",
-          precio_neto: 3500,
-          categoria_id: 3,
-        },
-      ];
-      nextServiceId = 4;
     }
   }
 
