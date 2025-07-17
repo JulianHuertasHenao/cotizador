@@ -349,12 +349,12 @@ document.addEventListener("DOMContentLoaded", function () {
             row.innerHTML = `
               <td class="py-3 px-4 text-dark">${category.id}</td>
               <td class="py-2 px-4">
-                <input type="text" class="edit-input" id="edit-category-name-${
+                <input type="text" class="input" id="edit-category-name-${
                   category.id
                 }" value="${escapeHtml(category.nombre_categoria)}">
               </td>
               <td class="py-2 px-4">
-                <input type="text" class="edit-input" id="edit-category-description-${
+                <input type="text" class="input" id="edit-category-description-${
                   category.id
                 }" value="${escapeHtml(category.descripcion)}">
               </td>
@@ -447,29 +447,26 @@ document.addEventListener("DOMContentLoaded", function () {
             row.innerHTML = `
               <td class="py-3 px-4 text-dark">${service.id}</td>
               <td class="py-2 px-4">
-                <input type="text" class="edit-input" id="edit-service-code-${
+                <input type="text" class="input" id="edit-service-code-${
                   service.id
                 }" value="${escapeHtml(service.codigo)}">
               </td>
               <td class="py-2 px-4">
-                <input type="text" class="edit-input" id="edit-service-description-${
+                <input type="text" class="input" id="edit-service-description-${
                   service.id
                 }" value="${escapeHtml(service.descripcion)}">
               </td>
               <td class="py-2 px-4">
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                    <span class="text-gray">$</span>
-                  </div>
-                  <input type="number" class="edit-input pl-6" id="edit-service-price-${
+                              </div>
+                  <input type="number" class="input pl-5" id="edit-service-price-${
                     service.id
                   }" value="${service.precio_neto}" min="0" step="0.01">
                 </div>
               </td>
               <td class="py-2 px-4">
-                <select class="edit-input" id="edit-service-category-${
-                  service.id
-                }">
+                <select class="input" id="edit-service-category-${service.id}">
                   ${categoryOptionsHtml}
                 </select>
               </td>
