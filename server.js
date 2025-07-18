@@ -56,6 +56,34 @@ app.delete("/api/categorias/:id", (req, res) => {
     });
 });
 
+app.put("/api/categorias/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, descripcion } = req.body;
+
+    db.run(
+        `UPDATE Categorias SET nombre_categoria = ?, descripcion = ? WHERE id = ?`,
+        [name, descripcion || null, id],
+        function (err) {
+            if (err) {
+                console.error("Error al actualizar categoría:", err.message);
+                return res
+                    .status(500)
+                    .json({ error: "Error interno al actualizar categoría" });
+            }
+            if (this.changes === 0) {
+                return res
+                    .status(404)
+                    .json({ error: "Categoría no encontrada" });
+            }
+            res.json({
+                id,
+                nombre_categoria: name,
+                descripcion: descripcion || null,
+            });
+        }
+    );
+});
+
 app.post("/api/categorias", async (req, res) => {
     const { name, descripcion } = req.body;
     try {
@@ -275,7 +303,78 @@ app.delete("/api/fases/:id", async (req, res) => {
         res.status(500).json({ error: "Error interno al eliminar fase" });
     }
 });
+app.post("/api/servicios", (req, res) => {
+    const { codigo, descripcion, precio_neto, categoria_id } = req.body;
+    db.run(
+        `INSERT INTO Servicios (codigo, descripcion, precio_neto, categoria_id) 
+         VALUES (?, ?, ?, ?)`,
+        [codigo, descripcion, precio_neto, categoria_id],
+        function (err) {
+            if (err) {
+                console.error("Error al guardar servicio:", err.message);
+                return res
+                    .status(500)
+                    .json({ error: "Error al guardar servicio" });
+            }
+            res.status(201).json({ id: this.lastID });
+        }
+    );
+});
 
+app.put("/api/servicios/:id", (req, res) => {
+    const { id } = req.params;
+    const { codigo, descripcion, precio_neto, categoria_id } = req.body;
+    db.run(
+        `UPDATE Servicios 
+         SET codigo = ?, descripcion = ?, precio_neto = ?, categoria_id = ? 
+         WHERE id = ?`,
+        [codigo, descripcion, precio_neto, categoria_id, id],
+        function (err) {
+            if (err) {
+                console.error("Error al actualizar servicio:", err.message);
+                return res
+                    .status(500)
+                    .json({ error: "Error interno al actualizar servicio" });
+            }
+            if (this.changes === 0) {
+                return res
+                    .status(404)
+                    .json({ error: "Servicio no encontrado" });
+            }
+            res.json({
+                id,
+                codigo,
+                descripcion,
+                precio_neto,
+                categoria_id,
+            });
+        }
+    );
+});
+
+app.delete("/api/servicios/:id", (req, res) => {
+    const { id } = req.params;
+    db.get("SELECT id FROM Servicios WHERE id = ?", [id], (err, row) => {
+        if (err) {
+            console.error("Error al buscar servicio:", err.message);
+            return res
+                .status(500)
+                .json({ error: "Error interno al buscar servicio" });
+        }
+        if (!row) {
+            return res.status(404).json({ error: "Servicio no encontrado" });
+        }
+        db.run("DELETE FROM Servicios WHERE id = ?", [id], function (err) {
+            if (err) {
+                console.error("Error al eliminar servicio:", err.message);
+                return res
+                    .status(500)
+                    .json({ error: "Error interno al eliminar servicio" });
+            }
+            res.json({ message: "Servicio eliminado correctamente" });
+        });
+    });
+});
 app.get("/api/servicios", (req, res) => {
     const { categoria_id } = req.query;
 

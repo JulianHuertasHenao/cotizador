@@ -402,85 +402,85 @@ document.addEventListener("DOMContentLoaded", function () {
                         ? category.nombre_categoria
                         : "Desconocido";
 
-                    if (editingServiceId === service.id) {
-                        // Render editable row
-                        row.classList.add("table-row-editing");
+                    // Siempre renderizar todos los botones, pero solo habilitar guardar/cancelar en modo edición
+                    const isEditing = editingServiceId === service.id;
+                    // Create category options HTML
+                    let categoryOptionsHtml = "";
+                    categorias.forEach((cat) => {
+                        const selected =
+                            cat.id === service.categoria_id ? "selected" : "";
+                        categoryOptionsHtml += `<option value="${
+                            cat.id
+                        }" ${selected}>${escapeHtml(
+                            cat.nombre_categoria
+                        )}</option>`;
+                    });
 
-                        // Create category options HTML
-                        let categoryOptionsHtml = "";
-                        categorias.forEach((cat) => {
-                            const selected =
-                                cat.id === service.categoria_id
-                                    ? "selected"
-                                    : "";
-                            categoryOptionsHtml += `<option value="${
-                                cat.id
-                            }" ${selected}>${escapeHtml(
-                                cat.nombre_categoria
-                            )}</option>`;
-                        });
-
-                        row.innerHTML = `
+                    row.innerHTML = `
               <td class="py-3 px-4 text-dark">${service.id}</td>
               <td class="py-2 px-4">
-                <input type="text" class="input" id="edit-service-code-${
-                    service.id
-                }" value="${escapeHtml(service.codigo)}">
+                ${
+                    isEditing
+                        ? `<input type="text" class="input" id="edit-service-code-${
+                              service.id
+                          }" value="${escapeHtml(service.codigo)}">`
+                        : `<span class="font-medium text-dark">${escapeHtml(
+                              service.codigo
+                          )}</span>`
+                }
               </td>
               <td class="py-2 px-4">
-                <input type="text" class="input" id="edit-service-description-${
-                    service.id
-                }" value="${escapeHtml(service.descripcion)}">
+                ${
+                    isEditing
+                        ? `<input type="text" class="input" id="edit-service-description-${
+                              service.id
+                          }" value="${escapeHtml(service.descripcion)}">`
+                        : `<span class="text-dark">${escapeHtml(
+                              service.descripcion
+                          )}</span>`
+                }
               </td>
               <td class="py-2 px-4">
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                              </div>
-                  <input type="number" class="input pl-5" id="edit-service-price-${
-                      service.id
-                  }" value="${service.precio_neto}" min="0" step="0.01">
+                  <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none"></div>
+                  ${
+                      isEditing
+                          ? `<input type="number" class="input pl-5" id="edit-service-price-${service.id}" value="${service.precio_neto}" min="0" step="0.01">`
+                          : `<span class="text-dark">$${service.precio_neto.toFixed(
+                                2
+                            )}</span>`
+                  }
                 </div>
               </td>
               <td class="py-2 px-4">
-                <select class="input" id="edit-service-category-${service.id}">
-                  ${categoryOptionsHtml}
-                </select>
+                ${
+                    isEditing
+                        ? `<select class="input" id="edit-service-category-${service.id}">${categoryOptionsHtml}</select>`
+                        : `<span class="text-dark">${escapeHtml(
+                              categoryName
+                          )}</span>`
+                }
               </td>
-              <td class="py-2 px-4">
-                <div class="edit-controls flex justify-center">
-                  <button class="btn btn-sm btn-success save-service-btn" data-id="${
-                      service.id
-                  }">
-                    <i class="fas fa-check"></i>
-                  </button>
-                  <button class="btn btn-sm btn-gray cancel-edit-service-btn" data-id="${
-                      service.id
-                  }">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </td>
-            `;
-                    } else {
-                        // Render normal row
-                        row.innerHTML = `
-              <td class="py-3 px-4 text-dark">${service.id}</td>
-              <td class="py-3 px-4 font-medium text-dark">${escapeHtml(
-                  service.codigo
-              )}</td>
-              <td class="py-3 px-4 text-dark">${escapeHtml(
-                  service.descripcion
-              )}</td>
-              <td class="py-3 px-4 text-dark">$${service.precio_neto.toFixed(
-                  2
-              )}</td>
-              <td class="py-3 px-4 text-dark">${escapeHtml(categoryName)}</td>
               <td class="py-2 px-4">
                 <div class="flex justify-center space-x-2">
                   <button class="btn btn-sm btn-primary edit-service-btn" data-id="${
                       service.id
                   }">
                     <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-success save-service-btn" data-id="${
+                      service.id
+                  }"${
+                        isEditing ? "" : " disabled"
+                    } style="display:inline-block;">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-gray cancel-edit-service-btn" data-id="${
+                      service.id
+                  }"${
+                        isEditing ? "" : " disabled"
+                    } style="display:inline-block;">
+                    <i class="fas fa-times"></i>
                   </button>
                   <button class="btn btn-sm btn-danger delete-service-btn" data-id="${
                       service.id
@@ -490,7 +490,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
               </td>
             `;
-                    }
 
                     serviceTableBody.appendChild(row);
                 });
@@ -511,17 +510,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (btn) {
                         const id = parseInt(btn.getAttribute("data-id"));
                         console.log(`Editing category with ID: ${id}`);
+                        startEditingCategory(id);
                     }
                 });
             }
 
             // Add event listeners for save
-            document.querySelectorAll(".save-category-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    saveCategory(id);
+            if (categoryTableBody) {
+                // Delegación de eventos para los botones de guardar categoría
+                categoryTableBody.addEventListener("click", function (e) {
+                    const saveBtn = e.target.closest(".save-category-btn");
+                    if (saveBtn) {
+                        const id = parseInt(saveBtn.getAttribute("data-id"));
+                        //console.log("clic en guardar con ID:", id); // ✅ para confirmar en consola
+                        saveCategory(id);
+                    }
                 });
-            });
+            }
 
             // Add event listeners for cancel edit
             document
@@ -553,6 +558,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.addEventListener("click", function () {
                     const id = parseInt(this.getAttribute("data-id"));
                     startEditingService(id);
+                    // Habilitar los botones de confirmar y cancelar edición para este servicio
+                    setTimeout(() => {
+                        const saveBtn = document.querySelector(
+                            `.save-service-btn[data-id='${id}']`
+                        );
+                        const cancelBtn = document.querySelector(
+                            `.cancel-edit-service-btn[data-id='${id}']`
+                        );
+                        if (saveBtn) saveBtn.disabled = false;
+                        if (cancelBtn) cancelBtn.disabled = false;
+                    }, 50);
                 });
             });
 
@@ -604,38 +620,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Save category changes
         function saveCategory(id) {
-            const nameInput = document.getElementById(
-                `edit-category-name-${id}`
+            const row = document.querySelector(
+                `#categoryTableBody tr[data-category-id="${id}"]`
             );
-            const descriptionInput = document.getElementById(
-                `edit-category-description-${id}`
-            );
+            if (!row) return;
 
-            if (nameInput && descriptionInput) {
-                const name = nameInput.value.trim();
-                const description = descriptionInput.value.trim();
-
-                if (name && description) {
-                    const index = categorias.findIndex((cat) => cat.id === id);
-                    if (index !== -1) {
-                        categorias[index].nombre_categoria = name;
-                        categorias[index].descripcion = description;
-                        lastUpdatedCategory = name;
-
-                        editingCategoryId = null;
-                        renderCategoryTable();
-                        renderServiceTable(); // Update service table to reflect category name changes
-                        updateCategoryStats();
-                        populateCategoryDropdowns();
-                        showToast(
-                            `Categoría "${name}" actualizada exitosamente`
-                        );
-
-                        // Actualizar selects en el formulario de cotización
-                        inicializarPrimeraCategoria();
-                    }
-                }
+            const nameInput = document
+                .getElementById(`edit-category-name-${id}`)
+                .value.trim();
+            const descInput = document
+                .getElementById(`edit-category-description-${id}`)
+                .value.trim();
+            // console.log(`Saving category with ID: ${id}`);
+            //console.log("estoy en save");
+            //console.log(nameInput, descInput);
+            if (!nameInput || !descInput) {
+                alert("Por favor ingresa nombre y descripción.");
+                return;
             }
+
+            actualizarCategoria(id, nameInput, descInput);
+            editingCategoryId = null;
+            renderCategoryTable();
+            updateCategoryStats();
         }
 
         // Cancel category editing
@@ -1587,65 +1594,59 @@ function showToast(message) {
     }, 3000);
 }
 
-async function borrarCategoria(id) {
-    if (!id) {
-        alert("ID de categoría no válido");
+async function actualizarCategoria(id, name, descripcion) {
+    if (!id || !name) {
+        alert("ID o nombre de categoría no válido");
         return;
     }
-
     try {
         const response = await fetch(`/api/categorias/${id}`, {
-            method: "DELETE",
-        });
-
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-
-        categorias = categorias.filter((cat) => cat.id !== id);
-        updateCategoryStats();
-        showToast(`Categoría eliminada correctamente`);
-    } catch (error) {
-        alert("Error al eliminar categoría: " + error.message);
-    }
-}
-
-async function guardarCategoria(name, descripcion) {
-    //event.preventDefault(); // Evita comportamiento por defecto
-
-    if (!name) {
-        alert("El nombre de la categoría es obligatorio");
-        return; // Detiene la ejecución
-    }
-    if (name.length < 3) {
-        alert("El nombre de la categoría debe tener al menos 3 caracteres");
-        return; // Detiene la ejecución
-    }
-    try {
-        const response = await fetch("/api/categorias", {
-            method: "POST",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                name: name.trim(),
+                name: name,
                 descripcion: descripcion || null,
             }),
         });
 
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
 
-        const nuevaCategoria = await response.json();
-
-        categorias.push(nuevaCategoria);
-        lastAddedCategory = nuevaCategoria.nombre_categoria;
-        lastUpdatedCategory = "-";
-        updateCategoryStats();
-        showToast(
-            `Categoría "${nuevaCategoria.nombre_categoria}" guardada correctamente`
-        );
-        // Recargar la página después de guardar la categoría
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000); // Espera 1 segundo para mostrar el toast
+        const updatedCategory = await response.json();
+        const index = categorias.findIndex((cat) => cat.id == id); // usa == por si uno es string
+        if (index !== -1) {
+            categorias[index] = updatedCategory;
+            lastUpdatedCategory = updatedCategory.nombre_categoria;
+            updateCategoryStats();
+            showToast(
+                `Categoría "${updatedCategory.nombre_categoria}" actualizada correctamente`
+            );
+            // Renderizar tabla y dropdowns para reflejar el cambio
+            if (typeof renderCategoryTable === "function")
+                renderCategoryTable();
+            if (typeof renderServiceTable === "function") renderServiceTable();
+            if (typeof populateCategoryDropdowns === "function")
+                populateCategoryDropdowns();
+        }
     } catch (error) {
-        alert("Error al guardar categoría: " + error.message);
+        alert("Error al actualizar categoría: " + error.message);
+    }
+}
+
+async function borrarCategoria(id) {
+    if (!id) {
+        alert("ID de categoría no válido");
+        return;
+    }
+    try {
+        const response = await fetch(`/api/categorias/${id}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        categorias = categorias.filter((cat) => cat.id !== id);
+        updateCategoryStats();
+        showToast(`Categoría eliminada correctamente`);
+    } catch (error) {
+        alert("Error al eliminar categoría: " + error.message);
     }
 }
 
