@@ -32,6 +32,29 @@ app.get("/api/categorias", (req, res) => {
         res.json(rows);
     });
 });
+app.delete("/api/categorias/:id", (req, res) => {
+    const { id } = req.params;
+    db.get("SELECT id FROM Categorias WHERE id = ?", [id], (err, row) => {
+        if (err) {
+            console.error("Error al buscar categoría:", err.message);
+            return res
+                .status(500)
+                .json({ error: "Error interno al buscar categoría" });
+        }
+        if (!row) {
+            return res.status(404).json({ error: "Categoría no encontrada" });
+        }
+        db.run("DELETE FROM Categorias WHERE id = ?", [id], function (err) {
+            if (err) {
+                console.error("Error al eliminar categoría:", err.message);
+                return res
+                    .status(500)
+                    .json({ error: "Error interno al eliminar categoría" });
+            }
+            res.json({ message: "Categoría eliminada correctamente" });
+        });
+    });
+});
 
 app.post("/api/categorias", async (req, res) => {
     const { name, descripcion } = req.body;
@@ -117,11 +140,9 @@ app.post("/api/fases", async (req, res) => {
 
         // Manejar error de fase duplicada
         if (error.message.includes("UNIQUE constraint failed")) {
-            return res
-                .status(400)
-                .json({
-                    error: "El número de fase ya existe para esta cotización",
-                });
+            return res.status(400).json({
+                error: "El número de fase ya existe para esta cotización",
+            });
         }
 
         res.status(500).json({ error: "Error interno al crear fase" });
@@ -214,11 +235,9 @@ app.put("/api/fases/:id", async (req, res) => {
         console.error("Error al actualizar fase:", error.message);
 
         if (error.message.includes("UNIQUE constraint failed")) {
-            return res
-                .status(400)
-                .json({
-                    error: "El número de fase ya existe para esta cotización",
-                });
+            return res.status(400).json({
+                error: "El número de fase ya existe para esta cotización",
+            });
         }
 
         res.status(500).json({ error: "Error interno al actualizar fase" });

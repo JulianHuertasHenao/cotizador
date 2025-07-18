@@ -502,12 +502,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function setupCategoryTableEventListeners() {
             // Add event listeners for edit mode
-            document.querySelectorAll(".edit-category-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    startEditingCategory(id);
+            // Delegación de eventos para evitar perder listeners tras renderizado
+            const categoryTableBody =
+                document.getElementById("categoryTableBody");
+            if (categoryTableBody) {
+                categoryTableBody.addEventListener("click", function (e) {
+                    const btn = e.target.closest(".edit-category-btn");
+                    if (btn) {
+                        const id = parseInt(btn.getAttribute("data-id"));
+                        console.log(`Editing category with ID: ${id}`);
+                    }
                 });
-            });
+            }
 
             // Add event listeners for save
             document.querySelectorAll(".save-category-btn").forEach((btn) => {
@@ -528,12 +534,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
 
             // Add event listeners for delete
-            document.querySelectorAll(".delete-category-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    openDeleteModal(id, "category");
+            // Delegación de eventos para los botones de eliminar categoría
+            if (categoryTableBody) {
+                categoryTableBody.addEventListener("click", function (e) {
+                    const btn = e.target.closest(".delete-category-btn");
+                    if (btn) {
+                        const id = parseInt(btn.getAttribute("data-id"));
+                        openDeleteModal(id, "category");
+                        //console.log(`Deleting category with ID: ${id}`);
+                    }
                 });
-            });
+            }
         }
 
         function setupServiceTableEventListeners() {
@@ -733,11 +744,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 const category = categorias.find((cat) => cat.id === id);
                 if (category) {
                     deleteMessage.textContent = `¿Estás seguro de que quieres eliminar la categoría "${category.nombre_categoria}"? Esta acción no se puede deshacer.`;
+                    //console.log(`Deleting category with ID: ${id}`);
+                    // Asignar el handler al botón de confirmación
+                    const confirmDeleteBtn =
+                        document.getElementById("confirmDelete");
+                    if (confirmDeleteBtn) {
+                        confirmDeleteBtn.onclick = function () {
+                            borrarCategoria(id);
+                        };
+                    }
                 }
             } else if (type === "service") {
                 const service = servicios.find((srv) => srv.id === id);
                 if (service) {
                     deleteMessage.textContent = `¿Estás seguro de que quieres eliminar el servicio "${service.descripcion}"? Esta acción no se puede deshacer.`;
+                    console.log(`Deleting service with ID: ${id}`);
                 }
             }
 
@@ -1564,6 +1585,27 @@ function showToast(message) {
         toast.classList.remove("flex");
         toast.classList.add("hidden");
     }, 3000);
+}
+
+async function borrarCategoria(id) {
+    if (!id) {
+        alert("ID de categoría no válido");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/categorias/${id}`, {
+            method: "DELETE",
+        });
+
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+
+        categorias = categorias.filter((cat) => cat.id !== id);
+        updateCategoryStats();
+        showToast(`Categoría eliminada correctamente`);
+    } catch (error) {
+        alert("Error al eliminar categoría: " + error.message);
+    }
 }
 
 async function guardarCategoria(name, descripcion) {
