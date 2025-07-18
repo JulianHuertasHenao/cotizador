@@ -1,3 +1,72 @@
+/**
+ * Actualiza un servicio por su ID usando la API y actualiza la lista local y la UI.
+ * Utiliza los inputs: edit-service-code-id, edit-service-description-id, edit-service-price-id, edit-service-category-id
+ * @param {number} id - ID del servicio a actualizar
+ */
+async function actualizarServicio(id) {
+    if (!id) {
+        alert("ID de servicio no válido");
+        return;
+    }
+    const codeInput = document.getElementById(`edit-service-code-${id}`);
+    const descriptionInput = document.getElementById(`edit-service-description-${id}`);
+    const priceInput = document.getElementById(`edit-service-price-${id}`);
+    const categoryInput = document.getElementById(`edit-service-category-${id}`);
+    if (!codeInput || !descriptionInput || !priceInput || !categoryInput) {
+        alert("Faltan campos para actualizar el servicio");
+        return;
+    }
+    const codigo = codeInput.value.trim();
+    const descripcion = descriptionInput.value.trim();
+    const precio_neto = parseFloat(priceInput.value);
+    const categoria_id = parseInt(categoryInput.value);
+    if (!codigo || !descripcion || isNaN(precio_neto) || isNaN(categoria_id)) {
+        alert("Todos los campos son obligatorios y deben ser válidos");
+        return;
+    }
+    try {
+        const response = await fetch(`/api/servicios/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ codigo, descripcion, precio_neto, categoria_id }),
+        });
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        const actualizado = await response.json();
+        // Actualizar en la lista local
+        const idx = servicios.findIndex((srv) => srv.id === id);
+        if (idx !== -1) {
+            servicios[idx] = actualizado;
+        }
+        updateServiceStats && updateServiceStats();
+        if (typeof renderServiceTable === "function") renderServiceTable();
+        showToast && showToast("Servicio actualizado correctamente");
+    } catch (error) {
+        alert("Error al actualizar servicio: " + error.message);
+    }
+}
+/**
+ * Elimina un servicio por su ID usando la API y actualiza la lista local y la UI.
+ * @param {number} id - ID del servicio a eliminar
+ */
+async function borrarServicio(id) {
+    if (!id) {
+        alert("ID de servicio no válido");
+        return;
+    }
+    try {
+        const response = await fetch(`/api/servicios/${id}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        // Eliminar de la lista local
+        servicios = servicios.filter((srv) => srv.id !== id);
+        updateServiceStats && updateServiceStats();
+        if (typeof renderServiceTable === "function") renderServiceTable();
+        showToast && showToast("Servicio eliminado correctamente");
+    } catch (error) {
+        alert("Error al eliminar servicio: " + error.message);
+    }
+}
 // Elementos del DOM necesarios
 const cotizacionesList = document.getElementById("cotizacionesList");
 const dataManagementTab = document.getElementById("dataManagementTab");
@@ -165,6 +234,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 servicesSection.classList.remove("hidden");
             }
         }
+        addServiceForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const code = document.getElementById("serviceCode").value.trim();
+            const description = document
+                .getElementById("serviceDescription")
+                .value.trim();
+            const price = parseFloat(
+                document.getElementById("servicePrice").value
+            );
+            const categoryId = parseInt(
+                document.getElementById("serviceCategory").value
+            );
+            console.log(
+                `Adding service: ${code}, ${description}, ${price}, category ID: ${categoryId}`
+            );
+            guardarServicio(categoryId, code, description, price);
+        });
 
         // Add new category
         addCategoryForm.addEventListener("submit", function (e) {
@@ -177,69 +263,11 @@ document.addEventListener("DOMContentLoaded", function () {
             // console.log(`Adding category: ${name}, ${description}`);
             guardarCategoria(name, description);
         });
-        /*if (name && description) {
-                const newCategory = {
-                    id: nextCategoryId++,
-                    nombre_categoria: name,
-                    descripcion: description,
-                };
-
-                categorias.push(newCategory);
-                lastAddedCategory = name;
-                renderCategoryTable();
-                updateCategoryStats();
-                populateCategoryDropdowns();
-                showToast(`Categoría "${name}" añadida exitosamente`);
-
-                // Clear form
-                addCategoryForm.reset();
-
-                // Actualizar selects en el formulario de cotización
-                inicializarPrimeraCategoria();
-            }*/
-
-        // Add new service
-        addServiceForm.addEventListener("submit", function (e) {
-            e.preventDefault();
-
-            const code = document.getElementById("serviceCode").value.trim();
-            const description = document
-                .getElementById("serviceDescription")
-                .value.trim();
-            const price = parseFloat(
-                document.getElementById("servicePrice").value
-            );
-            const categoryId = parseInt(
-                document.getElementById("serviceCategory").value
-            );
-
-            if (code && description && !isNaN(price) && !isNaN(categoryId)) {
-                const newService = {
-                    id: nextServiceId++,
-                    codigo: code,
-                    descripcion: description,
-                    precio_neto: price,
-                    categoria_id: categoryId,
-                };
-
-                servicios.push(newService);
-                lastAddedService = description;
-                renderServiceTable();
-                updateServiceStats();
-                showToast(`Servicio "${description}" añadido exitosamente`);
-
-                // Clear form
-                addServiceForm.reset();
-
-                // Actualizar selects en el formulario de cotización
-                inicializarPrimeraCategoria();
-            }
-        });
 
         // Delete confirmation
         document
             .getElementById("confirmDelete")
-            .addEventListener("click", function () {
+            .addEventListener("click", async function () {
                 if (deleteId !== null && deleteType) {
                     if (deleteType === "category") {
                         const index = categorias.findIndex(
@@ -273,24 +301,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             // Actualizar selects en el formulario de cotización
                             inicializarPrimeraCategoria();
                         }
+                        closeDeleteModal();
                     } else if (deleteType === "service") {
-                        const index = servicios.findIndex(
-                            (srv) => srv.id === deleteId
-                        );
-                        if (index !== -1) {
-                            const deletedName = servicios[index].descripcion;
-                            servicios.splice(index, 1);
-                            renderServiceTable();
-                            updateServiceStats();
-                            showToast(
-                                `Servicio "${deletedName}" eliminado exitosamente`
-                            );
-
-                            // Actualizar selects en el formulario de cotización
+                        await borrarServicio(deleteId);
+                        inicializarPrimeraCategoria &&
                             inicializarPrimeraCategoria();
-                        }
+                        closeDeleteModal();
                     }
-                    closeDeleteModal();
                 }
             });
 
@@ -553,50 +570,63 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function setupServiceTableEventListeners() {
-            // Add event listeners for edit mode
-            document.querySelectorAll(".edit-service-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    startEditingService(id);
-                    // Habilitar los botones de confirmar y cancelar edición para este servicio
-                    setTimeout(() => {
-                        const saveBtn = document.querySelector(
-                            `.save-service-btn[data-id='${id}']`
-                        );
-                        const cancelBtn = document.querySelector(
-                            `.cancel-edit-service-btn[data-id='${id}']`
-                        );
-                        if (saveBtn) saveBtn.disabled = false;
-                        if (cancelBtn) cancelBtn.disabled = false;
-                    }, 50);
+            // Delegación de eventos para los botones de servicios
+            const serviceTableBody =
+                document.getElementById("serviceTableBody");
+            if (serviceTableBody) {
+                // Editar servicio
+                serviceTableBody.addEventListener("click", function (e) {
+                    const btn = e.target.closest(".edit-service-btn");
+                    if (btn) {
+                        const id = parseInt(btn.getAttribute("data-id"));
+                        console.log(`Editing service with ID: ${id}`);
+                        startEditingService(id);
+                        // Habilitar los botones de confirmar y cancelar edición para este servicio
+                        setTimeout(() => {
+                            const saveBtn = document.querySelector(
+                                `.save-service-btn[data-id='${id}']`
+                            );
+                            const cancelBtn = document.querySelector(
+                                `.cancel-edit-service-btn[data-id='${id}']`
+                            );
+                            if (saveBtn) saveBtn.disabled = false;
+                            if (cancelBtn) cancelBtn.disabled = false;
+                        }, 50);
+                    }
                 });
-            });
 
-            // Add event listeners for save
-            document.querySelectorAll(".save-service-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    saveService(id);
+                // Guardar servicio
+                serviceTableBody.addEventListener("click", function (e) {
+                    const saveBtn = e.target.closest(".save-service-btn");
+                    if (saveBtn) {
+                        const id = parseInt(saveBtn.getAttribute("data-id"));
+                        console.log(`Saving service with ID: ${id}`);
+                        actualizarServicio(id);
+                    }
                 });
-            });
 
-            // Add event listeners for cancel edit
-            document
-                .querySelectorAll(".cancel-edit-service-btn")
-                .forEach((btn) => {
-                    btn.addEventListener("click", function () {
-                        const id = parseInt(this.getAttribute("data-id"));
+                // Cancelar edición de servicio
+                serviceTableBody.addEventListener("click", function (e) {
+                    const cancelBtn = e.target.closest(
+                        ".cancel-edit-service-btn"
+                    );
+                    if (cancelBtn) {
+                        const id = parseInt(cancelBtn.getAttribute("data-id"));
+                        console.log(`Cancel editing service with ID: ${id}`);
                         cancelEditService(id);
-                    });
+                    }
                 });
 
-            // Add event listeners for delete
-            document.querySelectorAll(".delete-service-btn").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                    const id = parseInt(this.getAttribute("data-id"));
-                    openDeleteModal(id, "service");
+                // Eliminar servicio
+                serviceTableBody.addEventListener("click", function (e) {
+                    const deleteBtn = e.target.closest(".delete-service-btn");
+                    if (deleteBtn) {
+                        const id = parseInt(deleteBtn.getAttribute("data-id"));
+                        console.log(`Deleting service with ID: ${id}`);
+                        openDeleteModal(id, "service");
+                    }
                 });
-            });
+            }
         }
 
         // Start editing a category
@@ -1632,6 +1662,38 @@ async function actualizarCategoria(id, name, descripcion) {
     }
 }
 
+async function guardarCategoria(name, descripcion) {
+    if (!name) {
+        alert("El nombre de la categoría es obligatorio");
+        return;
+    }
+    try {
+        const response = await fetch("/api/categorias", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: name,
+                descripcion: descripcion || null,
+            }),
+        });
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        const nuevaCategoria = await response.json();
+        categorias.push(nuevaCategoria);
+        lastAddedCategory = nuevaCategoria.nombre_categoria;
+        updateCategoryStats();
+        showToast(
+            `Categoría "${nuevaCategoria.nombre_categoria}" guardada correctamente`
+        );
+        // Renderizar tabla y dropdowns para reflejar el cambio
+        if (typeof renderCategoryTable === "function") renderCategoryTable();
+        if (typeof renderServiceTable === "function") renderServiceTable();
+        if (typeof populateCategoryDropdowns === "function")
+            populateCategoryDropdowns();
+    } catch (error) {
+        alert("Error al guardar categoría: " + error.message);
+    }
+}
+
 async function borrarCategoria(id) {
     if (!id) {
         alert("ID de categoría no válido");
@@ -1647,6 +1709,46 @@ async function borrarCategoria(id) {
         showToast(`Categoría eliminada correctamente`);
     } catch (error) {
         alert("Error al eliminar categoría: " + error.message);
+    }
+}
+
+async function guardarServicio(categoriaId, codigo, descripcion, precioNeto) {
+    if (!categoriaId || !codigo || !descripcion || !precioNeto) {
+        alert("Todos los campos son obligatorios");
+        return;
+    }
+    try {
+        const response = await fetch(`/api/servicios`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                codigo: codigo,
+                descripcion: descripcion,
+                precio_neto: precioNeto,
+                categoria_id: categoriaId,
+            }),
+        });
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        const nuevoServicio = await response.json();
+        servicios.push(nuevoServicio);
+        lastAddedService =
+            nuevoServicio.nombre_servicio ||
+            nuevoServicio.descripcion ||
+            nuevoServicio.codigo;
+        updateServiceStats();
+        showToast(
+            `Servicio "${
+                nuevoServicio.nombre_servicio ||
+                nuevoServicio.descripcion ||
+                nuevoServicio.codigo
+            }" guardado correctamente`
+        );
+        // Renderizar tabla y dropdowns para reflejar el cambio
+        if (typeof renderServiceTable === "function") renderServiceTable();
+        if (typeof populateServiceDropdowns === "function")
+            populateServiceDropdowns();
+    } catch (error) {
+        alert("Error al guardar servicio: " + error.message);
     }
 }
 
