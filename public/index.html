@@ -1,576 +1,691 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cotizador</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-    />
-    <link rel="icon" type="image/png" href="logo-sandra.png" />
-  </head>
-  <body>
-    <div class="header">
-      <img src="logo-sandra.png" alt="Logo Sandra" class="logo" />
-      <h1>Cotizador Odontologico</h1>
-    </div>
-
-    <div class="tabs">
-      <div class="tab active" data-tab="new">Nueva Cotización</div>
-      <div class="tab" data-tab="history">Historial</div>
-      <div class="tab" data-tab="dataManagement">Gestión de Datos</div>
-    </div>
-
-    <div id="newQuoteTab" class="tab-content active">
-      <div class="card">
-        <h2 id="quoteTitle">Nueva Cotización</h2>
-        <form id="cotizacionForm">
-          <!-- Sección de paciente mejorada -->
-          <div class="form-group">
-            <label class="patient-selection-label"
-              ><i class="fas fa-user"></i> Paciente</label
-            >
-            <div class="patient-selection">
-              <div class="search-wrapper" style="width: 100%">
-                <input
-                  type="text"
-                  id="pacienteSearchInput"
-                  class="form-control"
-                  placeholder="Buscar por nombre o correo... "
-                  autocomplete="off"
-                />
-                <div
-                  id="pacienteSearchResults"
-                  class="search-dropdown"
-                  style="display: none; width: 100%"
-                ></div>
-              </div>
-
-              <button
-                type="button"
-                id="nuevoPacienteBtn"
-                class="btn btn-outline-secondary"
-              >
-                <i class="fas fa-plus"></i> Nuevo paciente
-              </button>
-            </div>
-
-            <div id="nuevoPacienteForm" style="display: none; margin-top: 1rem">
-              <div class="form-group">
-                <input
-                  type="text"
-                  id="nombrePaciente"
-                  class="form-control"
-                  placeholder="Ingrese el nombre del paciente"
-                />
-              </div>
-              <div class="form-row">
-                <div class="form-group col-md-6">
-                  <input
-                    type="email"
-                    id="correoPaciente"
-                    class="form-control"
-                    placeholder="Correo electrónico del paciente"
-                  />
-                </div>
-                <div class="form-group col-md-6">
-                  <input
-                    type="tel"
-                    id="telefonoPaciente"
-                    class="form-control"
-                    placeholder="Teléfono"
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                class="btn btn-success"
-                id="guardarPacienteBtn"
-              >
-                Guardar Paciente
-              </button>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <!-- Toggle para activar/desactivar fases (igual en ambos) -->
-            <div class="toggle-container">
-              <label class="toggle-switch">
-                <input type="checkbox" id="use-phases" />
-                <span class="toggle-slider"></span>
-              </label>
-              <span class="toggle-label">Organizar tratamiento en fases</span>
-            </div>
-
-            <!-- Sección de fases (oculta inicialmente) -->
-            <div id="phases-container" class="hidden">
-              <div id="no-phases-message" class="no-phases-message">
-                <p>No hay fases añadidas todavía</p>
-                <button id="add-first-phase-btn" class="btn btn-primary">
-                  Añadir Primera Fase
-                </button>
-              </div>
-
-              <!-- Grid de fases -->
-              <div id="phases-grid" class="phases-grid">
-                <!-- Plantilla de fase (hidden) -->
-                <template id="phase-template">
-                  <div class="phase-container">
-                    <div class="phase-header">
-                      <div class="phase-title">
-                        <span class="phase-number-badge">1</span>
-                        <span
-                          >Fase <span class="phase-number-text">1</span></span
-                        >
-                      </div>
-                      <button
-                        class="btn btn-sm btn-danger remove-phase-btn"
-                        title="Eliminar fase"
-                      >
-                        ×
-                      </button>
-                    </div>
-
-                    <div class="duration-input">
-                      <label class="duration-label">Duración:</label>
-                      <input
-                        type="number"
-                        class="phase-duration form-control"
-                        min="1"
-                        value="1"
-                        id="duracion-fase-{{n}}"
-                      />
-                      <span>meses</span>
-                    </div>
-
-                    <!-- Categorías dentro de la fase -->
-                    <div class="category-group">
-                      <div class="category-header">
-                        <select
-                          class="form-control categoria-fase-select"
-                          style="flex: 1; min-width: 150px"
-                        >
-                          <option value="">Seleccionar categoría...</option>
-                        </select>
-
-                        <div class="category-actions">
-                          <button
-                            class="btn btn-sm btn-primary add-service-btn"
-                          >
-                            Añadir Servicio
-                          </button>
-                          <button
-                            class="btn btn-sm btn-danger remove-category-btn"
-                            title="Eliminar categoría"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                      <div class="service-list">
-                        <!-- Los servicios se agregarán aquí -->
-                      </div>
-                    </div>
-
-                    <div style="margin-top: 0.75rem">
-                      <button class="btn btn-primary add-category-btn">
-                        + Añadir Categoría
-                      </button>
-                    </div>
-
-                    <!-- Sección de totales por fase (añadido) -->
-                    <div class="fase-totals">
-                      <div class="totals-row">
-                        <span>Subtotal Fase:</span>
-                        <span class="fase-subtotal">$0.00</span>
-                      </div>
-                      <div class="totals-row">
-                        <span>Descuento Fase:</span>
-                        <span class="fase-descuento">$0.00</span>
-                      </div>
-                      <div class="totals-row fase-total">
-                        <span>Total Fase:</span>
-                        <span class="fase-total-amount">$0.00</span>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </div>
-
-              <div style="margin-top: 0.75rem">
-                <button id="add-phase-btn" class="btn btn-secondary">
-                  + Añadir Fase
-                </button>
-              </div>
-            </div>
-
-            <!-- Sección sin fases (visible inicialmente) - ahora idéntica al otro HTML -->
-            <div id="no-phase-categories">
-              <div class="category-group">
-                <div class="category-header">
-                  <select
-                    class="form-control categoria-unica-select"
-                    style="flex: 1; min-width: 150px"
-                    id="categoriaUnicaSelect"
-                  >
-                    <option value="">Seleccionar categoría...</option>
-                  </select>
-                  <div class="category-actions">
-                    <button class="btn btn-sm btn-primary add-service-btn">
-                      Añadir Servicio
-                    </button>
-                    <button
-                      class="btn btn-sm btn-danger remove-category-btn"
-                      title="Eliminar categoría"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <div class="service-list">
-                  <!-- Los servicios se agregarán aquí -->
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top: 0.75rem">
-              <button id="add-category-btn" class="btn btn-primary">
-                + Añadir Categoría
-              </button>
-            </div>
-          </div>
-
-          <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
-          <template id="service-template">
-            <div class="service-item">
-              <select class="form-control servicio-select" style="flex: 1">
-                <option value="">Seleccionar servicio...</option>
-              </select>
-              <input
-                type="text"
-                class="form-control service-description"
-                placeholder="Descripción"
-              />
-              <input
-                type="number"
-                class="form-control cantidad-servicio"
-                placeholder="Cantidad"
-                min="1"
-                value=""
-              />
-              <input
-                type="number"
-                class="form-control descuento-servicio"
-                placeholder="Descuento %"
-                min="0"
-                max="100"
-                value=""
-              />
-              <input
-                type="number"
-                class="form-control precio-unitario-servicio"
-                placeholder="Precio"
-                min="0"
-                step="0.01"
-              />
-              <span
-                class="precio-servicio"
-                style="min-width: 60px; text-align: center"
-              >
-                <div class="service-actions">
-                  <button
-                    class="btn btn-sm btn-danger remove-servicio"
-                    title="Eliminar este servicio"
-                  >
-                    ×
-                  </button>
-                </div>
-              </span>
-            </div>
-          </template>
-
-          <!-- Observaciones -->
-          <div class="form-group">
-            <label for="observaciones"
-              ><i class="fas fa-comment"></i> Observaciones</label
-            >
-            <textarea
-              id="observaciones"
-              rows="1"
-              class="form-control"
-            ></textarea>
-          </div>
-
-          <!-- Totales generales -->
-          <div class="totals-display">
-            <h4>Totales de la cotización</h4>
-            <div class="totals-row">
-              <span>Subtotal:</span>
-              <span id="subtotal-cotizacion">$0.00</span>
-            </div>
-            <div class="totals-row">
-              <span>Descuento total:</span>
-              <span id="descuento-cotizacion">$0.00</span>
-            </div>
-            <div class="totals-row total">
-              <span>Total a pagar:</span>
-              <span id="total-cotizacion">$0.00</span>
-            </div>
-          </div>
-
-          <!-- Botones de acción -->
-          <div class="action-buttons">
-            <!-- Acciones -->
-
-            <button id="reset-btn" class="btn btn-danger">
-              Reiniciar Formulario
-            </button>
-
-            <button type="button" class="btn btn-success" id="generatePdfBtn">
-              <i class="fas fa-file-pdf"></i> Generar PDF
-            </button>
-            <button type="button" class="btn btn-warning" id="sendEmailBtn">
-              <i class="fas fa-paper-plane"></i> Enviar por Email
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Cotización
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="historyTab" class="tab-content">
-      <div class="card">
-        <h2><i class="fas fa-history"></i> Historial de Cotizaciones</h2>
-        <div id="cotizacionesList">
-          <!-- Lista de cotizaciones se cargará aquí -->
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Cotizador</title>
+        <link rel="stylesheet" href="styles.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        />
+        <link rel="icon" type="image/png" href="logo-sandra.png" />
+    </head>
+    <body>
+        <div class="header">
+            <img src="logo-sandra.png" alt="Logo Sandra" class="logo" />
+            <h1>Cotizador Odontologico</h1>
         </div>
-      </div>
-    </div>
 
-    <div id="dataManagement" class="tab-content">
-      <!-- Data Management Section -->
-      <div id="dataManagementSection" class="fade-in">
-        <!-- Sub Tabs -->
         <div class="tabs">
-          <button id="categoriesTab" class="tab-button active">
-            Categorías
-          </button>
-          <button id="servicesTab" class="tab-button">Servicios</button>
+            <div class="tab active" data-tab="new">Nueva Cotización</div>
+            <div class="tab" data-tab="history">Historial</div>
+            <div class="tab" data-tab="dataManagement">Gestión de Datos</div>
         </div>
 
-        <!-- Categories Section -->
-        <div id="categoriesSection">
-          <div class="card">
-            <h1 class="main-title">Gestión de Categorías</h1>
-            <p class="subtitle">
-              Añadir, editar y eliminar categorías con esta tabla interactiva
-            </p>
+        <div id="newQuoteTab" class="tab-content active">
+            <div class="card">
+                <h2 id="quoteTitle">Nueva Cotización</h2>
+                <form id="cotizacionForm">
+                    <!-- Sección de paciente mejorada -->
+                    <div class="form-group">
+                        <label class="patient-selection-label"
+                            ><i class="fas fa-user"></i> Paciente</label
+                        >
+                        <div class="patient-selection">
+                            <div class="search-wrapper" style="width: 100%">
+                                <input
+                                    type="text"
+                                    id="pacienteSearchInput"
+                                    class="form-control"
+                                    placeholder="Buscar por nombre o correo... "
+                                    autocomplete="off"
+                                />
+                                <div
+                                    id="pacienteSearchResults"
+                                    class="search-dropdown"
+                                    style="display: none; width: 100%"
+                                ></div>
+                            </div>
 
-            <!-- Add Category Form -->
-            <div class="form-card">
-              <h2 class="form-title">Añadir Nueva Categoría</h2>
-              <form id="addCategoryForm" class="form-grid three-cols">
-                <div class="form-group">
-                  <label for="categoryName">Nombre de Categoría</label>
-                  <input type="text" id="categoryName" required class="input" />
-                </div>
-                <div class="form-group">
-                  <label for="categoryDescription">Descripción</label>
-                  <input
-                    type="text"
-                    id="categoryDescription"
-                    required
-                    class="input"
-                  />
-                </div>
-                <div class="form-group full-width">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-plus" style="margin-right: 0.5rem"></i>
-                    Añadir Categoría
-                  </button>
-                </div>
-              </form>
-            </div>
+                            <button
+                                type="button"
+                                id="nuevoPacienteBtn"
+                                class="btn btn-outline-secondary"
+                            >
+                                <i class="fas fa-plus"></i> Nuevo paciente
+                            </button>
+                        </div>
 
-            <!-- Categories Table -->
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Nombre de Categoría</th>
-                    <th>Descripción</th>
-                    <th class="center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="categoryTableBody">
-                  <!-- Filas dinámicas -->
-                </tbody>
-              </table>
-            </div>
+                        <div
+                            id="nuevoPacienteForm"
+                            style="display: none; margin-top: 1rem"
+                        >
+                            <div class="form-group">
+                                <input
+                                    type="text"
+                                    id="nombrePaciente"
+                                    class="form-control"
+                                    placeholder="Ingrese el nombre del paciente"
+                                />
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <input
+                                        type="email"
+                                        id="correoPaciente"
+                                        class="form-control"
+                                        placeholder="Correo electrónico del paciente"
+                                    />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <input
+                                        type="tel"
+                                        id="telefonoPaciente"
+                                        class="form-control"
+                                        placeholder="Teléfono"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-success"
+                                id="guardarPacienteBtn"
+                            >
+                                Guardar Paciente
+                            </button>
+                        </div>
+                    </div>
 
-            <!-- Empty state message -->
-            <div id="categoryEmptyState" class="empty-state">
-              <i class="fas fa-clipboard-list icon-empty"></i>
-              <h3>No hay categorías aún</h3>
-              <p>Añade tu primera categoría usando el formulario de arriba</p>
-            </div>
-          </div>
+                    <div class="form-section">
+                        <!-- Toggle para activar/desactivar fases (igual en ambos) -->
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="use-phases" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label"
+                                >Organizar tratamiento en fases</span
+                            >
+                        </div>
 
-          <!-- Stats Card -->
-          <div class="card">
-            <h2 class="form-title">Estadísticas de Categorías</h2>
-            <div class="stats-grid">
-              <div class="stat">
-                <p>Total de Categorías</p>
-                <span id="totalCategories">0</span>
-              </div>
-              <div class="stat">
-                <p>Última Añadida</p>
-                <span id="lastAddedCategory">-</span>
-              </div>
-              <div class="stat">
-                <p>Última Actualizada</p>
-                <span id="lastUpdatedCategory">-</span>
-              </div>
+                        <!-- Sección de fases (oculta inicialmente) -->
+                        <div id="phases-container" class="hidden">
+                            <div
+                                id="no-phases-message"
+                                class="no-phases-message"
+                            >
+                                <p>No hay fases añadidas todavía</p>
+                                <button
+                                    id="add-first-phase-btn"
+                                    class="btn btn-primary"
+                                >
+                                    Añadir Primera Fase
+                                </button>
+                            </div>
+
+                            <!-- Grid de fases -->
+                            <div id="phases-grid" class="phases-grid">
+                                <!-- Plantilla de fase (hidden) -->
+                                <template id="phase-template">
+                                    <div class="phase-container">
+                                        <div class="phase-header">
+                                            <div class="phase-title">
+                                                <span class="phase-number-badge"
+                                                    >1</span
+                                                >
+                                                <span
+                                                    >Fase
+                                                    <span
+                                                        class="phase-number-text"
+                                                        >1</span
+                                                    ></span
+                                                >
+                                            </div>
+                                            <button
+                                                class="btn btn-sm btn-danger remove-phase-btn"
+                                                title="Eliminar fase"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+
+                                        <div class="duration-input">
+                                            <label class="duration-label"
+                                                >Duración:</label
+                                            >
+                                            <input
+                                                type="number"
+                                                class="phase-duration form-control"
+                                                min="1"
+                                                value="1"
+                                                id="duracion-fase-{{n}}"
+                                            />
+                                            <span>meses</span>
+                                        </div>
+
+                                        <!-- Categorías dentro de la fase -->
+                                        <div class="category-group">
+                                            <div class="category-header">
+                                                <select
+                                                    class="form-control categoria-fase-select"
+                                                    style="
+                                                        flex: 1;
+                                                        min-width: 150px;
+                                                    "
+                                                >
+                                                    <option value=""
+                                                        >Seleccionar
+                                                        categoría...</option
+                                                    >
+                                                </select>
+
+                                                <div class="category-actions">
+                                                    <button
+                                                        class="btn btn-sm btn-primary add-service-btn"
+                                                    >
+                                                        Añadir Servicio
+                                                    </button>
+                                                    <button
+                                                        class="btn btn-sm btn-danger remove-category-btn"
+                                                        title="Eliminar categoría"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="service-list">
+                                                <!-- Los servicios se agregarán aquí -->
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-top: 0.75rem">
+                                            <button
+                                                class="btn btn-primary add-category-btn"
+                                            >
+                                                Añadir Categoría
+                                            </button>
+                                        </div>
+
+                                        <!-- Sección de totales por fase (añadido) -->
+                                        <div class="fase-totals">
+                                            <div class="totals-row">
+                                                <span>Subtotal Fase:</span>
+                                                <span class="fase-subtotal"
+                                                    >$0.00</span
+                                                >
+                                            </div>
+                                            <div class="totals-row">
+                                                <span>Descuento Fase:</span>
+                                                <span class="fase-descuento"
+                                                    >$0.00</span
+                                                >
+                                            </div>
+                                            <div class="totals-row fase-total">
+                                                <span>Total Fase:</span>
+                                                <span class="fase-total-amount"
+                                                    >$0.00</span
+                                                >
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div style="margin-top: 0.75rem">
+                                <button
+                                    id="add-phase-btn"
+                                    class="btn btn-secondary"
+                                >
+                                    + Añadir Fase
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sección sin fases (visible inicialmente) - ahora idéntica al otro HTML -->
+                        <div id="no-phase-categories">
+                            <div class="category-group">
+                                <div class="category-header">
+                                    <select
+                                        class="form-control categoria-unica-select"
+                                        style="flex: 1; min-width: 150px"
+                                        id="categoriaUnicaSelect"
+                                    >
+                                        <option value=""
+                                            >Seleccionar categoría...</option
+                                        >
+                                    </select>
+                                    <div class="category-actions">
+                                        <button
+                                            class="btn btn-sm btn-primary add-service-btn"
+                                        >
+                                            Añadir Servicio
+                                        </button>
+                                        <button
+                                            class="btn btn-sm btn-danger remove-category-btn"
+                                            title="Eliminar categoría"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="service-list">
+                                    <!-- Los servicios se agregarán aquí -->
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.75rem">
+                            <button
+                                id="add-category-btn"
+                                class="btn btn-primary"
+                            >
+                                + Añadir Categoría
+                            </button>
+                        </div>
+                        </div>
+
+                    <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
+                    <template id="service-template">
+                        <div class="service-item">
+                            <select
+                                class="form-control servicio-select"
+                                style="flex: 1"
+                            >
+                                <option value=""
+                                    >Seleccionar servicio...</option
+                                >
+                            </select>
+                            <input
+                                type="text"
+                                class="form-control service-description"
+                                placeholder="Descripción"
+                            />
+                            <input
+                                type="number"
+                                class="form-control cantidad-servicio"
+                                placeholder="Cantidad"
+                                min="1"
+                                value="1"
+                            />
+                            <input
+                                type="number"
+                                class="form-control descuento-servicio"
+                                placeholder="Descuento %"
+                                min="0"
+                                max="100"
+                                value=""
+                            />
+                            <input
+                                type="number"
+                                class="form-control precio-unitario-servicio"
+                                placeholder="Precio"
+                                min="0"
+                                step="0.01"
+                            />
+                            <span
+                                class="precio-servicio"
+                                style="min-width: 60px; text-align: center"
+                            >
+                                <div class="service-actions">
+                                    <button
+                                        class="btn btn-sm btn-danger remove-servicio"
+                                        title="Eliminar este servicio"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </span>
+                        </div>
+                    </template>
+
+                    <!-- Observaciones -->
+                    <div class="form-group">
+                        <label for="observaciones"
+                            ><i class="fas fa-comment"></i> Observaciones</label
+                        >
+                        <textarea
+                            id="observaciones"
+                            rows="1"
+                            class="form-control"
+                        ></textarea>
+                    </div>
+
+                    <!-- Totales generales -->
+                    <div class="totals-display">
+                        <h4>Totales de la cotización</h4>
+                        <div class="totals-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal-cotizacion">$0.00</span>
+                        </div>
+                        <div class="totals-row">
+                            <span>Descuento total:</span>
+                            <span id="descuento-cotizacion">$0.00</span>
+                        </div>
+                        <div class="totals-row total">
+                            <span>Total a pagar:</span>
+                            <span id="total-cotizacion">$0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="action-buttons">
+                        <!-- Acciones -->
+
+                        <button id="reset-btn" class="btn btn-danger">
+                            Reiniciar Formulario
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-success"
+                            id="generatePdfBtn"
+                        >
+                            <i class="fas fa-file-pdf"></i> Generar PDF
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-warning"
+                            id="sendEmailBtn"
+                        >
+                            <i class="fas fa-paper-plane"></i> Enviar por Email
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cotización
+                        </button>
+                    </div>
+                </form>
             </div>
-          </div>
         </div>
 
-        <!-- Services Section -->
-        <div id="servicesSection" class="hidden">
-          <div class="card">
-            <h1 class="main-title">Gestión de Servicios</h1>
-            <p class="subtitle">
-              Añadir, editar y eliminar servicios con esta tabla interactiva
-            </p>
-
-            <!-- Add Service Form -->
-            <div class="form-card">
-              <h2 class="form-title">Añadir Nuevo Servicio</h2>
-              <form id="addServiceForm" class="form-grid two-cols">
-                <div class="form-group">
-                  <label for="serviceCode">Código de Servicio</label>
-                  <input type="text" id="serviceCode" required class="input" />
+        <div id="historyTab" class="tab-content">
+            <div class="card">
+                <h2
+                    ><i class="fas fa-history"></i> Historial de
+                    Cotizaciones</h2
+                >
+                <div id="cotizacionesList">
+                    <!-- Lista de cotizaciones se cargará aquí -->
                 </div>
-                <div class="form-group">
-                  <label for="serviceCategory">Categoría</label>
-                  <select id="serviceCategory" required class="select">
-                    <option value="">Seleccionar una categoría</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="serviceDescription">Descripción</label>
-                  <input
-                    type="text"
-                    id="serviceDescription"
-                    required
-                    class="input"
-                  />
-                </div>
-                <div class="form-group input-with-prefix">
-                  <label for="servicePrice">Precio Neto</label>
-                  <input
-                    type="number"
-                    id="servicePrice"
-                    min="0"
-                    step="0.01"
-                    required
-                    class="input"
-                  />
-                </div>
-                <div class="form-group full-width">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-plus" style="margin-right: 0.5rem"></i>
-                    Añadir Servicio
-                  </button>
-                </div>
-              </form>
             </div>
-
-            <!-- Services Table -->
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Código</th>
-                    <th>Descripción</th>
-                    <th>Precio Neto</th>
-                    <th>Categoría</th>
-                    <th class="center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="serviceTableBody">
-                  <!-- Filas dinámicas -->
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Empty state message -->
-            <div id="serviceEmptyState" class="empty-state">
-              <i class="fas fa-teeth-open icon-empty"></i>
-              <h3>No hay servicios aún</h3>
-              <p>Añade tu primer servicio usando el formulario de arriba</p>
-            </div>
-          </div>
-
-          <!-- Stats Card -->
-          <div class="card">
-            <h2 class="form-title">Estadísticas de Servicios</h2>
-            <div class="stats-grid">
-              <div class="stat">
-                <p>Total de Servicios</p>
-                <span id="totalServices">0</span>
-              </div>
-              <div class="stat">
-                <p>Precio Promedio</p>
-                <span id="averagePrice">$0.00</span>
-              </div>
-              <div class="stat">
-                <p>Último Añadido</p>
-                <span id="lastAddedService">-</span>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
 
-      <!-- Delete Confirmation Modal -->
-      <div id="deleteModal" class="modal hidden">
-        <div class="modal-content">
-          <h2>Confirmar Eliminación</h2>
-          <p id="deleteMessage">
-            ¿Estás seguro de que quieres eliminar este elemento? Esta acción no
-            se puede deshacer.
-          </p>
-          <div class="modal-actions">
-            <button id="cancelDelete" class="btn btn-secondary">
-              Cancelar
-            </button>
-            <button id="confirmDelete" class="btn btn-danger">Eliminar</button>
-          </div>
+        <div id="dataManagement" class="tab-content">
+            <!-- Data Management Section -->
+            <div id="dataManagementSection" class="fade-in">
+                <!-- Sub Tabs -->
+                <div class="tabs">
+                    <button id="categoriesTab" class="tab-button active">
+                        Categorías
+                    </button>
+                    <button id="servicesTab" class="tab-button"
+                        >Servicios</button
+                    >
+                </div>
+
+                <!-- Categories Section -->
+                <div id="categoriesSection">
+                    <div class="card">
+                        <h1 class="main-title">Gestión de Categorías</h1>
+                        <p class="subtitle">
+                            Añadir, editar y eliminar categorías con esta tabla
+                            interactiva
+                        </p>
+
+                        <!-- Add Category Form -->
+                        <div class="form-card">
+                            <h2 class="form-title">Añadir Nueva Categoría</h2>
+                            <form
+                                id="addCategoryForm"
+                                class="form-grid three-cols"
+                            >
+                                <div class="form-group">
+                                    <label for="categoryName"
+                                        >Nombre de Categoría</label
+                                    >
+                                    <input
+                                        type="text"
+                                        id="categoryName"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label for="categoryDescription"
+                                        >Descripción</label
+                                    >
+                                    <input
+                                        type="text"
+                                        id="categoryDescription"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
+                                <div class="form-group full-width">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary"
+                                    >
+                                        <i
+                                            class="fas fa-plus"
+                                            style="margin-right: 0.5rem"
+                                        ></i>
+                                        Añadir Categoría
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Categories Table -->
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre de Categoría</th>
+                                        <th>Descripción</th>
+                                        <th class="center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categoryTableBody">
+                                    <!-- Filas dinámicas -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty state message -->
+                        <div id="categoryEmptyState" class="empty-state">
+                            <i class="fas fa-clipboard-list icon-empty"></i>
+                            <h3>No hay categorías aún</h3>
+                            <p
+                                >Añade tu primera categoría usando el formulario
+                                de arriba</p
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Stats Card -->
+                    <div class="card">
+                        <h2 class="form-title">Estadísticas de Categorías</h2>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <p>Total de Categorías</p>
+                                <span id="totalCategories">0</span>
+                            </div>
+                            <div class="stat">
+                                <p>Última Añadida</p>
+                                <span id="lastAddedCategory">-</span>
+                            </div>
+                            <div class="stat">
+                                <p>Última Actualizada</p>
+                                <span id="lastUpdatedCategory">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Section -->
+                <div id="servicesSection" class="hidden">
+                    <div class="card">
+                        <h1 class="main-title">Gestión de Servicios</h1>
+                        <p class="subtitle">
+                            Añadir, editar y eliminar servicios con esta tabla
+                            interactiva
+                        </p>
+
+                        <!-- Add Service Form -->
+                        <div class="form-card">
+                            <h2 class="form-title">Añadir Nuevo Servicio</h2>
+                            <form
+                                id="addServiceForm"
+                                class="form-grid two-cols"
+                            >
+                                <div class="form-group">
+                                    <label for="serviceCode"
+                                        >Código de Servicio</label
+                                    >
+                                    <input
+                                        type="text"
+                                        id="serviceCode"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceCategory"
+                                        >Categoría</label
+                                    >
+                                    <select
+                                        id="serviceCategory"
+                                        required
+                                        class="select"
+                                    >
+                                        <option value=""
+                                            >Seleccionar una categoría</option
+                                        >
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceDescription"
+                                        >Descripción</label
+                                    >
+                                    <input
+                                        type="text"
+                                        id="serviceDescription"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
+                                <div class="form-group input-with-prefix">
+                                    <label for="servicePrice"
+                                        >Precio Neto</label
+                                    >
+                                    <input
+                                        type="number"
+                                        id="servicePrice"
+                                        min="0"
+                                        step="0.01"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
+                                <div class="form-group full-width">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary"
+                                    >
+                                        <i
+                                            class="fas fa-plus"
+                                            style="margin-right: 0.5rem"
+                                        ></i>
+                                        Añadir Servicio
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Services Table -->
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Código</th>
+                                        <th>Descripción</th>
+                                        <th>Precio Neto</th>
+                                        <th>Categoría</th>
+                                        <th class="center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceTableBody">
+                                    <!-- Filas dinámicas -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty state message -->
+                        <div id="serviceEmptyState" class="empty-state">
+                            <i class="fas fa-teeth-open icon-empty"></i>
+                            <h3>No hay servicios aún</h3>
+                            <p
+                                >Añade tu primer servicio usando el formulario
+                                de arriba</p
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Stats Card -->
+                    <div class="card">
+                        <h2 class="form-title">Estadísticas de Servicios</h2>
+                        <div class="stats-grid">
+                            <div class="stat">
+                                <p>Total de Servicios</p>
+                                <span id="totalServices">0</span>
+                            </div>
+                            <div class="stat">
+                                <p>Precio Promedio</p>
+                                <span id="averagePrice">$0.00</span>
+                            </div>
+                            <div class="stat">
+                                <p>Último Añadido</p>
+                                <span id="lastAddedService">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Confirmation Modal -->
+            <div id="deleteModal" class="modal hidden">
+                <div class="modal-content">
+                    <h2>Confirmar Eliminación</h2>
+                    <p id="deleteMessage">
+                        ¿Estás seguro de que quieres eliminar este elemento?
+                        Esta acción no se puede deshacer.
+                    </p>
+                    <div class="modal-actions">
+                        <button id="cancelDelete" class="btn btn-secondary">
+                            Cancelar
+                        </button>
+                        <button id="confirmDelete" class="btn btn-danger"
+                            >Eliminar</button
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast Notification -->
+            <div id="toast" class="toast hidden">
+                <span id="toastMessage">Operación exitosa</span>
+            </div>
         </div>
-      </div>
 
-      <!-- Toast Notification -->
-      <div id="toast" class="toast hidden">
-        <span id="toastMessage">Operación exitosa</span>
-      </div>
-    </div>
-
-    <!-- jQuery necesario para Select2 -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Select2 CSS y JS desde CDN -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="app.js"></script>
-  </body>
+        <!-- jQuery necesario para Select2 -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <!-- Select2 CSS y JS desde CDN -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script src="app.js"></script>
+    </body>
 </html>

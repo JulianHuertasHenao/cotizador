@@ -9,9 +9,13 @@ async function actualizarServicio(id) {
         return;
     }
     const codeInput = document.getElementById(`edit-service-code-${id}`);
-    const descriptionInput = document.getElementById(`edit-service-description-${id}`);
+    const descriptionInput = document.getElementById(
+        `edit-service-description-${id}`
+    );
     const priceInput = document.getElementById(`edit-service-price-${id}`);
-    const categoryInput = document.getElementById(`edit-service-category-${id}`);
+    const categoryInput = document.getElementById(
+        `edit-service-category-${id}`
+    );
     if (!codeInput || !descriptionInput || !priceInput || !categoryInput) {
         alert("Faltan campos para actualizar el servicio");
         return;
@@ -28,7 +32,12 @@ async function actualizarServicio(id) {
         const response = await fetch(`/api/servicios/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ codigo, descripcion, precio_neto, categoria_id }),
+            body: JSON.stringify({
+                codigo,
+                descripcion,
+                precio_neto,
+                categoria_id,
+            }),
         });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         const actualizado = await response.json();
@@ -1192,6 +1201,12 @@ function setupPhase(phaseContainer, phasesGrid) {
     addNewService(firstCategory.querySelector(".service-list"));
 
     document.getElementById("no-phases-message").classList.add("hidden");
+    const addCatBtn = phaseContainer.querySelector(".add-category-btn");
+    if (addCatBtn) {
+        addCatBtn.addEventListener("click", () => {
+            addNewCategoryToPhase(phaseContainer);
+        });
+    }
 }
 
 // Reorganizar el layout de las fases
@@ -1266,121 +1281,194 @@ function addNewCategory() {
 }
 // Set up event listeners for a category
 function setupCategoryEvents(category) {
-    category
-
-        .querySelector(".remove-category-btn")
-
-        .addEventListener("click", function () {
+    // Botón eliminar categoría
+    const removeBtn = category.querySelector(".remove-category-btn");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", function () {
             const container = category.parentNode;
-
             const categories = container.querySelectorAll(".category-group");
-
             if (categories.length > 1) {
                 if (
                     confirm("¿Eliminar esta categoría y todos sus servicios?")
                 ) {
                     category.remove();
+                    actualizarTotalCategorias();
                 }
             } else {
                 alert("Cada tratamiento debe tener al menos una categoría.");
             }
         });
+    }
 
-    category
-
-        .querySelector(".add-service-btn")
-
-        .addEventListener("click", function () {
-            addNewService(category.querySelector(".service-list"));
+    // Botón añadir servicio
+    const addServiceBtn = category.querySelector(".add-service-btn");
+    if (addServiceBtn) {
+        addServiceBtn.addEventListener("click", function () {
+            const serviceList = category.querySelector(".service-list");
+            addNewService(serviceList);
         });
+    }
 
-    // Set up category change handler to update subcategories
-
+    // Select de categoría
     const categorySelect =
         category.querySelector(".categoria-fase-select") ||
         category.querySelector(".categoria-unica-select");
 
     if (categorySelect) {
-        categorySelect.addEventListener("change", function () {
-            updateSubcategoryOptions(this);
+        // Llenar el select con las categorías reales
+        categorySelect.innerHTML =
+            '<option value="">Seleccionar categoría...</option>';
+        categorias.forEach((cat) => {
+            const option = document.createElement("option");
+            option.value = cat.id;
+            option.textContent = `0${cat.id} - ${cat.nombre_categoria}${
+                cat.descripcion ? " : " + cat.descripcion : ""
+            }`;
+            categorySelect.appendChild(option);
         });
+
+        // Evento: actualizar servicios al cambiar de categoría
+        categorySelect.addEventListener("change", function () {
+            const serviciosContainer = category.querySelector(".service-list");
+            if (serviciosContainer) {
+                serviciosContainer.innerHTML = "";
+                if (this.value) {
+                    agregarServicioEnCategoriasDinamico(
+                        serviciosContainer,
+                        this.value
+                    );
+                }
+            }
+        });
+
+        // Autoselección
+        if (categorias.length > 0 && !categorySelect.value) {
+            categorySelect.value = categorias[0].id;
+            categorySelect.dispatchEvent(new Event("change"));
+        }
     }
 }
+
 // Add a new service to a service list
 function addNewService(serviceList) {
     const template = document.getElementById("service-template");
-
     const newService = template.content.cloneNode(true);
+    const servicioItem = newService.querySelector(".service-item");
 
-    // Set up remove button
-
-    newService
-
-        .querySelector(".remove-servicio")
-
-        .addEventListener("click", function () {
-            const services = serviceList.querySelectorAll(".service-list");
-
-            if (services.length > 1) {
-                this.closest(".service-list").remove();
+    // Set up botón de eliminar servicio
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            const allServices = serviceList.querySelectorAll(".service-item");
+            if (allServices.length > 1) {
+                servicioItem.remove();
+                actualizarTotalCategorias();
             } else {
                 alert("Cada categoría debe tener al menos un servicio.");
             }
         });
+    }
 
-    // Llenar servicios SOLO de la categoría seleccionada (para la fila estática)
+    // Obtener categoría seleccionada
     const categorySelect = serviceList
         .closest(".category-group")
         ?.querySelector(".categoria-fase-select, .categoria-unica-select");
-    const servicioSelect = newService.querySelector(".servicio-select");
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+
+    // Llenar opciones de servicio
     if (categorySelect && servicioSelect) {
         servicioSelect.innerHTML =
             '<option value="">Seleccionar servicio...</option>';
-        if (categorySelect.value) {
-            const serviciosCategoria = servicios.filter(
-                (s) => String(s.categoria_id) === String(categorySelect.value)
+        const serviciosCategoria = servicios.filter(
+            (s) => String(s.categoria_id) === String(categorySelect.value)
+        );
+
+        serviciosCategoria.forEach((servicio) => {
+            const option = document.createElement("option");
+            option.value = servicio.id;
+            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+            option.setAttribute("data-precio", servicio.precio_neto);
+            servicioSelect.appendChild(option);
+        });
+
+        // Evento: al seleccionar un servicio, llenar descripción y precio
+        servicioSelect.addEventListener("change", () => {
+            const selectedId = servicioSelect.value;
+            const servicio = servicios.find(
+                (s) => String(s.id) === String(selectedId)
             );
-            serviciosCategoria.forEach((servicio) => {
-                const option = document.createElement("option");
-                option.value = servicio.id;
-                option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-                option.setAttribute("data-precio", servicio.precio_neto);
-                servicioSelect.appendChild(option);
-            });
-        }
-        // Cuando cambie la categoría, actualizar el select de servicios
+
+            const descInput = servicioItem.querySelector(
+                ".service-description"
+            );
+            const precioInput = servicioItem.querySelector(
+                ".precio-unitario-servicio"
+            );
+
+            if (servicio) {
+                if (descInput) descInput.value = servicio.descripcion;
+                if (precioInput) precioInput.value = servicio.precio_neto;
+            }
+
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+
+        // Evento: si cambia la categoría, actualizar el select de servicios
         if (!categorySelect._listenerServicios) {
             categorySelect.addEventListener("change", function () {
                 servicioSelect.innerHTML =
                     '<option value="">Seleccionar servicio...</option>';
-                if (this.value) {
-                    const serviciosCategoria = servicios.filter(
-                        (s) => String(s.categoria_id) === String(this.value)
-                    );
-                    serviciosCategoria.forEach((servicio) => {
-                        const option = document.createElement("option");
-                        option.value = servicio.id;
-                        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-                        option.setAttribute(
-                            "data-precio",
-                            servicio.precio_neto
-                        );
-                        servicioSelect.appendChild(option);
-                    });
-                }
+                const serviciosCategoria = servicios.filter(
+                    (s) => String(s.categoria_id) === String(this.value)
+                );
+                serviciosCategoria.forEach((servicio) => {
+                    const option = document.createElement("option");
+                    option.value = servicio.id;
+                    option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+                    option.setAttribute("data-precio", servicio.precio_neto);
+                    servicioSelect.appendChild(option);
+                });
             });
             categorySelect._listenerServicios = true;
         }
     }
 
-    serviceList.appendChild(newService);
+    // Eventos de cantidad y descuento
+    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+    if (cantidadInput) {
+        cantidadInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+    if (descuentoInput) {
+        descuentoInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
 
-    // Focus on the description field for quick entry
+    // Botón para duplicar servicio
+    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+    if (agregarBtn) {
+        agregarBtn.addEventListener("click", () => {
+            addNewService(serviceList);
+        });
+    }
 
+    // Insertar servicio y aplicar valores por defecto
+    serviceList.appendChild(servicioItem);
     setTimeout(() => {
-        newService.querySelector(".service-description")?.focus();
+        if (cantidadInput) cantidadInput.value = "1";
+        if (descuentoInput) descuentoInput.value = "0";
+
+        actualizarPrecioServicio(servicioItem);
+        actualizarTotalCategorias();
     }, 10);
 }
+
 // Update subcategory options when category changes
 function updateSubcategoryOptions(categorySelect, subcategorySelect = null) {
     const selectedCategory = categorySelect.value;
@@ -1951,169 +2039,84 @@ function agregarCategoriaDeTratamiento() {
 
 function actualizarPrecioServicio(servicioItem) {
     const servicioSelect = servicioItem.querySelector(".servicio-select");
-    const precioSpan = servicioItem.querySelector(".precio-servicio");
-    const precioUnitarioSpan = servicioItem.querySelector(
+    const precioUnitarioInput = servicioItem.querySelector(
         ".precio-unitario-servicio"
     );
     const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
     const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-    let precio = 0;
-    let cantidad = 1;
-    let descuento = 0;
-    if (servicioSelect && servicioSelect.value) {
-        // Buscar el servicio en window.servicios si no está en el scope local
-        let listaServicios =
-            typeof servicios !== "undefined"
-                ? servicios
-                : window.servicios || [];
-        const servicio = listaServicios.find(
-            (s) => String(s.id) === String(servicioSelect.value)
-        );
-        if (servicio && typeof servicio.precio_neto !== "undefined") {
-            precio = Number(servicio.precio_neto);
-        } else {
-            // fallback: intenta leer del select
-            const selectedOption =
-                servicioSelect.options[servicioSelect.selectedIndex];
-            if (
-                selectedOption &&
-                selectedOption.dataset &&
-                selectedOption.dataset.precio
-            ) {
-                precio = Number(selectedOption.dataset.precio);
+    const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
+
+    let precio = parseFloat(precioUnitarioInput?.value || 0);
+    let cantidad = parseInt(cantidadInput?.value || 1);
+    let descuento = parseFloat(descuentoInput?.value || 0);
+
+    if (isNaN(precio)) precio = 0;
+    if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+    if (isNaN(descuento)) descuento = 0;
+
+    const subtotal = precio * cantidad;
+    const totalConDescuento = subtotal - (subtotal * descuento) / 100;
+
+    // Mostrar total con descuento
+    if (precioTotalSpan) {
+        precioTotalSpan.textContent = `$${totalConDescuento.toLocaleString(
+            "es-CO",
+            {
+                minimumFractionDigits: 2,
             }
-        }
-    }
-    if (cantidadInput && !isNaN(parseInt(cantidadInput.value))) {
-        cantidad = Math.max(1, parseInt(cantidadInput.value));
-    }
-    if (descuentoInput && !isNaN(parseFloat(descuentoInput.value))) {
-        descuento = Math.max(
-            0,
-            Math.min(100, parseFloat(descuentoInput.value))
-        );
-    }
-    let total = precio * cantidad;
-    let totalConDescuento = total - (total * descuento) / 100;
-    if (precioUnitarioSpan) {
-        precioUnitarioSpan.textContent = precio
-            ? `$${Number(precio).toLocaleString("es-CO", {
-                  minimumFractionDigits: 2,
-              })}`
-            : "";
-        precioUnitarioSpan.style.display = "inline-block";
-    } else {
-        console.warn(
-            "No se encontró el span .precio-unitario-servicio en",
-            servicioItem
-        );
-    }
-    if (precioSpan) {
-        precioSpan.textContent = `$${totalConDescuento.toFixed(2)}`;
-        precioSpan.style.display = "inline-block";
-    } else {
-        console.warn(
-            "No se encontró el span .precio-servicio en",
-            servicioItem
-        );
+        )}`;
+        precioTotalSpan.style.display = "inline-block";
     }
 }
 
 function actualizarTotalCategorias() {
-    // Suma todos los servicios de todas las filas de categorías
     let subtotal = 0;
     let totalDescuentos = 0;
     let total = 0;
-    document
-        .querySelectorAll(".servicios-categorias-container")
-        .forEach((container) => {
-            container.querySelectorAll(".servicio-item").forEach((item) => {
-                const select = item.querySelector(".servicio-select");
-                const cantidadInput = item.querySelector(".cantidad-servicio");
-                const descuentoInput = item.querySelector(
-                    ".descuento-servicio"
-                );
-                let precio = 0;
-                let cantidad = 1;
-                let descuento = 0;
-                if (select && select.value) {
-                    // Buscar el servicio en la lista global
-                    const servicio = servicios.find(
-                        (s) => String(s.id) === String(select.value)
-                    );
-                    if (
-                        servicio &&
-                        typeof servicio.precio_neto !== "undefined"
-                    ) {
-                        precio = Number(servicio.precio_neto);
-                    } else {
-                        // fallback: intenta leer del select
-                        const selectedOption =
-                            select.options[select.selectedIndex];
-                        if (
-                            selectedOption &&
-                            selectedOption.dataset &&
-                            selectedOption.dataset.precio
-                        ) {
-                            precio = Number(selectedOption.dataset.precio);
-                        }
-                    }
-                }
-                if (cantidadInput && !isNaN(parseInt(cantidadInput.value))) {
-                    cantidad = Math.max(1, parseInt(cantidadInput.value));
-                }
-                if (
-                    descuentoInput &&
-                    !isNaN(parseFloat(descuentoInput.value))
-                ) {
-                    descuento = Math.max(
-                        0,
-                        Math.min(100, parseFloat(descuentoInput.value))
-                    );
-                }
-                let subtotalServicio = precio * cantidad;
-                let descuentoServicio = subtotalServicio * (descuento / 100);
-                let totalServicio = subtotalServicio - descuentoServicio;
-                subtotal += subtotalServicio;
-                totalDescuentos += descuentoServicio;
-                total += totalServicio;
-                // Mostrar el precio unitario y total en la fila de servicio
-                const precioUnitarioSpan = item.querySelector(
-                    ".precio-unitario-servicio"
-                );
-                const precioTotalSpan = item.querySelector(".precio-servicio");
-                if (precioUnitarioSpan) {
-                    precioUnitarioSpan.textContent = precio
-                        ? `$${Number(precio).toLocaleString("es-CO", {
-                              minimumFractionDigits: 2,
-                          })}`
-                        : "";
-                    precioUnitarioSpan.style.display = "inline-block";
-                }
-                if (precioTotalSpan) {
-                    precioTotalSpan.textContent = `$${totalServicio.toLocaleString(
-                        "es-CO",
-                        { minimumFractionDigits: 2 }
-                    )}`;
-                    precioTotalSpan.style.display = "inline-block";
-                }
-            });
-        });
-    document.getElementById(
-        "subtotal-cotizacion"
-    ).textContent = `$${subtotal.toLocaleString("es-CO", {
-        minimumFractionDigits: 2,
-    })}`;
-    document.getElementById(
-        "descuento-cotizacion"
-    ).textContent = `$${totalDescuentos.toLocaleString("es-CO", {
-        minimumFractionDigits: 2,
-    })}`;
-    document.getElementById(
-        "total-cotizacion"
-    ).textContent = `$${total.toLocaleString("es-CO", {
-        minimumFractionDigits: 2,
-    })}`;
+
+    document.querySelectorAll(".servicio-item").forEach((item) => {
+        const precioUnitarioInput = item.querySelector(
+            ".precio-unitario-servicio"
+        );
+        const cantidadInput = item.querySelector(".cantidad-servicio");
+        const descuentoInput = item.querySelector(".descuento-servicio");
+
+        let precio = parseFloat(precioUnitarioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 1);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+        if (isNaN(descuento)) descuento = 0;
+
+        const subtotalServicio = precio * cantidad;
+        const descuentoValor = subtotalServicio * (descuento / 100);
+        const totalServicio = subtotalServicio - descuentoValor;
+
+        subtotal += subtotalServicio;
+        totalDescuentos += descuentoValor;
+        total += totalServicio;
+    });
+
+    const subtotalEl = document.getElementById("subtotal-cotizacion");
+    const descuentoEl = document.getElementById("descuento-cotizacion");
+    const totalEl = document.getElementById("total-cotizacion");
+
+    if (subtotalEl) {
+        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
+    if (descuentoEl) {
+        descuentoEl.textContent = `$${totalDescuentos.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
+    if (totalEl) {
+        totalEl.textContent = `$${total.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
 }
 
 // Inicio Botones de accion final --- Cotizaciones / quote tab ---
