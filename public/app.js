@@ -3,6 +3,161 @@
  * Utiliza los inputs: edit-service-code-id, edit-service-description-id, edit-service-price-id, edit-service-category-id
  * @param {number} id - ID del servicio a actualizar
  */
+function actualizarTotalCategorias() {
+    let subtotal = 0;
+    let totalDescuentos = 0;
+    let total = 0;
+
+    document.querySelectorAll(".servicio-item").forEach((item) => {
+        const precioUnitarioInput = item.querySelector(
+            ".precio-unitario-servicio"
+        );
+        const cantidadInput = item.querySelector(".cantidad-servicio");
+        const descuentoInput = item.querySelector(".descuento-servicio");
+
+        let precio = parseFloat(precioUnitarioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 1);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+        if (isNaN(descuento)) descuento = 0;
+
+        const subtotalServicio = precio * cantidad;
+        const descuentoValor = subtotalServicio * (descuento / 100);
+        const totalServicio = subtotalServicio - descuentoValor;
+
+        subtotal += subtotalServicio;
+        totalDescuentos += descuentoValor;
+        total += totalServicio;
+    });
+
+    const subtotalEl = document.getElementById("subtotal-cotizacion");
+    const descuentoEl = document.getElementById("descuento-cotizacion");
+    const totalEl = document.getElementById("total-cotizacion");
+
+    if (subtotalEl) {
+        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
+    if (descuentoEl) {
+        descuentoEl.textContent = `$${totalDescuentos.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
+    if (totalEl) {
+        totalEl.textContent = `$${total.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    }
+}
+
+function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
+    const template = document.getElementById("service-template");
+    if (!template) {
+        console.error("No se encontró el template de servicio");
+        return;
+    }
+    const clone = template.content.cloneNode(true);
+    const servicioItem = clone.querySelector(".service-item");
+
+    // Llenar servicios SOLO de la categoría seleccionada
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    if (servicioSelect) {
+        servicioSelect.innerHTML =
+            '<option value="">Seleccionar servicio...</option>';
+        const serviciosCategoria = servicios.filter(
+            (s) => String(s.categoria_id) === String(categoriaId)
+        );
+
+        serviciosCategoria.forEach((servicio) => {
+            const option = document.createElement("option");
+            option.value = servicio.id;
+            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+            option.dataset.precio = servicio.precio_neto;
+            servicioSelect.appendChild(option);
+        });
+
+        servicioSelect.addEventListener("change", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+
+    // Eventos de cantidad y descuento
+    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+
+    if (cantidadInput) {
+        cantidadInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+
+    if (descuentoInput) {
+        descuentoInput.addEventListener("input", () => {
+            actualizarPrecioServicio(servicioItem);
+            actualizarTotalCategorias();
+        });
+    }
+
+    // Botón para agregar más servicios dentro de la misma categoría
+    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
+    if (agregarBtn) {
+        agregarBtn.addEventListener("click", () => {
+            agregarServicioEnCategoriasDinamico(
+                serviciosContainer,
+                categoriaId
+            );
+        });
+    }
+
+    // Botón para eliminar servicio
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            servicioItem.remove();
+            actualizarTotalCategorias();
+        });
+    }
+
+    serviciosContainer.appendChild(servicioItem);
+    actualizarPrecioServicio(servicioItem);
+    actualizarTotalCategorias();
+}
+function actualizarPrecioServicio(servicioItem) {
+    const servicioSelect = servicioItem.querySelector(".servicio-select");
+    const precioUnitarioInput = servicioItem.querySelector(
+        ".precio-unitario-servicio"
+    );
+    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
+    const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
+
+    let precio = parseFloat(precioUnitarioInput?.value || 0);
+    let cantidad = parseInt(cantidadInput?.value || 1);
+    let descuento = parseFloat(descuentoInput?.value || 0);
+
+    if (isNaN(precio)) precio = 0;
+    if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+    if (isNaN(descuento)) descuento = 0;
+
+    const subtotal = precio * cantidad;
+    const totalConDescuento = subtotal - (subtotal * descuento) / 100;
+
+    // Mostrar total con descuento
+    if (precioTotalSpan) {
+        precioTotalSpan.textContent = `$${totalConDescuento.toLocaleString(
+            "es-CO",
+            {
+                minimumFractionDigits: 2,
+            }
+        )}`;
+        precioTotalSpan.style.display = "inline-block";
+    }
+}
 async function actualizarServicio(id) {
     if (!id) {
         alert("ID de servicio no válido");
@@ -925,39 +1080,460 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Función para agregar servicios dinámicamente (se mantiene exactamente igual)
-    function agregarServicioEnCategoriasDinamico(
-        serviciosContainer,
-        categoriaId
-    ) {
-        const template = document.getElementById("servicioTemplate");
-        if (!template) {
-            console.error("No se encontró el template de servicio");
+
+    function setupEventListeners() {
+        // Función helper mejorada para agregar listeners
+        const addListener = (selector, event, callback, isId = true) => {
+            const element = isId
+                ? document.getElementById(selector)
+                : document.querySelector(selector);
+
+            if (element) {
+                element.addEventListener(event, callback);
+            }
+            // Silencioso cuando no encuentra elementos no críticos
+        };
+
+        // Listener para contenedor de categorías (solo si existe)
+        const categoriasContainer = document.getElementById(
+            "categoriasContainer"
+        );
+        if (categoriasContainer) {
+            categoriasContainer.addEventListener("click", (e) => {
+                if (e.target?.id === "agregarCategoriaBtn") {
+                    e.preventDefault();
+                    agregarCategoriaDeTratamiento();
+                }
+            });
+        }
+
+        // Tabs - versión silenciosa si no existen
+        document.querySelectorAll(".tab").forEach((tab) => {
+            tab.addEventListener("click", (e) => {
+                e.preventDefault();
+                const tabId = tab.getAttribute("data-tab");
+                tabId && switchTab(tabId);
+            });
+        });
+
+        // Listeners para formularios (solo si existen los elementos)
+        addListener("nuevoPacienteBtn", "click", toggleNuevoPacienteForm);
+        addListener("guardarPacienteBtn", "click", guardarPaciente);
+        addListener("agregarFaseBtn", "click", addNewPhase());
+        addListener("confirmacionFases", "click", togglePhases);
+        addListener(
+            "agregarCategoriaBtn",
+            "click",
+            agregarCategoriaDeTratamiento
+        );
+
+        const cotizacionForm = document.getElementById("cotizacionForm");
+        if (cotizacionForm) {
+            cotizacionForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                guardarCotizacion(e);
+            });
+        }
+
+        addListener("generatePdfBtn", "click", generarPDFDesdeFormulario);
+        addListener("sendEmailBtn", "click", enviarDesdeFormulario);
+
+        // Configuración de la barra de búsqueda (solo si existe)
+        setupPacienteSearchBar();
+    }
+
+    function setupPhaseToggleAndButtons() {
+        // — 1) Toggle de fases
+        const phaseToggle = document.getElementById("use-phases");
+        if (phaseToggle) {
+            phaseToggle.addEventListener("change", function () {
+                togglePhases(this.checked);
+            });
+            // Estado inicial
+            togglePhases(false);
+        }
+
+        // — 2) Botón “Agregar primera fase”
+        const addFirst = document.getElementById("add-first-phase-btn");
+        if (addFirst) {
+            addFirst.addEventListener("click", function () {
+                addNewPhase();
+                const msg = document.getElementById("no-phases-message");
+                if (msg) msg.classList.add("hidden");
+            });
+        }
+
+        // — 3) Botón “Agregar fase” genérico
+        const addPhase = document.getElementById("add-phase-btn");
+        if (addPhase) {
+            addPhase.addEventListener("click", addNewPhase);
+        }
+
+        // — 4) Botón “Agregar categoría” (modo fase o no-fase)
+        const addCat = document.getElementById("add-category-btn");
+        if (addCat) {
+            addCat.addEventListener("click", addNewCategory);
+        }
+
+        // — 5) Inicializar la “primera categoría” en modo no-fase
+        const firstCat = document.querySelector(
+            "#no-phase-categories .category-group"
+        );
+        if (firstCat) {
+            setupCategoryEvents(firstCat);
+        }
+        const firstSvc = document.querySelector(
+            "#no-phase-categories .service-list"
+        );
+        if (firstSvc) {
+            addNewService(firstSvc);
+        }
+
+        // — 6) Botón “Reset”
+        const resetBtn = document.getElementById("reset-btn");
+        if (resetBtn) {
+            resetBtn.addEventListener("click", function () {
+                if (
+                    confirm(
+                        "¿Está seguro de que desea reiniciar el formulario?"
+                    )
+                ) {
+                    window.location.reload();
+                }
+            });
+        }
+
+        // — 7) Botón “Generar cotización”
+        const genBtn = document.getElementById("generate-quote-btn");
+        if (genBtn) {
+            genBtn.addEventListener("click", function () {
+                alert("¡Plan de tratamiento generado!");
+            });
+        }
+    }
+    // Toggle phases on/off
+    function togglePhases(usePhases) {
+        const phasesContainer = document.getElementById("phases-container");
+
+        const noPhaseCategories = document.getElementById(
+            "no-phase-categories"
+        );
+
+        if (usePhases) {
+            phasesContainer.classList.remove("hidden");
+
+            noPhaseCategories.classList.add("hidden");
+        } else {
+            phasesContainer.classList.add("hidden");
+
+            noPhaseCategories.classList.remove("hidden");
+        }
+    }
+    // Función para añadir nuevas fases
+    function addNewPhase() {
+        const phasesContainer = document.getElementById("phases-container");
+        const phaseTemplate = document.getElementById("phase-template");
+
+        // Obtener o crear el grid
+        let phasesGrid =
+            document.getElementById("phases-grid") || createPhasesGrid();
+
+        // Clonar plantilla
+        const newPhase = phaseTemplate.content.cloneNode(true);
+        const phaseContainer = newPhase.querySelector(".phase-container");
+        phaseContainer.classList.remove("hidden");
+
+        // Configurar fase
+        setupPhase(phaseContainer, phasesGrid);
+
+        // Añadir al grid
+        phasesGrid.appendChild(phaseContainer);
+        reorganizePhasesLayout();
+    }
+
+    function createPhasesGrid() {
+        const grid = document.createElement("div");
+        grid.id = "phases-grid";
+        grid.className = "phases-grid";
+        document
+            .getElementById("phases-container")
+            .insertBefore(
+                grid,
+                document.getElementById("add-phase-btn").parentNode
+            );
+        return grid;
+    }
+
+    function setupPhase(phaseContainer, phasesGrid) {
+        const phaseCount =
+            phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
+                .length + 1;
+
+        phaseContainer.querySelector(".phase-number-badge").textContent =
+            phaseCount;
+        phaseContainer.querySelector(".phase-number-text").textContent =
+            phaseCount;
+
+        phaseContainer
+            .querySelector(".remove-phase-btn")
+            .addEventListener("click", function () {
+                if (confirm("¿Eliminar esta fase y todos sus servicios?")) {
+                    phaseContainer.remove();
+                    updatePhaseNumbers();
+                    reorganizePhasesLayout();
+                    checkEmptyPhases();
+                }
+            });
+
+        // Resto de configuración...
+        const firstCategory = phaseContainer.querySelector(".category-group");
+        setupCategoryEvents(firstCategory);
+        addNewService(firstCategory.querySelector(".service-list"));
+
+        document.getElementById("no-phases-message").classList.add("hidden");
+        const addCatBtn = phaseContainer.querySelector(".add-category-btn");
+        if (addCatBtn) {
+            addCatBtn.addEventListener("click", () => {
+                addNewCategoryToPhase(phaseContainer);
+            });
+        }
+    }
+
+    // Reorganizar el layout de las fases
+    function reorganizePhasesLayout() {
+        const phasesGrid = document.getElementById("phases-grid");
+        if (!phasesGrid) return;
+
+        const phases = Array.from(
+            phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
+        );
+
+        // Resetear estilos
+        phases.forEach((phase) => {
+            phase.style.gridColumn = "";
+            phase.style.width = "";
+        });
+
+        // Caso especial para 1 fase
+        if (phases.length === 1) {
+            phases[0].style.gridColumn = "1 / -1";
             return;
         }
-        const clone = template.content.cloneNode(true);
-        const servicioItem = clone.querySelector(".servicio-item");
 
-        // Llenar servicios SOLO de la categoría seleccionada
+        // Organizar en pares
+        for (let i = 0; i < phases.length; i += 2) {
+            // Si es el último y el total es impar
+            if (i === phases.length - 1 && phases.length % 2 !== 0) {
+                phases[i].style.gridColumn = "1 / -1";
+            } else {
+                // Par de fases
+                phases[i].style.gridColumn = "1";
+                phases[i + 1].style.gridColumn = "2";
+            }
+        }
+    }
+
+    // Add a new category to a phase
+    function addNewCategoryToPhase(phase) {
+        const newCategory = phase
+            .querySelector(".category-group")
+            .cloneNode(true);
+
+        // Clear any existing services
+
+        newCategory.querySelector(".service-list").innerHTML = "";
+
+        setupCategoryEvents(newCategory);
+
+        addNewService(newCategory.querySelector(".service-list"));
+
+        phase.insertBefore(
+            newCategory,
+
+            phase.querySelector(".add-category-btn").parentNode
+        );
+    }
+    // Add a new general category (non-phase)
+    function addNewCategory() {
+        const container = document.getElementById("no-phase-categories");
+
+        const firstCategory = container.querySelector(".category-group");
+
+        const newCategory = firstCategory.cloneNode(true);
+
+        // Clear any existing services
+
+        newCategory.querySelector(".service-list").innerHTML = "";
+
+        setupCategoryEvents(newCategory);
+
+        addNewService(newCategory.querySelector(".service-list"));
+
+        container.appendChild(newCategory);
+    }
+    // Set up event listeners for a category
+    function setupCategoryEvents(category) {
+        // Botón eliminar categoría
+        const removeBtn = category.querySelector(".remove-category-btn");
+        if (removeBtn) {
+            removeBtn.addEventListener("click", function () {
+                const container = category.parentNode;
+                const categories =
+                    container.querySelectorAll(".category-group");
+                if (categories.length > 1) {
+                    if (
+                        confirm(
+                            "¿Eliminar esta categoría y todos sus servicios?"
+                        )
+                    ) {
+                        category.remove();
+                        actualizarTotalCategorias();
+                    }
+                } else {
+                    alert(
+                        "Cada tratamiento debe tener al menos una categoría."
+                    );
+                }
+            });
+        }
+
+        // Botón añadir servicio
+        const addServiceBtn = category.querySelector(".add-service-btn");
+        if (addServiceBtn) {
+            addServiceBtn.addEventListener("click", function () {
+                const serviceList = category.querySelector(".service-list");
+                addNewService(serviceList);
+            });
+        }
+
+        // Select de categoría
+        const categorySelect =
+            category.querySelector(".categoria-fase-select") ||
+            category.querySelector(".categoria-unica-select");
+
+        if (categorySelect) {
+            // Llenar el select con las categorías reales
+            categorySelect.innerHTML =
+                '<option value="">Seleccionar categoría...</option>';
+            categorias.forEach((cat) => {
+                const option = document.createElement("option");
+                option.value = cat.id;
+                option.textContent = `0${cat.id} - ${cat.nombre_categoria}${
+                    cat.descripcion ? " : " + cat.descripcion : ""
+                }`;
+                categorySelect.appendChild(option);
+            });
+
+            // Evento: actualizar servicios al cambiar de categoría
+            categorySelect.addEventListener("change", function () {
+                const serviciosContainer =
+                    category.querySelector(".service-list");
+                if (serviciosContainer) {
+                    serviciosContainer.innerHTML = "";
+                    if (this.value) {
+                        agregarServicioEnCategoriasDinamico(
+                            serviciosContainer,
+                            this.value
+                        );
+                    }
+                }
+            });
+
+            // Autoselección
+            if (categorias.length > 0 && !categorySelect.value) {
+                categorySelect.value = categorias[0].id;
+                categorySelect.dispatchEvent(new Event("change"));
+            }
+        }
+    }
+
+    // Add a new service to a service list
+    function addNewService(serviceList) {
+        const template = document.getElementById("service-template");
+        const newService = template.content.cloneNode(true);
+        const servicioItem = newService.querySelector(".service-item");
+
+        // Set up botón de eliminar servicio
+        const removeBtn = servicioItem.querySelector(".remove-servicio");
+        if (removeBtn) {
+            removeBtn.addEventListener("click", () => {
+                const allServices =
+                    serviceList.querySelectorAll(".service-item");
+                if (allServices.length > 1) {
+                    servicioItem.remove();
+                    actualizarTotalCategorias();
+                } else {
+                    alert("Cada categoría debe tener al menos un servicio.");
+                }
+            });
+        }
+
+        // Obtener categoría seleccionada
+        const categorySelect = serviceList
+            .closest(".category-group")
+            ?.querySelector(".categoria-fase-select, .categoria-unica-select");
         const servicioSelect = servicioItem.querySelector(".servicio-select");
-        if (servicioSelect) {
+
+        // Llenar opciones de servicio
+        if (categorySelect && servicioSelect) {
             servicioSelect.innerHTML =
                 '<option value="">Seleccionar servicio...</option>';
             const serviciosCategoria = servicios.filter(
-                (s) => String(s.categoria_id) === String(categoriaId)
+                (s) => String(s.categoria_id) === String(categorySelect.value)
             );
 
             serviciosCategoria.forEach((servicio) => {
                 const option = document.createElement("option");
                 option.value = servicio.id;
                 option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-                option.dataset.precio = servicio.precio_neto;
+                option.setAttribute("data-precio", servicio.precio_neto);
                 servicioSelect.appendChild(option);
             });
 
+            // Evento: al seleccionar un servicio, llenar descripción y precio
             servicioSelect.addEventListener("change", () => {
+                const selectedId = servicioSelect.value;
+                const servicio = servicios.find(
+                    (s) => String(s.id) === String(selectedId)
+                );
+
+                const descInput = servicioItem.querySelector(
+                    ".service-description"
+                );
+                const precioInput = servicioItem.querySelector(
+                    ".precio-unitario-servicio"
+                );
+
+                if (servicio) {
+                    if (descInput) descInput.value = servicio.descripcion;
+                    if (precioInput) precioInput.value = servicio.precio_neto;
+                }
+
                 actualizarPrecioServicio(servicioItem);
                 actualizarTotalCategorias();
             });
+
+            // Evento: si cambia la categoría, actualizar el select de servicios
+            if (!categorySelect._listenerServicios) {
+                categorySelect.addEventListener("change", function () {
+                    servicioSelect.innerHTML =
+                        '<option value="">Seleccionar servicio...</option>';
+                    const serviciosCategoria = servicios.filter(
+                        (s) => String(s.categoria_id) === String(this.value)
+                    );
+                    serviciosCategoria.forEach((servicio) => {
+                        const option = document.createElement("option");
+                        option.value = servicio.id;
+                        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
+                        option.setAttribute(
+                            "data-precio",
+                            servicio.precio_neto
+                        );
+                        servicioSelect.appendChild(option);
+                    });
+                });
+                categorySelect._listenerServicios = true;
+            }
         }
 
         // Eventos de cantidad y descuento
@@ -965,14 +1541,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const descuentoInput = servicioItem.querySelector(
             ".descuento-servicio"
         );
-
         if (cantidadInput) {
             cantidadInput.addEventListener("input", () => {
                 actualizarPrecioServicio(servicioItem);
                 actualizarTotalCategorias();
             });
         }
-
         if (descuentoInput) {
             descuentoInput.addEventListener("input", () => {
                 actualizarPrecioServicio(servicioItem);
@@ -980,763 +1554,342 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        // Botón para agregar más servicios dentro de la misma categoría
+        // Botón para duplicar servicio
         const agregarBtn = servicioItem.querySelector(".agregar-servicio");
         if (agregarBtn) {
             agregarBtn.addEventListener("click", () => {
-                agregarServicioEnCategoriasDinamico(
-                    serviciosContainer,
-                    categoriaId
-                );
+                addNewService(serviceList);
             });
         }
 
-        // Botón para eliminar servicio
-        const removeBtn = servicioItem.querySelector(".remove-servicio");
-        if (removeBtn) {
-            removeBtn.addEventListener("click", () => {
-                servicioItem.remove();
-                actualizarTotalCategorias();
-            });
-        }
-
-        serviciosContainer.appendChild(servicioItem);
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-    }
-});
-function setupEventListeners() {
-    // Función helper mejorada para agregar listeners
-    const addListener = (selector, event, callback, isId = true) => {
-        const element = isId
-            ? document.getElementById(selector)
-            : document.querySelector(selector);
-
-        if (element) {
-            element.addEventListener(event, callback);
-        }
-        // Silencioso cuando no encuentra elementos no críticos
-    };
-
-    // Listener para contenedor de categorías (solo si existe)
-    const categoriasContainer = document.getElementById("categoriasContainer");
-    if (categoriasContainer) {
-        categoriasContainer.addEventListener("click", (e) => {
-            if (e.target?.id === "agregarCategoriaBtn") {
-                e.preventDefault();
-                agregarCategoriaDeTratamiento();
-            }
-        });
-    }
-
-    // Tabs - versión silenciosa si no existen
-    document.querySelectorAll(".tab").forEach((tab) => {
-        tab.addEventListener("click", (e) => {
-            e.preventDefault();
-            const tabId = tab.getAttribute("data-tab");
-            tabId && switchTab(tabId);
-        });
-    });
-
-    // Listeners para formularios (solo si existen los elementos)
-    addListener("nuevoPacienteBtn", "click", toggleNuevoPacienteForm);
-    addListener("guardarPacienteBtn", "click", guardarPaciente);
-    addListener("agregarFaseBtn", "click", addNewPhase());
-    addListener("confirmacionFases", "click", togglePhases);
-    addListener("agregarCategoriaBtn", "click", agregarCategoriaDeTratamiento);
-
-    const cotizacionForm = document.getElementById("cotizacionForm");
-    if (cotizacionForm) {
-        cotizacionForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            guardarCotizacion(e);
-        });
-    }
-
-    addListener("generatePdfBtn", "click", generarPDFDesdeFormulario);
-    addListener("sendEmailBtn", "click", enviarDesdeFormulario);
-
-    // Configuración de la barra de búsqueda (solo si existe)
-    setupPacienteSearchBar();
-}
-
-function setupPhaseToggleAndButtons() {
-    // — 1) Toggle de fases
-    const phaseToggle = document.getElementById("use-phases");
-    if (phaseToggle) {
-        phaseToggle.addEventListener("change", function () {
-            togglePhases(this.checked);
-        });
-        // Estado inicial
-        togglePhases(false);
-    }
-
-    // — 2) Botón “Agregar primera fase”
-    const addFirst = document.getElementById("add-first-phase-btn");
-    if (addFirst) {
-        addFirst.addEventListener("click", function () {
-            addNewPhase();
-            const msg = document.getElementById("no-phases-message");
-            if (msg) msg.classList.add("hidden");
-        });
-    }
-
-    // — 3) Botón “Agregar fase” genérico
-    const addPhase = document.getElementById("add-phase-btn");
-    if (addPhase) {
-        addPhase.addEventListener("click", addNewPhase);
-    }
-
-    // — 4) Botón “Agregar categoría” (modo fase o no-fase)
-    const addCat = document.getElementById("add-category-btn");
-    if (addCat) {
-        addCat.addEventListener("click", addNewCategory);
-    }
-
-    // — 5) Inicializar la “primera categoría” en modo no-fase
-    const firstCat = document.querySelector(
-        "#no-phase-categories .category-group"
-    );
-    if (firstCat) {
-        setupCategoryEvents(firstCat);
-    }
-    const firstSvc = document.querySelector(
-        "#no-phase-categories .service-list"
-    );
-    if (firstSvc) {
-        addNewService(firstSvc);
-    }
-
-    // — 6) Botón “Reset”
-    const resetBtn = document.getElementById("reset-btn");
-    if (resetBtn) {
-        resetBtn.addEventListener("click", function () {
-            if (confirm("¿Está seguro de que desea reiniciar el formulario?")) {
-                window.location.reload();
-            }
-        });
-    }
-
-    // — 7) Botón “Generar cotización”
-    const genBtn = document.getElementById("generate-quote-btn");
-    if (genBtn) {
-        genBtn.addEventListener("click", function () {
-            alert("¡Plan de tratamiento generado!");
-        });
-    }
-}
-// Toggle phases on/off
-function togglePhases(usePhases) {
-    const phasesContainer = document.getElementById("phases-container");
-
-    const noPhaseCategories = document.getElementById("no-phase-categories");
-
-    if (usePhases) {
-        phasesContainer.classList.remove("hidden");
-
-        noPhaseCategories.classList.add("hidden");
-    } else {
-        phasesContainer.classList.add("hidden");
-
-        noPhaseCategories.classList.remove("hidden");
-    }
-}
-// Función para añadir nuevas fases
-function addNewPhase() {
-    const phasesContainer = document.getElementById("phases-container");
-    const phaseTemplate = document.getElementById("phase-template");
-
-    // Obtener o crear el grid
-    let phasesGrid =
-        document.getElementById("phases-grid") || createPhasesGrid();
-
-    // Clonar plantilla
-    const newPhase = phaseTemplate.content.cloneNode(true);
-    const phaseContainer = newPhase.querySelector(".phase-container");
-    phaseContainer.classList.remove("hidden");
-
-    // Configurar fase
-    setupPhase(phaseContainer, phasesGrid);
-
-    // Añadir al grid
-    phasesGrid.appendChild(phaseContainer);
-    reorganizePhasesLayout();
-}
-
-function createPhasesGrid() {
-    const grid = document.createElement("div");
-    grid.id = "phases-grid";
-    grid.className = "phases-grid";
-    document
-        .getElementById("phases-container")
-        .insertBefore(
-            grid,
-            document.getElementById("add-phase-btn").parentNode
-        );
-    return grid;
-}
-
-function setupPhase(phaseContainer, phasesGrid) {
-    const phaseCount =
-        phasesGrid.querySelectorAll(".phase-container:not(.hidden)").length + 1;
-
-    phaseContainer.querySelector(".phase-number-badge").textContent =
-        phaseCount;
-    phaseContainer.querySelector(".phase-number-text").textContent = phaseCount;
-
-    phaseContainer
-        .querySelector(".remove-phase-btn")
-        .addEventListener("click", function () {
-            if (confirm("¿Eliminar esta fase y todos sus servicios?")) {
-                phaseContainer.remove();
-                updatePhaseNumbers();
-                reorganizePhasesLayout();
-                checkEmptyPhases();
-            }
-        });
-
-    // Resto de configuración...
-    const firstCategory = phaseContainer.querySelector(".category-group");
-    setupCategoryEvents(firstCategory);
-    addNewService(firstCategory.querySelector(".service-list"));
-
-    document.getElementById("no-phases-message").classList.add("hidden");
-    const addCatBtn = phaseContainer.querySelector(".add-category-btn");
-    if (addCatBtn) {
-        addCatBtn.addEventListener("click", () => {
-            addNewCategoryToPhase(phaseContainer);
-        });
-    }
-}
-
-// Reorganizar el layout de las fases
-function reorganizePhasesLayout() {
-    const phasesGrid = document.getElementById("phases-grid");
-    if (!phasesGrid) return;
-
-    const phases = Array.from(
-        phasesGrid.querySelectorAll(".phase-container:not(.hidden)")
-    );
-
-    // Resetear estilos
-    phases.forEach((phase) => {
-        phase.style.gridColumn = "";
-        phase.style.width = "";
-    });
-
-    // Caso especial para 1 fase
-    if (phases.length === 1) {
-        phases[0].style.gridColumn = "1 / -1";
-        return;
-    }
-
-    // Organizar en pares
-    for (let i = 0; i < phases.length; i += 2) {
-        // Si es el último y el total es impar
-        if (i === phases.length - 1 && phases.length % 2 !== 0) {
-            phases[i].style.gridColumn = "1 / -1";
-        } else {
-            // Par de fases
-            phases[i].style.gridColumn = "1";
-            phases[i + 1].style.gridColumn = "2";
-        }
-    }
-}
-
-// Add a new category to a phase
-function addNewCategoryToPhase(phase) {
-    const newCategory = phase.querySelector(".category-group").cloneNode(true);
-
-    // Clear any existing services
-
-    newCategory.querySelector(".service-list").innerHTML = "";
-
-    setupCategoryEvents(newCategory);
-
-    addNewService(newCategory.querySelector(".service-list"));
-
-    phase.insertBefore(
-        newCategory,
-
-        phase.querySelector(".add-category-btn").parentNode
-    );
-}
-// Add a new general category (non-phase)
-function addNewCategory() {
-    const container = document.getElementById("no-phase-categories");
-
-    const firstCategory = container.querySelector(".category-group");
-
-    const newCategory = firstCategory.cloneNode(true);
-
-    // Clear any existing services
-
-    newCategory.querySelector(".service-list").innerHTML = "";
-
-    setupCategoryEvents(newCategory);
-
-    addNewService(newCategory.querySelector(".service-list"));
-
-    container.appendChild(newCategory);
-}
-// Set up event listeners for a category
-function setupCategoryEvents(category) {
-    // Botón eliminar categoría
-    const removeBtn = category.querySelector(".remove-category-btn");
-    if (removeBtn) {
-        removeBtn.addEventListener("click", function () {
-            const container = category.parentNode;
-            const categories = container.querySelectorAll(".category-group");
-            if (categories.length > 1) {
-                if (
-                    confirm("¿Eliminar esta categoría y todos sus servicios?")
-                ) {
-                    category.remove();
-                    actualizarTotalCategorias();
-                }
-            } else {
-                alert("Cada tratamiento debe tener al menos una categoría.");
-            }
-        });
-    }
-
-    // Botón añadir servicio
-    const addServiceBtn = category.querySelector(".add-service-btn");
-    if (addServiceBtn) {
-        addServiceBtn.addEventListener("click", function () {
-            const serviceList = category.querySelector(".service-list");
-            addNewService(serviceList);
-        });
-    }
-
-    // Select de categoría
-    const categorySelect =
-        category.querySelector(".categoria-fase-select") ||
-        category.querySelector(".categoria-unica-select");
-
-    if (categorySelect) {
-        // Llenar el select con las categorías reales
-        categorySelect.innerHTML =
-            '<option value="">Seleccionar categoría...</option>';
-        categorias.forEach((cat) => {
-            const option = document.createElement("option");
-            option.value = cat.id;
-            option.textContent = `0${cat.id} - ${cat.nombre_categoria}${
-                cat.descripcion ? " : " + cat.descripcion : ""
-            }`;
-            categorySelect.appendChild(option);
-        });
-
-        // Evento: actualizar servicios al cambiar de categoría
-        categorySelect.addEventListener("change", function () {
-            const serviciosContainer = category.querySelector(".service-list");
-            if (serviciosContainer) {
-                serviciosContainer.innerHTML = "";
-                if (this.value) {
-                    agregarServicioEnCategoriasDinamico(
-                        serviciosContainer,
-                        this.value
-                    );
-                }
-            }
-        });
-
-        // Autoselección
-        if (categorias.length > 0 && !categorySelect.value) {
-            categorySelect.value = categorias[0].id;
-            categorySelect.dispatchEvent(new Event("change"));
-        }
-    }
-}
-
-// Add a new service to a service list
-function addNewService(serviceList) {
-    const template = document.getElementById("service-template");
-    const newService = template.content.cloneNode(true);
-    const servicioItem = newService.querySelector(".service-item");
-
-    // Set up botón de eliminar servicio
-    const removeBtn = servicioItem.querySelector(".remove-servicio");
-    if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
-            const allServices = serviceList.querySelectorAll(".service-item");
-            if (allServices.length > 1) {
-                servicioItem.remove();
-                actualizarTotalCategorias();
-            } else {
-                alert("Cada categoría debe tener al menos un servicio.");
-            }
-        });
-    }
-
-    // Obtener categoría seleccionada
-    const categorySelect = serviceList
-        .closest(".category-group")
-        ?.querySelector(".categoria-fase-select, .categoria-unica-select");
-    const servicioSelect = servicioItem.querySelector(".servicio-select");
-
-    // Llenar opciones de servicio
-    if (categorySelect && servicioSelect) {
-        servicioSelect.innerHTML =
-            '<option value="">Seleccionar servicio...</option>';
-        const serviciosCategoria = servicios.filter(
-            (s) => String(s.categoria_id) === String(categorySelect.value)
-        );
-
-        serviciosCategoria.forEach((servicio) => {
-            const option = document.createElement("option");
-            option.value = servicio.id;
-            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-            option.setAttribute("data-precio", servicio.precio_neto);
-            servicioSelect.appendChild(option);
-        });
-
-        // Evento: al seleccionar un servicio, llenar descripción y precio
-        servicioSelect.addEventListener("change", () => {
-            const selectedId = servicioSelect.value;
-            const servicio = servicios.find(
-                (s) => String(s.id) === String(selectedId)
-            );
-
-            const descInput = servicioItem.querySelector(
-                ".service-description"
-            );
-            const precioInput = servicioItem.querySelector(
-                ".precio-unitario-servicio"
-            );
-
-            if (servicio) {
-                if (descInput) descInput.value = servicio.descripcion;
-                if (precioInput) precioInput.value = servicio.precio_neto;
-            }
+        // Insertar servicio y aplicar valores por defecto
+        serviceList.appendChild(servicioItem);
+        setTimeout(() => {
+            if (cantidadInput) cantidadInput.value = "1";
+            if (descuentoInput) descuentoInput.value = "0";
 
             actualizarPrecioServicio(servicioItem);
             actualizarTotalCategorias();
-        });
-
-        // Evento: si cambia la categoría, actualizar el select de servicios
-        if (!categorySelect._listenerServicios) {
-            categorySelect.addEventListener("change", function () {
-                servicioSelect.innerHTML =
-                    '<option value="">Seleccionar servicio...</option>';
-                const serviciosCategoria = servicios.filter(
-                    (s) => String(s.categoria_id) === String(this.value)
-                );
-                serviciosCategoria.forEach((servicio) => {
-                    const option = document.createElement("option");
-                    option.value = servicio.id;
-                    option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-                    option.setAttribute("data-precio", servicio.precio_neto);
-                    servicioSelect.appendChild(option);
-                });
-            });
-            categorySelect._listenerServicios = true;
-        }
+        }, 10);
     }
 
-    // Eventos de cantidad y descuento
-    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
-    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-    if (cantidadInput) {
-        cantidadInput.addEventListener("input", () => {
-            actualizarPrecioServicio(servicioItem);
-            actualizarTotalCategorias();
-        });
-    }
-    if (descuentoInput) {
-        descuentoInput.addEventListener("input", () => {
-            actualizarPrecioServicio(servicioItem);
-            actualizarTotalCategorias();
-        });
-    }
-
-    // Botón para duplicar servicio
-    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
-    if (agregarBtn) {
-        agregarBtn.addEventListener("click", () => {
-            addNewService(serviceList);
-        });
-    }
-
-    // Insertar servicio y aplicar valores por defecto
-    serviceList.appendChild(servicioItem);
-    setTimeout(() => {
-        if (cantidadInput) cantidadInput.value = "1";
-        if (descuentoInput) descuentoInput.value = "0";
-
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-    }, 10);
-}
-
-// Update subcategory options when category changes
-function updateSubcategoryOptions(categorySelect, subcategorySelect = null) {
-    const selectedCategory = categorySelect.value;
-
-    const targetSelect =
-        subcategorySelect ||
-        categorySelect
-            .closest(".service-list")
-            ?.querySelector(".servicio-select");
-
-    if (!targetSelect) return;
-
-    // Clear existing options except the first
-
-    targetSelect.innerHTML =
-        '<option value="">Seleccionar servicio...</option>';
-
-    // Add subcategories based on category
-
-    if (selectedCategory === "general-dentistry") {
-        addSubcategoryOption(targetSelect, "assessments", "Evaluaciones");
-
-        addSubcategoryOption(targetSelect, "hygiene", "Higiene");
-
-        addSubcategoryOption(targetSelect, "resins", "Resinas");
-
-        addSubcategoryOption(targetSelect, "fillings", "Empastes");
-
-        addSubcategoryOption(targetSelect, "extractions", "Extracciones");
-    } else if (selectedCategory === "cosmetic-dentistry") {
-        addSubcategoryOption(targetSelect, "whitening", "Blanqueamiento");
-
-        addSubcategoryOption(targetSelect, "veneers", "Carillas");
-
-        addSubcategoryOption(targetSelect, "bonding", "Bonding");
-    }
-}
-function addSubcategoryOption(select, value, text) {
-    const option = document.createElement("option");
-
-    option.value = value;
-
-    option.textContent = text;
-
-    select.appendChild(option);
-}
-function updatePhaseNumbers() {
-    const phases = document.querySelectorAll(".phase-container:not(.hidden)");
-    phases.forEach((phase, index) => {
-        const num = index + 1;
-        phase.querySelector(".phase-number-badge").textContent = num;
-        phase.querySelector(".phase-number-text").textContent = num;
-    });
-}
-
-function checkEmptyPhases() {
-    if (
-        document.querySelectorAll(".phase-container:not(.hidden)").length === 0
+    // Update subcategory options when category changes
+    function updateSubcategoryOptions(
+        categorySelect,
+        subcategorySelect = null
     ) {
-        document.getElementById("no-phases-message").classList.remove("hidden");
-    }
-}
-// Función principal de navegación
-function switchTab(view, options = {}) {
-    const { reset = false, skipLoad = false } = options;
-    if (!TAB_TO_DOM[view]) view = "new";
-    const destinoId = TAB_TO_DOM[view];
+        const selectedCategory = categorySelect.value;
 
-    // Ocultar todos los contenidos
-    tabContents.forEach((sec) => {
-        sec.style.display = "none";
-        sec.classList.remove("active");
-    });
+        const targetSelect =
+            subcategorySelect ||
+            categorySelect
+                .closest(".service-list")
+                ?.querySelector(".servicio-select");
 
-    // Mostrar contenido seleccionado
-    const destino = document.getElementById(destinoId);
-    if (destino) {
-        destino.style.display = "block";
-        destino.classList.add("active");
-    }
+        if (!targetSelect) return;
 
-    // Resaltar tab activo
-    const menuFocus = view === "edit" || view === "duplicate" ? "new" : view;
-    tabs.forEach((tab) => {
-        tab.classList.toggle(
-            "active",
-            tab.getAttribute("data-tab") === menuFocus
-        );
-    });
+        // Clear existing options except the first
 
-    // Cargar datos si es necesario
-    if (!skipLoad) {
-        if (view === "history") cargarCotizaciones();
-    }
+        targetSelect.innerHTML =
+            '<option value="">Seleccionar servicio...</option>';
 
-    // Resetear formulario si se solicita
-    if (reset) {
-        nuevaCotizacion();
-        actualizarSelectCategorias();
-    }
-}
-// --- Búsqueda y selección de pacientes con barra de búsqueda ---
-function setupPacienteSearchBar() {
-    const input = document.getElementById("pacienteSearchInput");
-    const results = document.getElementById("pacienteSearchResults");
+        // Add subcategories based on category
 
-    if (!input || !results) return;
+        if (selectedCategory === "general-dentistry") {
+            addSubcategoryOption(targetSelect, "assessments", "Evaluaciones");
 
-    let currentResults = [];
-    let selectedIndex = -1;
+            addSubcategoryOption(targetSelect, "hygiene", "Higiene");
 
-    function renderResults(filtro) {
-        results.innerHTML = "";
-        if (!filtro) {
-            results.style.display = "none";
-            return;
+            addSubcategoryOption(targetSelect, "resins", "Resinas");
+
+            addSubcategoryOption(targetSelect, "fillings", "Empastes");
+
+            addSubcategoryOption(targetSelect, "extractions", "Extracciones");
+        } else if (selectedCategory === "cosmetic-dentistry") {
+            addSubcategoryOption(targetSelect, "whitening", "Blanqueamiento");
+
+            addSubcategoryOption(targetSelect, "veneers", "Carillas");
+
+            addSubcategoryOption(targetSelect, "bonding", "Bonding");
         }
-        const filtroLower = filtro.toLowerCase();
-        const encontrados = pacientes.filter(
-            (p) =>
-                (p.nombre && p.nombre.toLowerCase().includes(filtroLower)) ||
-                (p.correo && p.correo.toLowerCase().includes(filtroLower))
+    }
+    function addSubcategoryOption(select, value, text) {
+        const option = document.createElement("option");
+
+        option.value = value;
+
+        option.textContent = text;
+
+        select.appendChild(option);
+    }
+    function updatePhaseNumbers() {
+        const phases = document.querySelectorAll(
+            ".phase-container:not(.hidden)"
         );
-        currentResults = encontrados;
-        selectedIndex = -1;
-        if (encontrados.length === 0) {
+        phases.forEach((phase, index) => {
+            const num = index + 1;
+            phase.querySelector(".phase-number-badge").textContent = num;
+            phase.querySelector(".phase-number-text").textContent = num;
+        });
+    }
+
+    function checkEmptyPhases() {
+        if (
+            document.querySelectorAll(".phase-container:not(.hidden)")
+                .length === 0
+        ) {
+            document
+                .getElementById("no-phases-message")
+                .classList.remove("hidden");
+        }
+    }
+    // Función principal de navegación
+    function switchTab(view, options = {}) {
+        const { reset = false, skipLoad = false } = options;
+        if (!TAB_TO_DOM[view]) view = "new";
+        const destinoId = TAB_TO_DOM[view];
+
+        // Ocultar todos los contenidos
+        tabContents.forEach((sec) => {
+            sec.style.display = "none";
+            sec.classList.remove("active");
+        });
+
+        // Mostrar contenido seleccionado
+        const destino = document.getElementById(destinoId);
+        if (destino) {
+            destino.style.display = "block";
+            destino.classList.add("active");
+        }
+
+        // Resaltar tab activo
+        const menuFocus =
+            view === "edit" || view === "duplicate" ? "new" : view;
+        tabs.forEach((tab) => {
+            tab.classList.toggle(
+                "active",
+                tab.getAttribute("data-tab") === menuFocus
+            );
+        });
+
+        // Cargar datos si es necesario
+        if (!skipLoad) {
+            if (view === "history") cargarCotizaciones();
+        }
+
+        // Resetear formulario si se solicita
+        if (reset) {
+            nuevaCotizacion();
+        }
+    }
+    // --- Búsqueda y selección de pacientes con barra de búsqueda ---
+    function setupPacienteSearchBar() {
+        const input = document.getElementById("pacienteSearchInput");
+        const results = document.getElementById("pacienteSearchResults");
+
+        if (!input || !results) return;
+
+        let currentResults = [];
+        let selectedIndex = -1;
+
+        function renderResults(filtro) {
+            results.innerHTML = "";
+            if (!filtro) {
+                results.style.display = "none";
+                return;
+            }
+            const filtroLower = filtro.toLowerCase();
+            const encontrados = pacientes.filter(
+                (p) =>
+                    (p.nombre &&
+                        p.nombre.toLowerCase().includes(filtroLower)) ||
+                    (p.correo && p.correo.toLowerCase().includes(filtroLower))
+            );
+            currentResults = encontrados;
+            selectedIndex = -1;
+            if (encontrados.length === 0) {
+                const div = document.createElement("div");
+                div.className = "search-option new";
+                div.textContent = `Escribir: \"${filtro}\"`;
+                div.onclick = () => seleccionarNuevoPaciente(filtro);
+                results.appendChild(div);
+                results.style.display = "block";
+                return;
+            }
+            encontrados.forEach((p, idx) => {
+                const div = document.createElement("div");
+                div.className = "search-option";
+                div.textContent = `${p.nombre} - ${p.correo || "Sin correo"}`;
+                div.onclick = () => seleccionarPaciente(p);
+                results.appendChild(div);
+            });
             const div = document.createElement("div");
             div.className = "search-option new";
             div.textContent = `Escribir: \"${filtro}\"`;
             div.onclick = () => seleccionarNuevoPaciente(filtro);
             results.appendChild(div);
             results.style.display = "block";
+        }
+
+        function seleccionarNuevoPaciente(nombre) {
+            input.value = nombre;
+            results.style.display = "none";
+            document.getElementById("nuevoPacienteForm").style.display =
+                "block";
+            document.getElementById("nombrePaciente").value = nombre;
+            document.getElementById("pacienteSelectIdHidden")?.remove();
+        }
+
+        input.addEventListener("input", (e) => {
+            renderResults(e.target.value);
+        });
+        input.addEventListener("focus", (e) => {
+            if (e.target.value) renderResults(e.target.value);
+        });
+        input.addEventListener("blur", () => {
+            setTimeout(() => {
+                results.style.display = "none";
+            }, 150);
+        });
+        input.addEventListener("keydown", (e) => {
+            const options = results.querySelectorAll(".search-option");
+            if (!options.length) return;
+            if (e.key === "ArrowDown") {
+                selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+                options.forEach((opt, idx) =>
+                    opt.classList.toggle("active", idx === selectedIndex)
+                );
+                e.preventDefault();
+            } else if (e.key === "ArrowUp") {
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                options.forEach((opt, idx) =>
+                    opt.classList.toggle("active", idx === selectedIndex)
+                );
+                e.preventDefault();
+            } else if (e.key === "Enter") {
+                if (selectedIndex >= 0 && options[selectedIndex]) {
+                    options[selectedIndex].click();
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+
+    function toggleNuevoPacienteForm() {
+        const form = document.getElementById("nuevoPacienteForm");
+        if (!form) {
+            console.error("Formulario no encontrado");
             return;
         }
-        encontrados.forEach((p, idx) => {
-            const div = document.createElement("div");
-            div.className = "search-option";
-            div.textContent = `${p.nombre} - ${p.correo || "Sin correo"}`;
-            div.onclick = () => seleccionarPaciente(p);
-            results.appendChild(div);
-        });
-        const div = document.createElement("div");
-        div.className = "search-option new";
-        div.textContent = `Escribir: \"${filtro}\"`;
-        div.onclick = () => seleccionarNuevoPaciente(filtro);
-        results.appendChild(div);
-        results.style.display = "block";
-    }
 
-    function seleccionarNuevoPaciente(nombre) {
-        input.value = nombre;
-        results.style.display = "none";
-        document.getElementById("nuevoPacienteForm").style.display = "block";
-        document.getElementById("nombrePaciente").value = nombre;
-        document.getElementById("pacienteSelectIdHidden")?.remove();
-    }
-
-    input.addEventListener("input", (e) => {
-        renderResults(e.target.value);
-    });
-    input.addEventListener("focus", (e) => {
-        if (e.target.value) renderResults(e.target.value);
-    });
-    input.addEventListener("blur", () => {
-        setTimeout(() => {
-            results.style.display = "none";
-        }, 150);
-    });
-    input.addEventListener("keydown", (e) => {
-        const options = results.querySelectorAll(".search-option");
-        if (!options.length) return;
-        if (e.key === "ArrowDown") {
-            selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
-            options.forEach((opt, idx) =>
-                opt.classList.toggle("active", idx === selectedIndex)
-            );
-            e.preventDefault();
-        } else if (e.key === "ArrowUp") {
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            options.forEach((opt, idx) =>
-                opt.classList.toggle("active", idx === selectedIndex)
-            );
-            e.preventDefault();
-        } else if (e.key === "Enter") {
-            if (selectedIndex >= 0 && options[selectedIndex]) {
-                options[selectedIndex].click();
-                e.preventDefault();
-            }
+        if (form.style.display === "none" || !form.style.display) {
+            form.style.display = "block";
+        } else {
+            form.style.display = "none";
         }
-    });
-}
-
-function toggleNuevoPacienteForm() {
-    const form = document.getElementById("nuevoPacienteForm");
-    if (!form) {
-        console.error("Formulario no encontrado");
-        return;
     }
 
-    if (form.style.display === "none" || !form.style.display) {
-        form.style.display = "block";
-    } else {
-        form.style.display = "none";
+    async function cargarPacientes() {
+        try {
+            const response = await fetch("/api/pacientes");
+            pacientes = await response.json();
+        } catch (error) {
+            alert("Error al cargar pacientes");
+        }
     }
-}
 
-async function cargarPacientes() {
-    try {
-        const response = await fetch("/api/pacientes");
-        pacientes = await response.json();
-    } catch (error) {
-        alert("Error al cargar pacientes");
+    // --- Función global para actualizar estadísticas de categorías ---
+    function updateCategoryStats() {
+        const totalCategoriesEl = document.getElementById("totalCategories");
+        const lastAddedCategoryEl =
+            document.getElementById("lastAddedCategory");
+        const lastUpdatedCategoryEl = document.getElementById(
+            "lastUpdatedCategory"
+        );
+        if (totalCategoriesEl)
+            totalCategoriesEl.textContent = categorias.length;
+        if (lastAddedCategoryEl)
+            lastAddedCategoryEl.textContent = lastAddedCategory || "-";
+        if (lastUpdatedCategoryEl)
+            lastUpdatedCategoryEl.textContent = lastUpdatedCategory || "-";
     }
-}
 
-// --- Función global para actualizar estadísticas de categorías ---
-function updateCategoryStats() {
-    const totalCategoriesEl = document.getElementById("totalCategories");
-    const lastAddedCategoryEl = document.getElementById("lastAddedCategory");
-    const lastUpdatedCategoryEl = document.getElementById(
-        "lastUpdatedCategory"
-    );
-    if (totalCategoriesEl) totalCategoriesEl.textContent = categorias.length;
-    if (lastAddedCategoryEl)
-        lastAddedCategoryEl.textContent = lastAddedCategory || "-";
-    if (lastUpdatedCategoryEl)
-        lastUpdatedCategoryEl.textContent = lastUpdatedCategory || "-";
-}
-
-// --- Función global para mostrar notificaciones tipo toast ---
-function showToast(message) {
-    const toast = document.getElementById("toast");
-    const toastMessage = document.getElementById("toastMessage");
-    if (!toast || !toastMessage) return;
-    toastMessage.textContent = message;
-    toast.classList.remove("hidden");
-    toast.classList.add("flex");
-    setTimeout(() => {
-        toast.classList.remove("flex");
-        toast.classList.add("hidden");
-    }, 3000);
-}
-
-async function actualizarCategoria(id, name, descripcion) {
-    if (!id || !name) {
-        alert("ID o nombre de categoría no válido");
-        return;
+    // --- Función global para mostrar notificaciones tipo toast ---
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        const toastMessage = document.getElementById("toastMessage");
+        if (!toast || !toastMessage) return;
+        toastMessage.textContent = message;
+        toast.classList.remove("hidden");
+        toast.classList.add("flex");
+        setTimeout(() => {
+            toast.classList.remove("flex");
+            toast.classList.add("hidden");
+        }, 3000);
     }
-    try {
-        const response = await fetch(`/api/categorias/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name: name,
-                descripcion: descripcion || null,
-            }),
-        });
 
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+    async function actualizarCategoria(id, name, descripcion) {
+        if (!id || !name) {
+            alert("ID o nombre de categoría no válido");
+            return;
+        }
+        try {
+            const response = await fetch(`/api/categorias/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: name,
+                    descripcion: descripcion || null,
+                }),
+            });
 
-        const updatedCategory = await response.json();
-        const index = categorias.findIndex((cat) => cat.id == id); // usa == por si uno es string
-        if (index !== -1) {
-            categorias[index] = updatedCategory;
-            lastUpdatedCategory = updatedCategory.nombre_categoria;
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+
+            const updatedCategory = await response.json();
+            const index = categorias.findIndex((cat) => cat.id == id); // usa == por si uno es string
+            if (index !== -1) {
+                categorias[index] = updatedCategory;
+                lastUpdatedCategory = updatedCategory.nombre_categoria;
+                updateCategoryStats();
+                showToast(
+                    `Categoría "${updatedCategory.nombre_categoria}" actualizada correctamente`
+                );
+                // Renderizar tabla y dropdowns para reflejar el cambio
+                if (typeof renderCategoryTable === "function")
+                    renderCategoryTable();
+                if (typeof renderServiceTable === "function")
+                    renderServiceTable();
+                if (typeof populateCategoryDropdowns === "function")
+                    populateCategoryDropdowns();
+            }
+        } catch (error) {
+            alert("Error al actualizar categoría: " + error.message);
+        }
+    }
+
+    async function guardarCategoria(name, descripcion) {
+        if (!name) {
+            alert("El nombre de la categoría es obligatorio");
+            return;
+        }
+        try {
+            const response = await fetch("/api/categorias", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: name,
+                    descripcion: descripcion || null,
+                }),
+            });
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+            const nuevaCategoria = await response.json();
+            categorias.push(nuevaCategoria);
+            lastAddedCategory = nuevaCategoria.nombre_categoria;
             updateCategoryStats();
             showToast(
-                `Categoría "${updatedCategory.nombre_categoria}" actualizada correctamente`
+                `Categoría "${nuevaCategoria.nombre_categoria}" guardada correctamente`
             );
             // Renderizar tabla y dropdowns para reflejar el cambio
             if (typeof renderCategoryTable === "function")
@@ -1744,203 +1897,180 @@ async function actualizarCategoria(id, name, descripcion) {
             if (typeof renderServiceTable === "function") renderServiceTable();
             if (typeof populateCategoryDropdowns === "function")
                 populateCategoryDropdowns();
+        } catch (error) {
+            alert("Error al guardar categoría: " + error.message);
         }
-    } catch (error) {
-        alert("Error al actualizar categoría: " + error.message);
     }
-}
 
-async function guardarCategoria(name, descripcion) {
-    if (!name) {
-        alert("El nombre de la categoría es obligatorio");
-        return;
+    async function borrarCategoria(id) {
+        if (!id) {
+            alert("ID de categoría no válido");
+            return;
+        }
+        try {
+            const response = await fetch(`/api/categorias/${id}`, {
+                method: "DELETE",
+            });
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+            categorias = categorias.filter((cat) => cat.id !== id);
+            updateCategoryStats();
+            showToast(`Categoría eliminada correctamente`);
+        } catch (error) {
+            alert("Error al eliminar categoría: " + error.message);
+        }
     }
-    try {
-        const response = await fetch("/api/categorias", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name: name,
-                descripcion: descripcion || null,
-            }),
-        });
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        const nuevaCategoria = await response.json();
-        categorias.push(nuevaCategoria);
-        lastAddedCategory = nuevaCategoria.nombre_categoria;
-        updateCategoryStats();
-        showToast(
-            `Categoría "${nuevaCategoria.nombre_categoria}" guardada correctamente`
-        );
-        // Renderizar tabla y dropdowns para reflejar el cambio
-        if (typeof renderCategoryTable === "function") renderCategoryTable();
-        if (typeof renderServiceTable === "function") renderServiceTable();
-        if (typeof populateCategoryDropdowns === "function")
-            populateCategoryDropdowns();
-    } catch (error) {
-        alert("Error al guardar categoría: " + error.message);
-    }
-}
 
-async function borrarCategoria(id) {
-    if (!id) {
-        alert("ID de categoría no válido");
-        return;
-    }
-    try {
-        const response = await fetch(`/api/categorias/${id}`, {
-            method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        categorias = categorias.filter((cat) => cat.id !== id);
-        updateCategoryStats();
-        showToast(`Categoría eliminada correctamente`);
-    } catch (error) {
-        alert("Error al eliminar categoría: " + error.message);
-    }
-}
-
-async function guardarServicio(categoriaId, codigo, descripcion, precioNeto) {
-    if (!categoriaId || !codigo || !descripcion || !precioNeto) {
-        alert("Todos los campos son obligatorios");
-        return;
-    }
-    try {
-        const response = await fetch(`/api/servicios`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                codigo: codigo,
-                descripcion: descripcion,
-                precio_neto: precioNeto,
-                categoria_id: categoriaId,
-            }),
-        });
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        const nuevoServicio = await response.json();
-        servicios.push(nuevoServicio);
-        lastAddedService =
-            nuevoServicio.nombre_servicio ||
-            nuevoServicio.descripcion ||
-            nuevoServicio.codigo;
-        updateServiceStats();
-        showToast(
-            `Servicio "${
+    async function guardarServicio(
+        categoriaId,
+        codigo,
+        descripcion,
+        precioNeto
+    ) {
+        if (!categoriaId || !codigo || !descripcion || !precioNeto) {
+            alert("Todos los campos son obligatorios");
+            return;
+        }
+        try {
+            const response = await fetch(`/api/servicios`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    codigo: codigo,
+                    descripcion: descripcion,
+                    precio_neto: precioNeto,
+                    categoria_id: categoriaId,
+                }),
+            });
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+            const nuevoServicio = await response.json();
+            servicios.push(nuevoServicio);
+            lastAddedService =
                 nuevoServicio.nombre_servicio ||
                 nuevoServicio.descripcion ||
-                nuevoServicio.codigo
-            }" guardado correctamente`
-        );
-        // Renderizar tabla y dropdowns para reflejar el cambio
-        if (typeof renderServiceTable === "function") renderServiceTable();
-        if (typeof populateServiceDropdowns === "function")
-            populateServiceDropdowns();
-    } catch (error) {
-        alert("Error al guardar servicio: " + error.message);
-    }
-}
-
-async function guardarPaciente() {
-    const nombreInput = document.getElementById("nombrePaciente");
-    const correoInput = document.getElementById("correoPaciente");
-    const telefonoInput = document.getElementById("telefonoPaciente");
-    if (!nombreInput) {
-        alert("El nombre del paciente es obligatorio");
-        document.getElementById("nombrePaciente").focus();
-        return; // Detiene la ejecución
+                nuevoServicio.codigo;
+            updateServiceStats();
+            showToast(
+                `Servicio "${
+                    nuevoServicio.nombre_servicio ||
+                    nuevoServicio.descripcion ||
+                    nuevoServicio.codigo
+                }" guardado correctamente`
+            );
+            // Renderizar tabla y dropdowns para reflejar el cambio
+            if (typeof renderServiceTable === "function") renderServiceTable();
+            if (typeof populateServiceDropdowns === "function")
+                populateServiceDropdowns();
+        } catch (error) {
+            alert("Error al guardar servicio: " + error.message);
+        }
     }
 
-    if (!nombreInput || !correoInput || !telefonoInput) {
-        alert("Error en el formulario. Por favor recarga la página.");
-        return;
+    async function guardarPaciente() {
+        const nombreInput = document.getElementById("nombrePaciente");
+        const correoInput = document.getElementById("correoPaciente");
+        const telefonoInput = document.getElementById("telefonoPaciente");
+        if (!nombreInput) {
+            alert("El nombre del paciente es obligatorio");
+            document.getElementById("nombrePaciente").focus();
+            return; // Detiene la ejecución
+        }
+
+        if (!nombreInput || !correoInput || !telefonoInput) {
+            alert("Error en el formulario. Por favor recarga la página.");
+            return;
+        }
+
+        const nombre = nombreInput.value.trim();
+        const correo = correoInput.value.trim();
+        const telefono = telefonoInput.value.trim();
+
+        if (!nombre) {
+            alert("El nombre del paciente es obligatorio");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/pacientes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    nombre: nombre,
+                    correo: correo || null,
+                    telefono: telefono || null,
+                }),
+            });
+
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+
+            const nuevoPaciente = await response.json();
+
+            document.getElementById("nuevoPacienteForm").style.display = "none";
+            nombreInput.value = "";
+            correoInput.value = "";
+            telefonoInput.value = "";
+
+            await cargarPacientes();
+            seleccionarPaciente(nuevoPaciente);
+            alert(`Paciente ${nombre} guardado correctamente`);
+        } catch (error) {
+            alert("Error al guardar paciente: " + error.message);
+        }
     }
 
-    const nombre = nombreInput.value.trim();
-    const correo = correoInput.value.trim();
-    const telefono = telefonoInput.value.trim();
-
-    if (!nombre) {
-        alert("El nombre del paciente es obligatorio");
-        return;
-    }
-
-    try {
-        const response = await fetch("/api/pacientes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                nombre: nombre,
-                correo: correo || null,
-                telefono: telefono || null,
-            }),
-        });
-
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-
-        const nuevoPaciente = await response.json();
-
+    function seleccionarPaciente(paciente) {
+        const input = document.getElementById("pacienteSearchInput");
+        input.value = `${paciente.nombre} - ${paciente.correo || "Sin correo"}`;
+        document.getElementById("pacienteSearchResults").style.display = "none";
         document.getElementById("nuevoPacienteForm").style.display = "none";
-        nombreInput.value = "";
-        correoInput.value = "";
-        telefonoInput.value = "";
 
-        await cargarPacientes();
-        seleccionarPaciente(nuevoPaciente);
-        alert(`Paciente ${nombre} guardado correctamente`);
-    } catch (error) {
-        alert("Error al guardar paciente: " + error.message);
+        document.getElementById("pacienteSelectIdHidden")?.remove();
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.id = "pacienteSelectIdHidden";
+        hidden.name = "paciente_id";
+        hidden.value = paciente.id;
+        input.parentNode.appendChild(hidden);
     }
-}
+    // Fin De pacientes
 
-function seleccionarPaciente(paciente) {
-    const input = document.getElementById("pacienteSearchInput");
-    input.value = `${paciente.nombre} - ${paciente.correo || "Sin correo"}`;
-    document.getElementById("pacienteSearchResults").style.display = "none";
-    document.getElementById("nuevoPacienteForm").style.display = "none";
+    // Inicio --- Cotizaciones / quote tab ---
 
-    document.getElementById("pacienteSelectIdHidden")?.remove();
-    const hidden = document.createElement("input");
-    hidden.type = "hidden";
-    hidden.id = "pacienteSelectIdHidden";
-    hidden.name = "paciente_id";
-    hidden.value = paciente.id;
-    input.parentNode.appendChild(hidden);
-}
-// Fin De pacientes
+    function nuevaCotizacion() {
+        currentQuoteId = null;
+        isEditing = false;
+        document.getElementById("quoteTitle").textContent = "Nueva Cotización";
+        document.getElementById("cotizacionForm").reset();
+        document.getElementById("nuevoPacienteForm").style.display = "none";
+        document.getElementById("fasesContainer").innerHTML = "";
+        currentFaseId = 0;
 
-// Inicio --- Cotizaciones / quote tab ---
-
-function nuevaCotizacion() {
-    currentQuoteId = null;
-    isEditing = false;
-    document.getElementById("quoteTitle").textContent = "Nueva Cotización";
-    document.getElementById("cotizacionForm").reset();
-    document.getElementById("nuevoPacienteForm").style.display = "none";
-    document.getElementById("fasesContainer").innerHTML = "";
-    currentFaseId = 0;
-
-    switchTab("new");
-}
-
-function getBadgeClass(estado) {
-    switch (estado) {
-        case "enviada":
-            return "badge-success";
-        case "aceptada":
-            return "badge-primary";
-        case "rechazada":
-            return "badge-danger";
-        default:
-            return "badge-warning";
+        switchTab("new");
     }
-}
 
-function agregarCategoriaDeTratamiento() {
-    // Agrega una nueva fila dinámica de categoría (no la estática)
-    const categoriasContainer = document.getElementById("categoriasContainer");
-    const row = document.createElement("div");
-    row.className = "row align-items-end mb-2 categoria-dinamica-row";
-    row.innerHTML = `
+    function getBadgeClass(estado) {
+        switch (estado) {
+            case "enviada":
+                return "badge-success";
+            case "aceptada":
+                return "badge-primary";
+            case "rechazada":
+                return "badge-danger";
+            default:
+                return "badge-warning";
+        }
+    }
+
+    function agregarCategoriaDeTratamiento() {
+        // Agrega una nueva fila dinámica de categoría (no la estática)
+        const categoriasContainer = document.getElementById(
+            "categoriasContainer"
+        );
+        const row = document.createElement("div");
+        row.className = "row align-items-end mb-2 categoria-dinamica-row";
+        row.innerHTML = `
     <div class="col-md-4">
       <div class="form-group mb-2">
         <select class="form-control categoria-unica-select">
@@ -1954,22 +2084,43 @@ function agregarCategoriaDeTratamiento() {
     </div>
   `;
 
-    // Llenar el select de categorías de forma asíncrona y SOLO insertar el row cuando esté listo
-    const select = row.querySelector(".categoria-unica-select");
-    (async () => {
-        // Siempre recarga las categorías para evitar caché corrupto
-        let categoriasData = [];
-        try {
-            const resp = await fetch("/api/categorias");
-            categoriasData = await resp.json();
-        } catch (e) {
-            categoriasData = [];
-        }
-        // Si no hay categorías, muestra mensaje y no inserta el row
-        if (!categoriasData || categoriasData.length === 0) {
+        // Llenar el select de categorías de forma asíncrona y SOLO insertar el row cuando esté listo
+        const select = row.querySelector(".categoria-unica-select");
+        (async () => {
+            // Siempre recarga las categorías para evitar caché corrupto
+            let categoriasData = [];
+            try {
+                const resp = await fetch("/api/categorias");
+                categoriasData = await resp.json();
+            } catch (e) {
+                categoriasData = [];
+            }
+            // Si no hay categorías, muestra mensaje y no inserta el row
+            if (!categoriasData || categoriasData.length === 0) {
+                select.innerHTML =
+                    '<option value="">No hay categorías disponibles</option>';
+                // Inserta el row igualmente para que el usuario vea el mensaje
+                const btnAgregar = categoriasContainer.querySelector(
+                    "#agregarCategoriaBtn"
+                );
+                if (btnAgregar) {
+                    categoriasContainer.insertBefore(row, btnAgregar);
+                } else {
+                    categoriasContainer.appendChild(row);
+                }
+                return;
+            }
+            // Actualiza la variable global si es necesario
+            categorias = categoriasData;
             select.innerHTML =
-                '<option value="">No hay categorías disponibles</option>';
-            // Inserta el row igualmente para que el usuario vea el mensaje
+                '<option value="">Seleccionar categoría...</option>';
+            categorias.forEach((cat) => {
+                const option = document.createElement("option");
+                option.value = cat.id;
+                option.textContent = cat.nombre_categoria;
+                select.appendChild(option);
+            });
+            // Inserta el row SOLO después de llenar el select
             const btnAgregar = categoriasContainer.querySelector(
                 "#agregarCategoriaBtn"
             );
@@ -1978,558 +2129,488 @@ function agregarCategoriaDeTratamiento() {
             } else {
                 categoriasContainer.appendChild(row);
             }
+            // Selecciona automáticamente la primera categoría disponible
+            if (categorias.length > 0) {
+                select.value = categorias[0].id;
+                select.dispatchEvent(new Event("change"));
+            }
+        })();
+        // Evento de cambio de categoría (debe estar fuera del async para no duplicar listeners)
+        select.addEventListener("change", async function () {
+            const serviciosContainer = row.querySelector(
+                ".servicios-categorias-container"
+            );
+            const categoriaInfoDiv = row.querySelector(".categoria-info");
+            serviciosContainer.innerHTML = "";
+            categoriaInfoDiv.innerHTML = "";
+            if (this.value) {
+                // Mostrar el nombre de la categoría
+                const cat = categorias.find(
+                    (c) => String(c.id) === String(this.value)
+                );
+                if (cat) {
+                    categoriaInfoDiv.innerHTML = `<strong>Categoría:</strong> ${cat.nombre_categoria}`;
+                }
+                // Llamar al endpoint para obtener detalles de la categoría (si existe)
+                try {
+                    const resp = await fetch(`/api/categorias/${this.value}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data.descripcion) {
+                            categoriaInfoDiv.innerHTML += `<br><small>${data.descripcion}</small>`;
+                        }
+                    }
+                } catch (err) {
+                    // Silencioso
+                }
+                agregarServicioEnCategoriasDinamico(
+                    serviciosContainer,
+                    this.value
+                );
+            }
+        });
+    }
+
+    // Inicio Botones de accion final --- Cotizaciones / quote tab ---
+    async function generarPDFDesdeFormulario() {
+        // Validar que haya al menos una fase con servicios
+        const fases = document.querySelectorAll(".fase-card");
+        if (fases.length === 0) {
+            alert(
+                "Debe agregar al menos una fase con servicios para generar el PDF"
+            );
             return;
         }
-        // Actualiza la variable global si es necesario
-        categorias = categoriasData;
-        select.innerHTML = '<option value="">Seleccionar categoría...</option>';
-        categorias.forEach((cat) => {
-            const option = document.createElement("option");
-            option.value = cat.id;
-            option.textContent = cat.nombre_categoria;
-            select.appendChild(option);
-        });
-        // Inserta el row SOLO después de llenar el select
-        const btnAgregar = categoriasContainer.querySelector(
-            "#agregarCategoriaBtn"
-        );
-        if (btnAgregar) {
-            categoriasContainer.insertBefore(row, btnAgregar);
-        } else {
-            categoriasContainer.appendChild(row);
+
+        // Recolectar datos del formulario para el PDF
+        const pacienteId = document.getElementById("pacienteSelect").value;
+        let paciente = pacientes.find((p) => p.id == pacienteId);
+
+        if (
+            !paciente &&
+            document.getElementById("nuevoPacienteForm").style.display !==
+                "none"
+        ) {
+            paciente = {
+                nombre: document.getElementById("nombrePaciente").value,
+                correo: document.getElementById("correoPaciente").value,
+                telefono: document.getElementById("telefonoPaciente").value,
+                direccion: document.getElementById("direccionPaciente").value,
+            };
         }
-        // Selecciona automáticamente la primera categoría disponible
-        if (categorias.length > 0) {
-            select.value = categorias[0].id;
-            select.dispatchEvent(new Event("change"));
+
+        if (!paciente) {
+            alert("Debe seleccionar o crear un paciente");
+            return;
         }
-    })();
-    // Evento de cambio de categoría (debe estar fuera del async para no duplicar listeners)
-    select.addEventListener("change", async function () {
-        const serviciosContainer = row.querySelector(
-            ".servicios-categorias-container"
-        );
-        const categoriaInfoDiv = row.querySelector(".categoria-info");
-        serviciosContainer.innerHTML = "";
-        categoriaInfoDiv.innerHTML = "";
-        if (this.value) {
-            // Mostrar el nombre de la categoría
-            const cat = categorias.find(
-                (c) => String(c.id) === String(this.value)
-            );
-            if (cat) {
-                categoriaInfoDiv.innerHTML = `<strong>Categoría:</strong> ${cat.nombre_categoria}`;
-            }
-            // Llamar al endpoint para obtener detalles de la categoría (si existe)
-            try {
-                const resp = await fetch(`/api/categorias/${this.value}`);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.descripcion) {
-                        categoriaInfoDiv.innerHTML += `<br><small>${data.descripcion}</small>`;
+
+        const datosCotizacion = {
+            paciente: paciente,
+            observaciones: document.getElementById("observaciones").value,
+            total: document.getElementById("total-cotizacion").textContent,
+            fases: [],
+        };
+
+        fases.forEach((faseCard) => {
+            const fase = {
+                numero: faseCard.querySelector(".fase-numero").textContent,
+                subtotal: faseCard.querySelector(".fase-subtotal").textContent,
+                descuento:
+                    faseCard.querySelector(".fase-descuento").textContent,
+                total: faseCard.querySelector(".fase-total-amount").textContent,
+                servicios: [],
+            };
+
+            faseCard
+                .querySelectorAll(".servicio-item")
+                .forEach((servicioItem) => {
+                    const servicioSelect =
+                        servicioItem.querySelector(".servicio-select");
+                    if (servicioSelect.value) {
+                        const servicio = servicios.find(
+                            (s) => s.id == servicioSelect.value
+                        );
+                        fase.servicios.push({
+                            nombre: servicio.descripcion,
+                            cantidad:
+                                servicioItem.querySelector(".cantidad").value,
+                            precio: servicioItem.querySelector(
+                                ".precio-unitario"
+                            ).value,
+                            descuento:
+                                servicioItem.querySelector(".descuento").value +
+                                "%",
+                            total: servicioItem.querySelector(".total-servicio")
+                                .value,
+                        });
                     }
-                }
-            } catch (err) {
-                // Silencioso
-            }
-            agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
-        }
-    });
-}
-
-function actualizarPrecioServicio(servicioItem) {
-    const servicioSelect = servicioItem.querySelector(".servicio-select");
-    const precioUnitarioInput = servicioItem.querySelector(
-        ".precio-unitario-servicio"
-    );
-    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
-    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-    const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
-
-    let precio = parseFloat(precioUnitarioInput?.value || 0);
-    let cantidad = parseInt(cantidadInput?.value || 1);
-    let descuento = parseFloat(descuentoInput?.value || 0);
-
-    if (isNaN(precio)) precio = 0;
-    if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
-    if (isNaN(descuento)) descuento = 0;
-
-    const subtotal = precio * cantidad;
-    const totalConDescuento = subtotal - (subtotal * descuento) / 100;
-
-    // Mostrar total con descuento
-    if (precioTotalSpan) {
-        precioTotalSpan.textContent = `$${totalConDescuento.toLocaleString(
-            "es-CO",
-            {
-                minimumFractionDigits: 2,
-            }
-        )}`;
-        precioTotalSpan.style.display = "inline-block";
-    }
-}
-
-function actualizarTotalCategorias() {
-    let subtotal = 0;
-    let totalDescuentos = 0;
-    let total = 0;
-
-    document.querySelectorAll(".servicio-item").forEach((item) => {
-        const precioUnitarioInput = item.querySelector(
-            ".precio-unitario-servicio"
-        );
-        const cantidadInput = item.querySelector(".cantidad-servicio");
-        const descuentoInput = item.querySelector(".descuento-servicio");
-
-        let precio = parseFloat(precioUnitarioInput?.value || 0);
-        let cantidad = parseInt(cantidadInput?.value || 1);
-        let descuento = parseFloat(descuentoInput?.value || 0);
-
-        if (isNaN(precio)) precio = 0;
-        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
-        if (isNaN(descuento)) descuento = 0;
-
-        const subtotalServicio = precio * cantidad;
-        const descuentoValor = subtotalServicio * (descuento / 100);
-        const totalServicio = subtotalServicio - descuentoValor;
-
-        subtotal += subtotalServicio;
-        totalDescuentos += descuentoValor;
-        total += totalServicio;
-    });
-
-    const subtotalEl = document.getElementById("subtotal-cotizacion");
-    const descuentoEl = document.getElementById("descuento-cotizacion");
-    const totalEl = document.getElementById("total-cotizacion");
-
-    if (subtotalEl) {
-        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
-            minimumFractionDigits: 2,
-        })}`;
-    }
-    if (descuentoEl) {
-        descuentoEl.textContent = `$${totalDescuentos.toLocaleString("es-CO", {
-            minimumFractionDigits: 2,
-        })}`;
-    }
-    if (totalEl) {
-        totalEl.textContent = `$${total.toLocaleString("es-CO", {
-            minimumFractionDigits: 2,
-        })}`;
-    }
-}
-
-// Inicio Botones de accion final --- Cotizaciones / quote tab ---
-async function generarPDFDesdeFormulario() {
-    // Validar que haya al menos una fase con servicios
-    const fases = document.querySelectorAll(".fase-card");
-    if (fases.length === 0) {
-        alert(
-            "Debe agregar al menos una fase con servicios para generar el PDF"
-        );
-        return;
-    }
-
-    // Recolectar datos del formulario para el PDF
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    let paciente = pacientes.find((p) => p.id == pacienteId);
-
-    if (
-        !paciente &&
-        document.getElementById("nuevoPacienteForm").style.display !== "none"
-    ) {
-        paciente = {
-            nombre: document.getElementById("nombrePaciente").value,
-            correo: document.getElementById("correoPaciente").value,
-            telefono: document.getElementById("telefonoPaciente").value,
-            direccion: document.getElementById("direccionPaciente").value,
-        };
-    }
-
-    if (!paciente) {
-        alert("Debe seleccionar o crear un paciente");
-        return;
-    }
-
-    const datosCotizacion = {
-        paciente: paciente,
-        observaciones: document.getElementById("observaciones").value,
-        total: document.getElementById("total-cotizacion").textContent,
-        fases: [],
-    };
-
-    fases.forEach((faseCard) => {
-        const fase = {
-            numero: faseCard.querySelector(".fase-numero").textContent,
-            subtotal: faseCard.querySelector(".fase-subtotal").textContent,
-            descuento: faseCard.querySelector(".fase-descuento").textContent,
-            total: faseCard.querySelector(".fase-total-amount").textContent,
-            servicios: [],
-        };
-
-        faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
-            const servicioSelect =
-                servicioItem.querySelector(".servicio-select");
-            if (servicioSelect.value) {
-                const servicio = servicios.find(
-                    (s) => s.id == servicioSelect.value
-                );
-                fase.servicios.push({
-                    nombre: servicio.descripcion,
-                    cantidad: servicioItem.querySelector(".cantidad").value,
-                    precio: servicioItem.querySelector(".precio-unitario")
-                        .value,
-                    descuento:
-                        servicioItem.querySelector(".descuento").value + "%",
-                    total: servicioItem.querySelector(".total-servicio").value,
                 });
-            }
+
+            datosCotizacion.fases.push(fase);
         });
 
-        datosCotizacion.fases.push(fase);
-    });
-
-    try {
-        const res = await fetch("/api/generar-pdf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cotizacion: datosCotizacion }),
-        });
-
-        if (!res.ok) throw new Error("Error al generar PDF");
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `cotizacion_${paciente.nombre.replace(
-            /\s+/g,
-            "_"
-        )}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error("Error al generar PDF:", error);
-        alert(`Error: ${error.message}`);
-    }
-}
-async function enviarDesdeFormulario() {
-    // Validar que haya al menos una fase con servicios
-    const fases = document.querySelectorAll(".fase-card");
-    if (fases.length === 0) {
-        alert("Debe agregar al menos una fase con servicios para enviar");
-        return;
-    }
-
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    let paciente = pacientes.find((p) => p.id == pacienteId);
-
-    if (
-        !paciente &&
-        document.getElementById("nuevoPacienteForm").style.display !== "none"
-    ) {
-        paciente = {
-            nombre: document.getElementById("nombrePaciente").value,
-            correo: document.getElementById("correoPaciente").value,
-            telefono: document.getElementById("telefonoPaciente").value,
-            direccion: document.getElementById("direccionPaciente").value,
-        };
-    }
-
-    if (!paciente) {
-        alert("Debe seleccionar o crear un paciente");
-        return;
-    }
-
-    if (!paciente.correo) {
-        alert(
-            "El paciente debe tener un correo electrónico para enviar la cotización"
-        );
-        return;
-    }
-
-    const confirmacion = confirm(
-        `¿Enviar cotización a ${paciente.correo}?\n\n` +
-            `Paciente: ${paciente.nombre}\n` +
-            `Total: ${document.getElementById("total-cotizacion").textContent}`
-    );
-
-    if (confirmacion) {
         try {
-            // Primero guardamos la cotización si no está guardada
-            if (!currentQuoteId) {
-                await guardarCotizacion(new Event("submit"));
-                return; // El guardado recargará la página y podremos enviar después
-            }
+            const res = await fetch("/api/generar-pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cotizacion: datosCotizacion }),
+            });
 
-            // Si ya está guardada, procedemos a enviar
-            const response = await fetch(
-                `/api/cotizaciones/${currentQuoteId}/enviar`,
-                {
-                    method: "POST",
-                }
-            );
+            if (!res.ok) throw new Error("Error al generar PDF");
 
-            if (!response.ok) throw new Error("Error al enviar");
-
-            alert(`Cotización enviada a ${paciente.correo}`);
-            cargarCotizaciones();
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `cotizacion_${paciente.nombre.replace(
+                /\s+/g,
+                "_"
+            )}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Error al enviar:", error);
+            console.error("Error al generar PDF:", error);
             alert(`Error: ${error.message}`);
         }
     }
-}
-async function guardarCotizacion(e) {
-    e.preventDefault();
-
-    // Obtener datos del paciente
-    let pacienteId = document.getElementById("pacienteSelect").value;
-    const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
-
-    // Si es un nuevo paciente
-    if (nuevoPacienteForm.style.display !== "none") {
-        const nuevoPaciente = {
-            nombre: document.getElementById("nombrePaciente").value,
-            correo: document.getElementById("correoPaciente").value,
-            telefono: document.getElementById("telefonoPaciente").value,
-            direccion: document.getElementById("direccionPaciente").value,
-        };
-
-        if (!nuevoPaciente.nombre) {
-            alert("El nombre del paciente es obligatorio");
+    async function enviarDesdeFormulario() {
+        // Validar que haya al menos una fase con servicios
+        const fases = document.querySelectorAll(".fase-card");
+        if (fases.length === 0) {
+            alert("Debe agregar al menos una fase con servicios para enviar");
             return;
         }
 
+        const pacienteId = document.getElementById("pacienteSelect").value;
+        let paciente = pacientes.find((p) => p.id == pacienteId);
+
+        if (
+            !paciente &&
+            document.getElementById("nuevoPacienteForm").style.display !==
+                "none"
+        ) {
+            paciente = {
+                nombre: document.getElementById("nombrePaciente").value,
+                correo: document.getElementById("correoPaciente").value,
+                telefono: document.getElementById("telefonoPaciente").value,
+                direccion: document.getElementById("direccionPaciente").value,
+            };
+        }
+
+        if (!paciente) {
+            alert("Debe seleccionar o crear un paciente");
+            return;
+        }
+
+        if (!paciente.correo) {
+            alert(
+                "El paciente debe tener un correo electrónico para enviar la cotización"
+            );
+            return;
+        }
+
+        const confirmacion = confirm(
+            `¿Enviar cotización a ${paciente.correo}?\n\n` +
+                `Paciente: ${paciente.nombre}\n` +
+                `Total: ${
+                    document.getElementById("total-cotizacion").textContent
+                }`
+        );
+
+        if (confirmacion) {
+            try {
+                // Primero guardamos la cotización si no está guardada
+                if (!currentQuoteId) {
+                    await guardarCotizacion(new Event("submit"));
+                    return; // El guardado recargará la página y podremos enviar después
+                }
+
+                // Si ya está guardada, procedemos a enviar
+                const response = await fetch(
+                    `/api/cotizaciones/${currentQuoteId}/enviar`,
+                    {
+                        method: "POST",
+                    }
+                );
+
+                if (!response.ok) throw new Error("Error al enviar");
+
+                alert(`Cotización enviada a ${paciente.correo}`);
+                cargarCotizaciones();
+            } catch (error) {
+                console.error("Error al enviar:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+    }
+    async function guardarCotizacion(e) {
+        e.preventDefault();
+
+        // Obtener datos del paciente
+        let pacienteId = document.getElementById("pacienteSelect").value;
+        const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
+
+        // Si es un nuevo paciente
+        if (nuevoPacienteForm.style.display !== "none") {
+            const nuevoPaciente = {
+                nombre: document.getElementById("nombrePaciente").value,
+                correo: document.getElementById("correoPaciente").value,
+                telefono: document.getElementById("telefonoPaciente").value,
+                direccion: document.getElementById("direccionPaciente").value,
+            };
+
+            if (!nuevoPaciente.nombre) {
+                alert("El nombre del paciente es obligatorio");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/pacientes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(nuevoPaciente),
+                });
+
+                const result = await response.json();
+                pacienteId = result.id;
+            } catch (error) {
+                console.error("Error al guardar paciente:", error);
+                alert("Error al guardar paciente");
+                return;
+            }
+        }
+
+        if (!pacienteId) {
+            alert("Debe seleccionar o crear un paciente");
+            return;
+        }
+
+        // Recolectar datos de la cotización
+        const cotizacion = {
+            id: currentQuoteId,
+            paciente_id: pacienteId,
+            observaciones: document.getElementById("observaciones").value,
+            total: parseFloat(
+                document
+                    .getElementById("total-cotizacion")
+                    .textContent.replace("$", "")
+            ),
+            fases: [],
+        };
+
+        // Recolectar datos de las fases
+        fases.forEach((faseCard) => {
+            const fase = {
+                numero_fase: parseInt(
+                    faseCard.querySelector(".fase-numero").textContent
+                ),
+                servicios: [],
+            };
+
+            faseCard
+                .querySelectorAll(".servicio-item")
+                .forEach((servicioItem) => {
+                    const servicioId =
+                        servicioItem.querySelector(".servicio-select").value;
+                    if (servicioId) {
+                        fase.servicios.push({
+                            servicio_id: servicioId,
+                            cantidad:
+                                parseInt(
+                                    servicioItem.querySelector(".cantidad")
+                                        .value
+                                ) || 1,
+                            precio_unitario:
+                                parseFloat(
+                                    servicioItem.querySelector(
+                                        ".precio-unitario"
+                                    ).value
+                                ) || 0,
+                            descuento:
+                                parseFloat(
+                                    servicioItem.querySelector(".descuento")
+                                        .value
+                                ) || 0,
+                            total:
+                                parseFloat(
+                                    servicioItem.querySelector(
+                                        ".total-servicio"
+                                    ).value
+                                ) || 0,
+                        });
+                    }
+                });
+
+            cotizacion.fases.push(fase);
+        });
+
+        // Enviar al servidor
         try {
-            const response = await fetch("/api/pacientes", {
-                method: "POST",
+            const url =
+                isEditing && currentQuoteId
+                    ? `/api/cotizaciones/${currentQuoteId}`
+                    : "/api/cotizaciones";
+            const method = isEditing && currentQuoteId ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method: method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(nuevoPaciente),
+                body: JSON.stringify(cotizacion),
             });
 
+            if (!response.ok) throw new Error("Error al guardar cotización");
+
             const result = await response.json();
-            pacienteId = result.id;
+            alert("Cotización guardada exitosamente");
+            switchTab("history");
+            cargarCotizaciones();
         } catch (error) {
-            console.error("Error al guardar paciente:", error);
-            alert("Error al guardar paciente");
-            return;
+            console.error("Error al guardar cotización:", error);
+            alert(`Error: ${error.message}`);
         }
     }
 
-    if (!pacienteId) {
-        alert("Debe seleccionar o crear un paciente");
-        return;
-    }
+    // calculo de totales
 
-    // Recolectar datos de la cotización
-    const cotizacion = {
-        id: currentQuoteId,
-        paciente_id: pacienteId,
-        observaciones: document.getElementById("observaciones").value,
-        total: parseFloat(
-            document
-                .getElementById("total-cotizacion")
-                .textContent.replace("$", "")
-        ),
-        fases: [],
-    };
+    function calcularTotalesFase(faseCard) {
+        try {
+            let subtotal = 0;
+            let descuentoTotal = 0;
 
-    // Recolectar datos de las fases
-    fases.forEach((faseCard) => {
-        const fase = {
-            numero_fase: parseInt(
-                faseCard.querySelector(".fase-numero").textContent
-            ),
-            servicios: [],
-        };
-
-        faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
-            const servicioId =
-                servicioItem.querySelector(".servicio-select").value;
-            if (servicioId) {
-                fase.servicios.push({
-                    servicio_id: servicioId,
-                    cantidad:
-                        parseInt(
-                            servicioItem.querySelector(".cantidad").value
-                        ) || 1,
-                    precio_unitario:
-                        parseFloat(
-                            servicioItem.querySelector(".precio-unitario").value
-                        ) || 0,
-                    descuento:
-                        parseFloat(
-                            servicioItem.querySelector(".descuento").value
-                        ) || 0,
-                    total:
-                        parseFloat(
-                            servicioItem.querySelector(".total-servicio").value
-                        ) || 0,
-                });
+            // Verificar que faseCard existe
+            if (!faseCard) {
+                throw new Error("Elemento faseCard no proporcionado");
             }
-        });
 
-        cotizacion.fases.push(fase);
-    });
+            const servicios = faseCard.querySelectorAll(".servicio-item");
+            if (!servicios || servicios.length === 0) return;
 
-    // Enviar al servidor
-    try {
-        const url =
-            isEditing && currentQuoteId
-                ? `/api/cotizaciones/${currentQuoteId}`
-                : "/api/cotizaciones";
-        const method = isEditing && currentQuoteId ? "PUT" : "POST";
+            servicios.forEach((servicioItem) => {
+                try {
+                    // Obtener elementos con verificaciones
+                    const precioUnitarioEl =
+                        servicioItem.querySelector(".precio-unitario");
+                    const cantidadEl = servicioItem.querySelector(".cantidad");
+                    const descuentoEl =
+                        servicioItem.querySelector(".descuento");
 
-        const response = await fetch(url, {
-            method: method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(cotizacion),
-        });
+                    // Valores por defecto si los elementos no existen
+                    const precioUnitario = precioUnitarioEl
+                        ? parseFloat(precioUnitarioEl.value) || 0
+                        : 0;
+                    const cantidad = cantidadEl
+                        ? parseInt(cantidadEl.value) || 1
+                        : 1;
+                    const descuento = descuentoEl
+                        ? parseFloat(descuentoEl.value) || 0
+                        : 0;
 
-        if (!response.ok) throw new Error("Error al guardar cotización");
+                    const subtotalServicio = precioUnitario * cantidad;
+                    const descuentoServicio =
+                        subtotalServicio * (descuento / 100);
 
-        const result = await response.json();
-        alert("Cotización guardada exitosamente");
-        switchTab("history");
-        cargarCotizaciones();
-    } catch (error) {
-        console.error("Error al guardar cotización:", error);
-        alert(`Error: ${error.message}`);
-    }
-}
+                    subtotal += subtotalServicio;
+                    descuentoTotal += descuentoServicio;
+                } catch (error) {
+                    console.error("Error calculando servicio:", error);
+                }
+            });
 
-// calculo de totales
+            const total = subtotal - descuentoTotal;
 
-function calcularTotalesFase(faseCard) {
-    try {
-        let subtotal = 0;
-        let descuentoTotal = 0;
+            // Actualizar totales de fase con verificaciones
+            const subtotalEl = faseCard.querySelector(".fase-subtotal");
+            const descuentoEl = faseCard.querySelector(".fase-descuento");
+            const totalEl = faseCard.querySelector(".fase-total-amount");
 
-        // Verificar que faseCard existe
-        if (!faseCard) {
-            throw new Error("Elemento faseCard no proporcionado");
+            if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+            if (descuentoEl)
+                descuentoEl.textContent = `$${descuentoTotal.toFixed(2)}`;
+            if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+        } catch (error) {
+            console.error("Error en calcularTotalesFase:", error);
         }
-
-        const servicios = faseCard.querySelectorAll(".servicio-item");
-        if (!servicios || servicios.length === 0) return;
-
-        servicios.forEach((servicioItem) => {
-            try {
-                // Obtener elementos con verificaciones
-                const precioUnitarioEl =
-                    servicioItem.querySelector(".precio-unitario");
-                const cantidadEl = servicioItem.querySelector(".cantidad");
-                const descuentoEl = servicioItem.querySelector(".descuento");
-
-                // Valores por defecto si los elementos no existen
-                const precioUnitario = precioUnitarioEl
-                    ? parseFloat(precioUnitarioEl.value) || 0
-                    : 0;
-                const cantidad = cantidadEl
-                    ? parseInt(cantidadEl.value) || 1
-                    : 1;
-                const descuento = descuentoEl
-                    ? parseFloat(descuentoEl.value) || 0
-                    : 0;
-
-                const subtotalServicio = precioUnitario * cantidad;
-                const descuentoServicio = subtotalServicio * (descuento / 100);
-
-                subtotal += subtotalServicio;
-                descuentoTotal += descuentoServicio;
-            } catch (error) {
-                console.error("Error calculando servicio:", error);
-            }
-        });
-
-        const total = subtotal - descuentoTotal;
-
-        // Actualizar totales de fase con verificaciones
-        const subtotalEl = faseCard.querySelector(".fase-subtotal");
-        const descuentoEl = faseCard.querySelector(".fase-descuento");
-        const totalEl = faseCard.querySelector(".fase-total-amount");
-
-        if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
-        if (descuentoEl)
-            descuentoEl.textContent = `$${descuentoTotal.toFixed(2)}`;
-        if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
-    } catch (error) {
-        console.error("Error en calcularTotalesFase:", error);
     }
-}
 
-function calcularTotalesGenerales() {
-    try {
-        let subtotal = 0;
-        let descuentoTotal = 0;
+    function calcularTotalesGenerales() {
+        try {
+            let subtotal = 0;
+            let descuentoTotal = 0;
 
-        const fases = document.querySelectorAll(".fase-card");
-        if (!fases || fases.length === 0) return;
+            const fases = document.querySelectorAll(".fase-card");
+            if (!fases || fases.length === 0) return;
 
-        fases.forEach((faseCard) => {
-            try {
-                const subtotalEl = faseCard.querySelector(".fase-subtotal");
-                const descuentoEl = faseCard.querySelector(".fase-descuento");
+            fases.forEach((faseCard) => {
+                try {
+                    const subtotalEl = faseCard.querySelector(".fase-subtotal");
+                    const descuentoEl =
+                        faseCard.querySelector(".fase-descuento");
 
-                const faseSubtotal = subtotalEl
-                    ? parseFloat(subtotalEl.textContent.replace("$", "")) || 0
-                    : 0;
-                const faseDescuento = descuentoEl
-                    ? parseFloat(descuentoEl.textContent.replace("$", "")) || 0
-                    : 0;
+                    const faseSubtotal = subtotalEl
+                        ? parseFloat(subtotalEl.textContent.replace("$", "")) ||
+                          0
+                        : 0;
+                    const faseDescuento = descuentoEl
+                        ? parseFloat(
+                              descuentoEl.textContent.replace("$", "")
+                          ) || 0
+                        : 0;
 
-                subtotal += faseSubtotal;
-                descuentoTotal += faseDescuento;
-            } catch (error) {
-                console.error("Error calculando fase:", error);
-            }
-        });
+                    subtotal += faseSubtotal;
+                    descuentoTotal += faseDescuento;
+                } catch (error) {
+                    console.error("Error calculando fase:", error);
+                }
+            });
 
-        const total = subtotal - descuentoTotal;
+            const total = subtotal - descuentoTotal;
 
-        // Actualizar totales generales con verificaciones
-        const subtotalGeneralEl = document.getElementById(
-            "subtotal-cotizacion"
-        );
-        const descuentoGeneralEl = document.getElementById(
-            "descuento-cotizacion"
-        );
-        const totalGeneralEl = document.getElementById("total-cotizacion");
+            // Actualizar totales generales con verificaciones
+            const subtotalGeneralEl = document.getElementById(
+                "subtotal-cotizacion"
+            );
+            const descuentoGeneralEl = document.getElementById(
+                "descuento-cotizacion"
+            );
+            const totalGeneralEl = document.getElementById("total-cotizacion");
 
-        if (subtotalGeneralEl)
-            subtotalGeneralEl.textContent = `$${subtotal.toFixed(2)}`;
-        if (descuentoGeneralEl)
-            descuentoGeneralEl.textContent = `$${descuentoTotal.toFixed(2)}`;
-        if (totalGeneralEl) totalGeneralEl.textContent = `$${total.toFixed(2)}`;
-    } catch (error) {
-        console.error("Error en calcularTotalesGenerales:", error);
-    }
-}
-
-// historial de cotizaciones
-async function cargarCotizaciones() {
-    try {
-        const response = await fetch("/api/cotizaciones");
-        const cotizaciones = await response.json();
-
-        cotizacionesList.innerHTML = "";
-
-        if (cotizaciones.length === 0) {
-            cotizacionesList.innerHTML =
-                "<p>No hay cotizaciones guardadas aún</p>";
-            return;
+            if (subtotalGeneralEl)
+                subtotalGeneralEl.textContent = `$${subtotal.toFixed(2)}`;
+            if (descuentoGeneralEl)
+                descuentoGeneralEl.textContent = `$${descuentoTotal.toFixed(
+                    2
+                )}`;
+            if (totalGeneralEl)
+                totalGeneralEl.textContent = `$${total.toFixed(2)}`;
+        } catch (error) {
+            console.error("Error en calcularTotalesGenerales:", error);
         }
+    }
 
-        cotizaciones.sort(
-            (a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
-        );
+    // historial de cotizaciones
+    async function cargarCotizaciones() {
+        try {
+            const response = await fetch("/api/cotizaciones");
+            const cotizaciones = await response.json();
 
-        const table = document.createElement("table");
-        table.className = "table";
-        table.innerHTML = `
+            cotizacionesList.innerHTML = "";
+
+            if (cotizaciones.length === 0) {
+                cotizacionesList.innerHTML =
+                    "<p>No hay cotizaciones guardadas aún</p>";
+                return;
+            }
+
+            cotizaciones.sort(
+                (a, b) =>
+                    new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
+            );
+
+            const table = document.createElement("table");
+            table.className = "table";
+            table.innerHTML = `
   <thead>
     <tr>
       <th>ID</th>
@@ -2588,274 +2669,287 @@ async function cargarCotizaciones() {
         .join("")}
   </tbody>
 `;
-        cotizacionesList.appendChild(table);
-    } catch (error) {
-        console.error("Error al cargar cotizaciones:", error);
-        cotizacionesList.innerHTML = `
+            cotizacionesList.appendChild(table);
+        } catch (error) {
+            console.error("Error al cargar cotizaciones:", error);
+            cotizacionesList.innerHTML = `
         <div class="alert alert-danger">
           Error al cargar cotizaciones: ${error.message}
         </div>
       `;
-    }
-}
-
-async function cargarCategorias() {
-    try {
-        const response = await fetch("/api/categorias");
-        categorias = await response.json();
-        actualizarSelectCategorias();
-    } catch (error) {
-        console.error("Error al cargar categorías:", error);
-    }
-}
-
-async function cargarServicios() {
-    try {
-        const response = await fetch("/api/servicios");
-        servicios = await response.json();
-    } catch (error) {
-        console.error("Error al cargar servicios:", error);
-    }
-}
-
-window.editarCotizacion = async function (id) {
-    try {
-        const response = await fetch(`/api/cotizaciones/${id}`);
-        const cotizacion = await response.json();
-
-        if (!cotizacion) throw new Error("Cotización no encontrada");
-
-        // Limpiar formulario
-        document.getElementById("cotizacionForm").reset();
-        document.getElementById("fasesContainer").innerHTML = "";
-        currentFaseId = 0;
-
-        // Establecer paciente
-        document.getElementById("pacienteSelect").value =
-            cotizacion.paciente_id;
-
-        // Establecer observaciones
-        document.getElementById("observaciones").value =
-            cotizacion.observaciones || "";
-
-        // Cargar fases y servicios
-        if (cotizacion.fases && cotizacion.fases.length > 0) {
-            cotizacion.fases.forEach((faseData) => {
-                addNewPhase();
-                const faseCard = document.querySelector(
-                    `.fase-card[data-fase-id="${currentFaseId}"]`
-                );
-                const faseNumero = faseCard.querySelector(".fase-numero");
-                faseNumero.textContent = faseData.numero_fase;
-
-                if (faseData.servicios && faseData.servicios.length > 0) {
-                    faseData.servicios.forEach((servicioData) => {
-                        agregarServicioAFase(faseCard);
-                        const servicioItem = faseCard.querySelector(
-                            ".servicio-item:last-child"
-                        );
-
-                        // Buscar el servicio para obtener categoría y detalles
-                        const servicio = servicios.find(
-                            (s) => s.id == servicioData.servicio_id
-                        );
-                        if (servicio) {
-                            const categoriaSelect =
-                                servicioItem.querySelector(".categoria-select");
-                            categoriaSelect.value = servicio.categoria_id;
-
-                            // Disparar evento change para cargar servicios
-                            const event = new Event("change");
-                            categoriaSelect.dispatchEvent(event);
-
-                            // Esperar un momento para que se carguen los servicios
-                            setTimeout(() => {
-                                const servicioSelect =
-                                    servicioItem.querySelector(
-                                        ".servicio-select"
-                                    );
-                                servicioSelect.value = servicioData.servicio_id;
-
-                                // Disparar evento change para cargar precio
-                                const servicioEvent = new Event("change");
-                                servicioSelect.dispatchEvent(servicioEvent);
-
-                                // Establecer cantidad y descuento
-                                servicioItem.querySelector(".cantidad").value =
-                                    servicioData.cantidad;
-                                servicioItem.querySelector(".descuento").value =
-                                    servicioData.descuento;
-
-                                // Calcular totales
-                                const calcularEvent = new Event("change");
-                                servicioItem
-                                    .querySelector(".cantidad")
-                                    .dispatchEvent(calcularEvent);
-                            }, 100);
-                        }
-                    });
-                }
-            });
         }
-
-        currentQuoteId = id;
-        isEditing = true;
-        document.getElementById("quoteTitle").textContent = "Editar Cotización";
-        switchTab("new");
-    } catch (error) {
-        console.error("Error al editar:", error);
-        alert(`Error: ${error.message}`);
     }
-};
 
-window.duplicarCotizacion = async function (id) {
-    try {
-        const response = await fetch(`/api/cotizaciones/${id}`);
-        const original = await response.json();
-
-        if (!original) throw new Error("Cotización no encontrada");
-
-        // Limpiar formulario
-        document.getElementById("cotizacionForm").reset();
-        document.getElementById("fasesContainer").innerHTML = "";
-        currentFaseId = 0;
-
-        // Establecer paciente
-        document.getElementById("pacienteSelect").value = original.paciente_id;
-
-        // Establecer observaciones
-        document.getElementById("observaciones").value =
-            original.observaciones || "";
-
-        // Cargar fases y servicios
-        if (original.fases && original.fases.length > 0) {
-            original.fases.forEach((faseData) => {
-                addNewPhase();
-                const faseCard = document.querySelector(
-                    `.fase-card[data-fase-id="${currentFaseId}"]`
-                );
-                const faseNumero = faseCard.querySelector(".fase-numero");
-                faseNumero.textContent = faseData.numero_fase;
-
-                if (faseData.servicios && faseData.servicios.length > 0) {
-                    faseData.servicios.forEach((servicioData) => {
-                        agregarServicioAFase(faseCard);
-                        const servicioItem = faseCard.querySelector(
-                            ".servicio-item:last-child"
-                        );
-
-                        // Buscar el servicio para obtener categoría y detalles
-                        const servicio = servicios.find(
-                            (s) => s.id == servicioData.servicio_id
-                        );
-                        if (servicio) {
-                            const categoriaSelect =
-                                servicioItem.querySelector(".categoria-select");
-                            categoriaSelect.value = servicio.categoria_id;
-
-                            // Disparar evento change para cargar servicios
-                            const event = new Event("change");
-                            categoriaSelect.dispatchEvent(event);
-
-                            // Esperar un momento para que se carguen los servicios
-                            setTimeout(() => {
-                                const servicioSelect =
-                                    servicioItem.querySelector(
-                                        ".servicio-select"
-                                    );
-                                servicioSelect.value = servicioData.servicio_id;
-
-                                // Disparar evento change para cargar precio
-                                const servicioEvent = new Event("change");
-                                servicioSelect.dispatchEvent(servicioEvent);
-
-                                // Establecer cantidad y descuento
-                                servicioItem.querySelector(".cantidad").value =
-                                    servicioData.cantidad;
-                                servicioItem.querySelector(".descuento").value =
-                                    servicioData.descuento;
-
-                                // Calcular totales
-                                const calcularEvent = new Event("change");
-                                servicioItem
-                                    .querySelector(".cantidad")
-                                    .dispatchEvent(calcularEvent);
-                            }, 100);
-                        }
-                    });
-                }
-            });
+    async function cargarCategorias() {
+        try {
+            const response = await fetch("/api/categorias");
+            categorias = await response.json();
+        } catch (error) {
+            console.error("Error al cargar categorías:", error);
         }
-
-        currentQuoteId = null;
-        isEditing = false;
-        document.getElementById("quoteTitle").textContent =
-            "Duplicar Cotización";
-        switchTab("new");
-    } catch (error) {
-        console.error("Error al duplicar:", error);
-        alert(`Error: ${error.message}`);
     }
-};
 
-window.descargarPDF = async function (id) {
-    try {
-        const response = await fetch(`/api/cotizaciones/${id}`);
-        const cotizacion = await response.json();
-
-        if (!cotizacion) throw new Error("Cotización no encontrada");
-
-        const res = await fetch("/api/generar-pdf", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cotizacion }),
-        });
-
-        if (!res.ok) throw new Error("Error al generar PDF");
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `cotizacion_${cotizacion.id}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error("Error al descargar PDF:", error);
-        alert(`Error: ${error.message}`);
+    async function cargarServicios() {
+        try {
+            const response = await fetch("/api/servicios");
+            servicios = await response.json();
+        } catch (error) {
+            console.error("Error al cargar servicios:", error);
+        }
     }
-};
 
-window.enviarCotizacion = async function (id) {
-    try {
-        const response = await fetch(`/api/cotizaciones/${id}`);
-        const cotizacion = await response.json();
+    window.editarCotizacion = async function (id) {
+        try {
+            const response = await fetch(`/api/cotizaciones/${id}`);
+            const cotizacion = await response.json();
 
-        if (!cotizacion) throw new Error("Cotización no encontrada");
+            if (!cotizacion) throw new Error("Cotización no encontrada");
 
-        const confirmacion = confirm(
-            `¿Enviar cotización a ${cotizacion.correo_paciente}?\n\n` +
-                `Paciente: ${cotizacion.nombre_paciente}\n` +
-                `Total: $${cotizacion.total_neto.toLocaleString("es-CO")}`
-        );
+            // Limpiar formulario
+            document.getElementById("cotizacionForm").reset();
+            document.getElementById("fasesContainer").innerHTML = "";
+            currentFaseId = 0;
 
-        if (confirmacion) {
-            const updateResponse = await fetch(
-                `/api/cotizaciones/${id}/enviar`,
-                {
-                    method: "POST",
-                }
+            // Establecer paciente
+            document.getElementById("pacienteSelect").value =
+                cotizacion.paciente_id;
+
+            // Establecer observaciones
+            document.getElementById("observaciones").value =
+                cotizacion.observaciones || "";
+
+            // Cargar fases y servicios
+            if (cotizacion.fases && cotizacion.fases.length > 0) {
+                cotizacion.fases.forEach((faseData) => {
+                    addNewPhase();
+                    const faseCard = document.querySelector(
+                        `.fase-card[data-fase-id="${currentFaseId}"]`
+                    );
+                    const faseNumero = faseCard.querySelector(".fase-numero");
+                    faseNumero.textContent = faseData.numero_fase;
+
+                    if (faseData.servicios && faseData.servicios.length > 0) {
+                        faseData.servicios.forEach((servicioData) => {
+                            agregarServicioAFase(faseCard);
+                            const servicioItem = faseCard.querySelector(
+                                ".servicio-item:last-child"
+                            );
+
+                            // Buscar el servicio para obtener categoría y detalles
+                            const servicio = servicios.find(
+                                (s) => s.id == servicioData.servicio_id
+                            );
+                            if (servicio) {
+                                const categoriaSelect =
+                                    servicioItem.querySelector(
+                                        ".categoria-select"
+                                    );
+                                categoriaSelect.value = servicio.categoria_id;
+
+                                // Disparar evento change para cargar servicios
+                                const event = new Event("change");
+                                categoriaSelect.dispatchEvent(event);
+
+                                // Esperar un momento para que se carguen los servicios
+                                setTimeout(() => {
+                                    const servicioSelect =
+                                        servicioItem.querySelector(
+                                            ".servicio-select"
+                                        );
+                                    servicioSelect.value =
+                                        servicioData.servicio_id;
+
+                                    // Disparar evento change para cargar precio
+                                    const servicioEvent = new Event("change");
+                                    servicioSelect.dispatchEvent(servicioEvent);
+
+                                    // Establecer cantidad y descuento
+                                    servicioItem.querySelector(
+                                        ".cantidad"
+                                    ).value = servicioData.cantidad;
+                                    servicioItem.querySelector(
+                                        ".descuento"
+                                    ).value = servicioData.descuento;
+
+                                    // Calcular totales
+                                    const calcularEvent = new Event("change");
+                                    servicioItem
+                                        .querySelector(".cantidad")
+                                        .dispatchEvent(calcularEvent);
+                                }, 100);
+                            }
+                        });
+                    }
+                });
+            }
+
+            currentQuoteId = id;
+            isEditing = true;
+            document.getElementById("quoteTitle").textContent =
+                "Editar Cotización";
+            switchTab("new");
+        } catch (error) {
+            console.error("Error al editar:", error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    window.duplicarCotizacion = async function (id) {
+        try {
+            const response = await fetch(`/api/cotizaciones/${id}`);
+            const original = await response.json();
+
+            if (!original) throw new Error("Cotización no encontrada");
+
+            // Limpiar formulario
+            document.getElementById("cotizacionForm").reset();
+            document.getElementById("fasesContainer").innerHTML = "";
+            currentFaseId = 0;
+
+            // Establecer paciente
+            document.getElementById("pacienteSelect").value =
+                original.paciente_id;
+
+            // Establecer observaciones
+            document.getElementById("observaciones").value =
+                original.observaciones || "";
+
+            // Cargar fases y servicios
+            if (original.fases && original.fases.length > 0) {
+                original.fases.forEach((faseData) => {
+                    addNewPhase();
+                    const faseCard = document.querySelector(
+                        `.fase-card[data-fase-id="${currentFaseId}"]`
+                    );
+                    const faseNumero = faseCard.querySelector(".fase-numero");
+                    faseNumero.textContent = faseData.numero_fase;
+
+                    if (faseData.servicios && faseData.servicios.length > 0) {
+                        faseData.servicios.forEach((servicioData) => {
+                            agregarServicioAFase(faseCard);
+                            const servicioItem = faseCard.querySelector(
+                                ".servicio-item:last-child"
+                            );
+
+                            // Buscar el servicio para obtener categoría y detalles
+                            const servicio = servicios.find(
+                                (s) => s.id == servicioData.servicio_id
+                            );
+                            if (servicio) {
+                                const categoriaSelect =
+                                    servicioItem.querySelector(
+                                        ".categoria-select"
+                                    );
+                                categoriaSelect.value = servicio.categoria_id;
+
+                                // Disparar evento change para cargar servicios
+                                const event = new Event("change");
+                                categoriaSelect.dispatchEvent(event);
+
+                                // Esperar un momento para que se carguen los servicios
+                                setTimeout(() => {
+                                    const servicioSelect =
+                                        servicioItem.querySelector(
+                                            ".servicio-select"
+                                        );
+                                    servicioSelect.value =
+                                        servicioData.servicio_id;
+
+                                    // Disparar evento change para cargar precio
+                                    const servicioEvent = new Event("change");
+                                    servicioSelect.dispatchEvent(servicioEvent);
+
+                                    // Establecer cantidad y descuento
+                                    servicioItem.querySelector(
+                                        ".cantidad"
+                                    ).value = servicioData.cantidad;
+                                    servicioItem.querySelector(
+                                        ".descuento"
+                                    ).value = servicioData.descuento;
+
+                                    // Calcular totales
+                                    const calcularEvent = new Event("change");
+                                    servicioItem
+                                        .querySelector(".cantidad")
+                                        .dispatchEvent(calcularEvent);
+                                }, 100);
+                            }
+                        });
+                    }
+                });
+            }
+
+            currentQuoteId = null;
+            isEditing = false;
+            document.getElementById("quoteTitle").textContent =
+                "Duplicar Cotización";
+            switchTab("new");
+        } catch (error) {
+            console.error("Error al duplicar:", error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    window.descargarPDF = async function (id) {
+        try {
+            const response = await fetch(`/api/cotizaciones/${id}`);
+            const cotizacion = await response.json();
+
+            if (!cotizacion) throw new Error("Cotización no encontrada");
+
+            const res = await fetch("/api/generar-pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cotizacion }),
+            });
+
+            if (!res.ok) throw new Error("Error al generar PDF");
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `cotizacion_${cotizacion.id}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error al descargar PDF:", error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    window.enviarCotizacion = async function (id) {
+        try {
+            const response = await fetch(`/api/cotizaciones/${id}`);
+            const cotizacion = await response.json();
+
+            if (!cotizacion) throw new Error("Cotización no encontrada");
+
+            const confirmacion = confirm(
+                `¿Enviar cotización a ${cotizacion.correo_paciente}?\n\n` +
+                    `Paciente: ${cotizacion.nombre_paciente}\n` +
+                    `Total: $${cotizacion.total_neto.toLocaleString("es-CO")}`
             );
 
-            if (!updateResponse.ok) throw new Error("Error al enviar");
+            if (confirmacion) {
+                const updateResponse = await fetch(
+                    `/api/cotizaciones/${id}/enviar`,
+                    {
+                        method: "POST",
+                    }
+                );
 
-            alert(`Cotización enviada a ${cotizacion.correo_paciente}`);
-            cargarCotizaciones();
+                if (!updateResponse.ok) throw new Error("Error al enviar");
+
+                alert(`Cotización enviada a ${cotizacion.correo_paciente}`);
+                cargarCotizaciones();
+            }
+        } catch (error) {
+            console.error("Error al enviar:", error);
+            alert(`Error: ${error.message}`);
         }
-    } catch (error) {
-        console.error("Error al enviar:", error);
-        alert(`Error: ${error.message}`);
-    }
-};
+    };
+    // Fin Botones de accion final --- Cotizaciones / quote tab
+});

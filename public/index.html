@@ -228,18 +228,7 @@
                                                 >
                                             </div>
                                         </div>
-                                         <div class="form-group">
-                        <label for="observaciones"
-                            ><i class="fas fa-comment"></i> Observaciones</label
-                        >
-                        <textarea
-                            id="observaciones"
-                            rows="1"
-                            class="form-control"
-                        ></textarea>
-                    </div>
                                     </div>
-                                            
                                 </template>
                             </div>
 
@@ -283,21 +272,8 @@
                                 <div class="service-list">
                                     <!-- Los servicios se agregarán aquí -->
                                 </div>
-                                 <div class="form-group">
-                        <label for="observaciones"
-                            ><i class="fas fa-comment"></i> Observaciones</label
-                        >
-                        <textarea
-                            id="observaciones"
-                            rows="1"
-                            class="form-control"
-                        ></textarea>
-                    </div>
                             </div>
-                            
-                            
-                        </div>
-                        <div style="margin-top: 0.75rem">
+                            <div style="margin-top: 0.75rem">
                             <button
                                 id="add-category-btn"
                                 class="btn btn-primary"
@@ -305,6 +281,8 @@
                                 + Añadir Categoría
                             </button>
                         </div>
+                        </div>
+
                     <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
                     <template id="service-template">
                         <div class="service-item">
@@ -359,8 +337,17 @@
                         </div>
                     </template>
 
-                  
-                   
+                    <!-- Observaciones -->
+                    <div class="form-group">
+                        <label for="observaciones"
+                            ><i class="fas fa-comment"></i> Observaciones</label
+                        >
+                        <textarea
+                            id="observaciones"
+                            rows="1"
+                            class="form-control"
+                        ></textarea>
+                    </div>
 
                     <!-- Totales generales -->
                     <div class="totals-display">
