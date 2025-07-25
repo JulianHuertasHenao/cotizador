@@ -197,6 +197,16 @@
                                             <div class="service-list">
                                                 <!-- Los servicios se agregarán aquí -->
                                             </div>
+                                            <div class="form-group">
+                        <label for="observaciones"
+                            ><i class="fas fa-comment"></i> Observaciones</label
+                        >
+                        <textarea
+                            id="observaciones"
+                            rows="1"
+                            class="form-control"
+                        ></textarea>
+                    </div>
                                         </div>
 
                                         <div style="margin-top: 0.75rem">
@@ -272,6 +282,16 @@
                                 <div class="service-list">
                                     <!-- Los servicios se agregarán aquí -->
                                 </div>
+                                 <div class="form-group">
+                        <label for="observaciones"
+                            ><i class="fas fa-comment"></i> Observaciones</label
+                        >
+                        <textarea
+                            id="observaciones"
+                            rows="1"
+                            class="form-control"
+                        ></textarea>
+                    </div>
                             </div>
                             <div style="margin-top: 0.75rem">
                             <button
@@ -281,11 +301,14 @@
                                 + Añadir Categoría
                             </button>
                         </div>
+                        
                         </div>
 
                     <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
                     <template id="service-template">
+                         
                         <div class="service-item">
+                            
                             <select
                                 class="form-control servicio-select"
                                 style="flex: 1"
@@ -313,7 +336,10 @@
                                 min="0"
                                 max="100"
                                 value=""
+                                step="1"
                             />
+                           
+
                             <input
                                 type="number"
                                 class="form-control precio-unitario-servicio"
@@ -334,20 +360,13 @@
                                     </button>
                                 </div>
                             </span>
+                            
                         </div>
+                       
                     </template>
 
                     <!-- Observaciones -->
-                    <div class="form-group">
-                        <label for="observaciones"
-                            ><i class="fas fa-comment"></i> Observaciones</label
-                        >
-                        <textarea
-                            id="observaciones"
-                            rows="1"
-                            class="form-control"
-                        ></textarea>
-                    </div>
+                    
 
                     <!-- Totales generales -->
                     <div class="totals-display">

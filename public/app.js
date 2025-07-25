@@ -1,19 +1,89 @@
-/**
- * Actualiza un servicio por su ID usando la API y actualiza la lista local y la UI.
- * Utiliza los inputs: edit-service-code-id, edit-service-description-id, edit-service-price-id, edit-service-category-id
- * @param {number} id - ID del servicio a actualizar
- */
+// --- Función para enviar cotización al endpoint POST /api/cotizar ---
+async function enviarCotizacionAPI() {
+    try {
+        // Obtener id del paciente seleccionado
+        const pacienteId = document.getElementById("pacienteSelect")?.value;
+        if (!pacienteId) {
+            alert("Debe seleccionar un paciente");
+            return;
+        }
+
+        // Obtener precio total y descuento
+        const totalEl = document.getElementById("total-cotizacion");
+        const descuentoEl = document.getElementById("descuento-cotizacion");
+        let total = 0;
+        let descuento = 0;
+        if (totalEl) {
+            total =
+                parseFloat(
+                    totalEl.textContent
+                        .replace("$", "")
+                        .replace(/\./g, "")
+                        .replace(",", ".")
+                ) || 0;
+        }
+        if (descuentoEl) {
+            // Puede venir en formato "$123,45" o "12,34%"
+            let descText = descuentoEl.textContent
+                .replace("$", "")
+                .replace("%", "")
+                .trim();
+            descuento =
+                parseFloat(descText.replace(/\./g, "").replace(",", ".")) || 0;
+        }
+
+        // Tomar solo el valor del campo con id 'observaciones' y meterlo en array si tiene valor
+        let observaciones = [];
+        const obs = document.getElementById("observaciones");
+        if (obs && obs.value && obs.value.trim() !== "") {
+            observaciones.push(obs.value.trim());
+        }
+
+        // Construir el body para el endpoint
+        const body = {
+            paciente_id: pacienteId,
+            total: total,
+            descuento: descuento,
+            observaciones: observaciones,
+        };
+
+        // Llamar al endpoint POST /api/cotizar
+        const response = await fetch("/api/cotizar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error("Error al cotizar: " + errorText);
+        }
+
+        const result = await response.json();
+        alert(
+            "Cotización enviada correctamente. ID: " + (result.id || "(sin id)")
+        );
+        return result;
+    } catch (error) {
+        alert(error.message);
+    }
+}
+// Variable global para el total de la cotización
+
 function actualizarTotalCategorias() {
     let subtotal = 0;
     let totalDescuentos = 0;
     let total = 0;
-
-    document.querySelectorAll(".servicio-item").forEach((item) => {
+    precioCotizacion = 0;
+    // Recalcular precioCotizacion desde cero para reflejar el estado real
+    // console.log("actualizar total categorias");
+    document.querySelectorAll(".service-item").forEach((item) => {
         const precioUnitarioInput = item.querySelector(
             ".precio-unitario-servicio"
         );
         const cantidadInput = item.querySelector(".cantidad-servicio");
         const descuentoInput = item.querySelector(".descuento-servicio");
+        const servicioSelect = item.querySelector(".servicio-select");
 
         let precio = parseFloat(precioUnitarioInput?.value || 0);
         let cantidad = parseInt(cantidadInput?.value || 1);
@@ -30,6 +100,11 @@ function actualizarTotalCategorias() {
         subtotal += subtotalServicio;
         totalDescuentos += descuentoValor;
         total += totalServicio;
+        console.log("TOTAL SERVICIO", total);
+        // Solo sumar al precioCotizacion si hay un servicio seleccionado
+        if (servicioSelect && servicioSelect.value) {
+            precioCotizacion += totalServicio;
+        }
     });
 
     const subtotalEl = document.getElementById("subtotal-cotizacion");
@@ -42,17 +117,24 @@ function actualizarTotalCategorias() {
         })}`;
     }
     if (descuentoEl) {
-        descuentoEl.textContent = `$${totalDescuentos.toLocaleString("es-CO", {
-            minimumFractionDigits: 2,
-        })}`;
+        // Mostrar el porcentaje total de descuento aplicado sobre el subtotal
+        let porcentajeDescuento = 0;
+        if (subtotal > 0) {
+            porcentajeDescuento = (totalDescuentos / subtotal) * 100;
+        }
+        descuentoEl.textContent = `${porcentajeDescuento.toLocaleString(
+            "es-CO",
+            { minimumFractionDigits: 2 }
+        )}%`;
     }
     if (totalEl) {
-        totalEl.textContent = `$${total.toLocaleString("es-CO", {
+        totalEl.textContent = `$${precioCotizacion.toLocaleString("es-CO", {
             minimumFractionDigits: 2,
         })}`;
     }
+    // También mostrar en consola para debug
+    //console.log("precioCotizacion actual:", precioCotizacion);
 }
-
 function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     const template = document.getElementById("service-template");
     if (!template) {
@@ -79,9 +161,39 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
             servicioSelect.appendChild(option);
         });
 
+        // Guardar el id del servicio previamente seleccionado en el item
+        servicioItem._servicioSeleccionadoAnterior = null;
+
         servicioSelect.addEventListener("change", () => {
-            actualizarPrecioServicio(servicioItem);
-            actualizarTotalCategorias();
+            // Autollenar descripción y precio al seleccionar servicio
+            const selectedId = servicioSelect.value;
+            const servicio = servicios.find(
+                (s) => String(s.id) === String(selectedId)
+            );
+            const descInput = servicioItem.querySelector(
+                ".service-description"
+            );
+            const precioInput = servicioItem.querySelector(
+                ".precio-unitario-servicio"
+            );
+
+            if (servicio) {
+                if (descInput) descInput.value = servicio.descripcion;
+                if (precioInput) precioInput.value = servicio.precio_neto;
+                servicioItem._servicioSeleccionadoAnterior = servicio.id;
+            } else {
+                if (descInput) descInput.value = "";
+                if (precioInput) precioInput.value = "";
+                servicioItem._servicioSeleccionadoAnterior = null;
+            }
+
+            // Actualizar el total de fase
+            const faseContainer = servicioItem.closest(".phase-container");
+            if (faseContainer) {
+                calcularTotalesFase(faseContainer); // Recalcular total de fase
+            }
+
+            actualizarTotalCategorias(); // Actualizar total global
         });
     }
 
@@ -91,15 +203,25 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
 
     if (cantidadInput) {
         cantidadInput.addEventListener("input", () => {
+            // Recalcular precio y total fase
             actualizarPrecioServicio(servicioItem);
-            actualizarTotalCategorias();
+            const faseContainer = servicioItem.closest(".phase-container");
+            if (faseContainer) {
+                calcularTotalesFase(faseContainer); // Recalcular total de fase
+            }
+            actualizarTotalCategorias(); // Actualizar total global
         });
     }
 
     if (descuentoInput) {
         descuentoInput.addEventListener("input", () => {
+            // Recalcular precio y total fase
             actualizarPrecioServicio(servicioItem);
-            actualizarTotalCategorias();
+            const faseContainer = servicioItem.closest(".phase-container");
+            if (faseContainer) {
+                calcularTotalesFase(faseContainer); // Recalcular total de fase
+            }
+            actualizarTotalCategorias(); // Actualizar total global
         });
     }
 
@@ -119,14 +241,77 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     if (removeBtn) {
         removeBtn.addEventListener("click", () => {
             servicioItem.remove();
-            actualizarTotalCategorias();
+            const faseContainer = servicioItem.closest(".phase-container");
+            if (faseContainer) {
+                calcularTotalesFase(faseContainer); // Recalcular total de fase
+            }
+            actualizarTotalCategorias(); // Actualizar total global
         });
     }
 
     serviciosContainer.appendChild(servicioItem);
-    actualizarPrecioServicio(servicioItem);
-    actualizarTotalCategorias();
+
+    // Si hay servicios, seleccionar el primero automáticamente
+    if (servicioSelect && servicioSelect.options.length > 1) {
+        //  servicioSelect.selectedIndex = 1;
+        //  servicioSelect.dispatchEvent(new Event("change"));
+    } else {
+        actualizarPrecioServicio(servicioItem);
+        const faseContainer = servicioItem.closest(".phase-container");
+        if (faseContainer) {
+            calcularTotalesFase(faseContainer); // Recalcular total de fase
+        }
+        actualizarTotalCategorias(); // Actualizar total global
+    }
+
+    // Recálculo de total de fase al agregar servicio
+    const faseContainer = servicioItem.closest(".phase-container");
+    if (faseContainer) {
+        const precioInput = servicioItem.querySelector(
+            ".precio-unitario-servicio"
+        );
+        const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
+        const descuentoInput = servicioItem.querySelector(
+            ".descuento-servicio"
+        );
+
+        let precio = parseFloat(precioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 1);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+        if (isNaN(descuento)) descuento = 0;
+
+        const totalServicio = precio * cantidad;
+        const descuentoValor = totalServicio * (descuento / 100);
+        const totalNeto = totalServicio - descuentoValor;
+
+        // Tomar el total actual mostrado y sumarle este nuevo
+        const totalEl = faseContainer.querySelector(".fase-total-amount");
+        let totalFaseActual = 0;
+        if (totalEl) {
+            const current = totalEl.textContent
+                .replace(/[$.,]/g, "")
+                .replace(",", ".");
+            totalFaseActual = parseFloat(current) || 0;
+        }
+
+        // Si el total está en 0, es el primer servicio → sobrescribe
+        if (totalFaseActual === 0) {
+            totalFaseActual = totalNeto;
+        } else {
+            totalFaseActual += totalNeto;
+        }
+
+        if (totalEl) {
+            totalEl.textContent = `$${totalFaseActual.toLocaleString("es-CO", {
+                minimumFractionDigits: 2,
+            })}`;
+        }
+    }
 }
+
 function actualizarPrecioServicio(servicioItem) {
     const servicioSelect = servicioItem.querySelector(".servicio-select");
     const precioUnitarioInput = servicioItem.querySelector(
@@ -152,12 +337,13 @@ function actualizarPrecioServicio(servicioItem) {
         precioTotalSpan.textContent = `$${totalConDescuento.toLocaleString(
             "es-CO",
             {
-                minimumFractionDigits: 2,
+                minimumFractionDigits: 0,
             }
         )}`;
         precioTotalSpan.style.display = "inline-block";
     }
 }
+
 async function actualizarServicio(id) {
     if (!id) {
         alert("ID de servicio no válido");
@@ -300,6 +486,28 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", (e) => {
+            e.preventDefault();
+            const target = tab.getAttribute("data-tab");
+            // Ocultar todas las secciones
+            tabContents.forEach((content) => {
+                content.style.display = "none";
+                content.classList.remove("active");
+            });
+            // Mostrar la sección correspondiente
+            const destinoId = TAB_TO_DOM[target];
+            const destino = document.getElementById(destinoId);
+            if (destino) {
+                destino.style.display = "block";
+                destino.classList.add("active");
+            }
+            // Resaltar tab activo
+            tabs.forEach((tab2) => tab2.classList.remove("active"));
+            tab.classList.add("active");
+        });
+    });
+
     async function cargarServicios() {
         try {
             const response = await fetch("/api/servicios");
@@ -354,50 +562,32 @@ document.addEventListener("DOMContentLoaded", function () {
         updateServiceStats();
         populateCategoryDropdowns();
 
-        // Sub Tab switching
-        categoriesTab.addEventListener("click", function () {
-            setActiveSubTab("categories");
-        });
-
-        servicesTab.addEventListener("click", function () {
-            setActiveSubTab("services");
-        });
-        categoriesTab.classList.add("active");
-        categoriesSection.classList.add("active");
-
-        categoriesTab.addEventListener("click", function () {
-            categoriesTab.classList.add("active");
-            servicesTab.classList.remove("active");
-            categoriesSection.classList.add("active");
-            servicesSection.classList.remove("active");
-        });
-
-        servicesTab.addEventListener("click", function () {
-            servicesTab.classList.add("active");
-            categoriesTab.classList.remove("active");
-            servicesSection.classList.add("active");
-            categoriesSection.classList.remove("active");
-        });
-
-        // Set active sub tab
+        // Sub Tab switching (ajustado y simplificado)
         function setActiveSubTab(tab) {
-            // Remove active class from all sub tabs
-            categoriesTab.classList.remove("sub-tab-active");
-            servicesTab.classList.remove("sub-tab-active");
-
-            // Hide all sub sections
-            categoriesSection.classList.add("hidden");
-            servicesSection.classList.add("hidden");
-
-            // Set active tab and show corresponding section
             if (tab === "categories") {
-                categoriesTab.classList.add("sub-tab-active");
+                categoriesTab.classList.add("active");
+                servicesTab.classList.remove("active");
                 categoriesSection.classList.remove("hidden");
+                servicesSection.classList.add("hidden");
             } else if (tab === "services") {
-                servicesTab.classList.add("sub-tab-active");
+                servicesTab.classList.add("active");
+                categoriesTab.classList.remove("active");
                 servicesSection.classList.remove("hidden");
+                categoriesSection.classList.add("hidden");
             }
         }
+
+        // Inicializar mostrando categorías
+        setActiveSubTab("categories");
+
+        categoriesTab.addEventListener("click", function (e) {
+            e.preventDefault();
+            setActiveSubTab("categories");
+        });
+        servicesTab.addEventListener("click", function (e) {
+            e.preventDefault();
+            setActiveSubTab("services");
+        });
         addServiceForm.addEventListener("submit", function (e) {
             e.preventDefault();
             const code = document.getElementById("serviceCode").value.trim();
@@ -2474,64 +2664,56 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // calculo de totales
 
-    function calcularTotalesFase(faseCard) {
-        try {
-            let subtotal = 0;
-            let descuentoTotal = 0;
+    function calcularTotalesFase(faseContainer) {
+        let subtotal = 0;
+        let totalDescuento = 0;
 
-            // Verificar que faseCard existe
-            if (!faseCard) {
-                throw new Error("Elemento faseCard no proporcionado");
-            }
+        // Seleccionar todos los items de servicio dentro de la fase
+        const servicioItems = faseContainer.querySelectorAll(".service-item");
 
-            const servicios = faseCard.querySelectorAll(".servicio-item");
-            if (!servicios || servicios.length === 0) return;
+        servicioItems.forEach((item) => {
+            const precioInput = item.querySelector(".precio-unitario-servicio");
+            const cantidadInput = item.querySelector(".cantidad-servicio");
+            const descuentoInput = item.querySelector(".descuento-servicio");
 
-            servicios.forEach((servicioItem) => {
-                try {
-                    // Obtener elementos con verificaciones
-                    const precioUnitarioEl =
-                        servicioItem.querySelector(".precio-unitario");
-                    const cantidadEl = servicioItem.querySelector(".cantidad");
-                    const descuentoEl =
-                        servicioItem.querySelector(".descuento");
+            let precio = parseFloat(precioInput?.value || 0);
+            let cantidad = parseInt(cantidadInput?.value || 1);
+            let descuento = parseFloat(descuentoInput?.value || 0);
 
-                    // Valores por defecto si los elementos no existen
-                    const precioUnitario = precioUnitarioEl
-                        ? parseFloat(precioUnitarioEl.value) || 0
-                        : 0;
-                    const cantidad = cantidadEl
-                        ? parseInt(cantidadEl.value) || 1
-                        : 1;
-                    const descuento = descuentoEl
-                        ? parseFloat(descuentoEl.value) || 0
-                        : 0;
+            if (isNaN(precio)) precio = 0;
+            if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+            if (isNaN(descuento)) descuento = 0;
 
-                    const subtotalServicio = precioUnitario * cantidad;
-                    const descuentoServicio =
-                        subtotalServicio * (descuento / 100);
+            const subtotalServicio = precio * cantidad;
+            const descuentoValor = subtotalServicio * (descuento / 100);
+            const totalServicio = subtotalServicio - descuentoValor;
 
-                    subtotal += subtotalServicio;
-                    descuentoTotal += descuentoServicio;
-                } catch (error) {
-                    console.error("Error calculando servicio:", error);
+            subtotal += subtotalServicio;
+            totalDescuento += descuentoValor;
+        });
+
+        const totalFase = subtotal - totalDescuento;
+
+        // Actualizar en el DOM los valores de la fase
+        const subtotalEl = faseContainer.querySelector(".fase-subtotal");
+        const descuentoEl = faseContainer.querySelector(".fase-descuento");
+        const totalEl = faseContainer.querySelector(".fase-total-amount");
+
+        if (subtotalEl)
+            subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+                minimumFractionDigits: 2,
+            })}`;
+        if (descuentoEl)
+            descuentoEl.textContent = `$${totalDescuento.toLocaleString(
+                "es-CO",
+                {
+                    minimumFractionDigits: 2,
                 }
-            });
-
-            const total = subtotal - descuentoTotal;
-
-            // Actualizar totales de fase con verificaciones
-            const subtotalEl = faseCard.querySelector(".fase-subtotal");
-            const descuentoEl = faseCard.querySelector(".fase-descuento");
-            const totalEl = faseCard.querySelector(".fase-total-amount");
-
-            if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
-            if (descuentoEl)
-                descuentoEl.textContent = `$${descuentoTotal.toFixed(2)}`;
-            if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
-        } catch (error) {
-            console.error("Error en calcularTotalesFase:", error);
-        }
+            )}`;
+        if (totalEl)
+            totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
+                minimumFractionDigits: 2,
+            })}`;
     }
 
     function calcularTotalesGenerales() {
@@ -2953,3 +3135,103 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     // Fin Botones de accion final --- Cotizaciones / quote tab
 });
+
+// === FUNCIONES DE CÁLCULO DE FASES ===
+
+function calcularTotalesFase(faseContainer) {
+    const servicioItems = faseContainer.querySelectorAll(".service-item");
+
+    let subtotal = 0;
+    let totalDescuento = 0;
+
+    servicioItems.forEach((item) => {
+        const precioInput = item.querySelector(".precio-unitario-servicio");
+        const cantidadInput = item.querySelector(".cantidad-servicio");
+        const descuentoInput = item.querySelector(".descuento-servicio");
+
+        let precio = parseFloat(precioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 1);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+        if (isNaN(descuento)) descuento = 0;
+
+        const totalServicio = precio * cantidad;
+        const descuentoValor = totalServicio * (descuento / 100);
+
+        subtotal += totalServicio;
+        totalDescuento += descuentoValor;
+    });
+
+    const totalFase = subtotal - totalDescuento;
+
+    const subtotalEl = faseContainer.querySelector(".fase-subtotal");
+    const descuentoEl = faseContainer.querySelector(".fase-descuento");
+    const totalEl = faseContainer.querySelector(".fase-total-amount");
+
+    if (subtotalEl)
+        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (descuentoEl)
+        descuentoEl.textContent = `$${totalDescuento.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (totalEl)
+        totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+}
+
+function calcularTotalesGenerales() {
+    const fases = document.querySelectorAll(".phase-container:not(.hidden)");
+
+    let subtotalGlobal = 0;
+    let descuentoGlobal = 0;
+
+    fases.forEach((fase) => {
+        const subtotalEl = fase.querySelector(".fase-subtotal");
+        const descuentoEl = fase.querySelector(".fase-descuento");
+
+        // Eliminar $ y puntos de miles, cambiar coma decimal por punto
+        const subtotal = subtotalEl
+            ? parseFloat(
+                  subtotalEl.textContent
+                      .replace("$", "")
+                      .replace(/\./g, "")
+                      .replace(",", ".")
+              ) || 0
+            : 0;
+        const descuento = descuentoEl
+            ? parseFloat(
+                  descuentoEl.textContent
+                      .replace("$", "")
+                      .replace(/\./g, "")
+                      .replace(",", ".")
+              ) || 0
+            : 0;
+
+        subtotalGlobal += subtotal;
+        descuentoGlobal += descuento;
+    });
+
+    const totalGlobal = subtotalGlobal - descuentoGlobal;
+
+    const subtotalEl = document.getElementById("subtotal-cotizacion");
+    const descuentoEl = document.getElementById("descuento-cotizacion");
+    const totalEl = document.getElementById("total-cotizacion");
+    console.log("Descuento:", descuentoGlobal);
+    if (subtotalEl)
+        subtotalEl.textContent = `$${subtotalGlobal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (descuentoEl)
+        descuentoEl.textContent = `$${descuentoGlobal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (totalEl)
+        totalEl.textContent = `$${totalGlobal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+}
