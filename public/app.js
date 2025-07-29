@@ -424,6 +424,54 @@ async function borrarServicio(id) {
         alert("Error al eliminar servicio: " + error.message);
     }
 }
+function filterCategoryTable() {
+    const input = document.getElementById("categorySearchInput"); // Obtener la barra de búsqueda
+    const filter = input.value.toLowerCase(); // Convertir el valor de búsqueda a minúsculas
+    const categoryTable = document.getElementById("categoryTable"); // Obtener la tabla de categorías
+    const categoryRows = categoryTable.getElementsByTagName("tr"); // Obtener todas las filas de la tabla
+
+    // Recorrer todas las filas de la tabla de categorías
+    for (let i = 1; i < categoryRows.length; i++) {
+        const cells = categoryRows[i].getElementsByTagName("td");
+        const nameCell = cells[1]; // La celda de "Nombre de Categoría"
+
+        // Si la celda de "Nombre de Categoría" contiene el texto de búsqueda, mostrar la fila
+        if (nameCell) {
+            const textValue = nameCell.textContent || nameCell.innerText; // Obtener el texto de la celda
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                categoryRows[i].style.display = ""; // Mostrar fila
+            } else {
+                categoryRows[i].style.display = "none"; // Ocultar fila
+            }
+        }
+    }
+}
+
+// Función para filtrar la tabla de Servicios
+function filterServiceTable() {
+    const input = document.getElementById("serviceSearchInput");
+    const filter = input.value.toLowerCase(); // Obtener el valor de búsqueda en minúsculas
+    const serviceTable = document.getElementById("serviceTable");
+    const serviceRows = serviceTable.getElementsByTagName("tr"); // Obtener todas las filas de la tabla
+
+    // Recorrer todas las filas de la tabla de servicios
+    for (let i = 1; i < serviceRows.length; i++) {
+        const cells = serviceRows[i].getElementsByTagName("td");
+        const descriptionCell = cells[2]; // La celda de "Descripción"
+
+        // Si la descripción del servicio contiene el texto de búsqueda, mostrar la fila
+        if (descriptionCell) {
+            const textValue =
+                descriptionCell.textContent || descriptionCell.innerText;
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                serviceRows[i].style.display = ""; // Mostrar fila
+            } else {
+                serviceRows[i].style.display = "none"; // Ocultar fila
+            }
+        }
+    }
+}
+
 // Elementos del DOM necesarios
 const cotizacionesList = document.getElementById("cotizacionesList");
 const dataManagementTab = document.getElementById("dataManagementTab");
@@ -455,6 +503,8 @@ let lastUpdatedCategory = "-";
 let lastAddedService = "";
 let editingCategoryId = null;
 let editingServiceId = null;
+
+const rowsPerPage = 10;
 
 document.addEventListener("DOMContentLoaded", function () {
     // Inicialización
@@ -766,6 +816,8 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 serviceEmptyState.classList.add("hidden");
 
+                //const servicesToShow = servicios.slice(0, rowsPerPage);
+
                 servicios.forEach((service) => {
                     const row = document.createElement("tr");
                     row.setAttribute("data-service-id", service.id);
@@ -887,6 +939,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 setupServiceTableEventListeners();
             }
         }
+
+        // Función para filtrar la tabla de Categorías
+        // Filtrar la tabla de Categorías
 
         function setupCategoryTableEventListeners() {
             // Add event listeners for edit mode

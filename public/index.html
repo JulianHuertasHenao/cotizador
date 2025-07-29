@@ -463,8 +463,22 @@
                         </div>
 
                         <!-- Categories Table -->
+                        <div class="search-container" style="width: 100%">
+                            <input
+                                type="text"
+                                id="categorySearchInput"
+                                class="search-input form-control"
+                                style="
+                                    width: 40%;
+                                    margin-bottom: 1rem;
+                                    padding: 1rem;
+                                "
+                                placeholder="Buscar categorías..."
+                                onkeyup="filterCategoryTable()"
+                            />
+                        </div>
                         <div class="table-container">
-                            <table class="table">
+                            <table class="table" id="categoryTable">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -602,13 +616,27 @@
                         </div>
 
                         <!-- Services Table -->
+                        <div class="search-container">
+                            <input
+                                type="text"
+                                id="serviceSearchInput"
+                                class="search-input form-control"
+                                style="
+                                    width: 40%;
+                                    margin-bottom: 1rem;
+                                    padding: 1rem;
+                                "
+                                placeholder="Buscar servicios..."
+                                onkeyup="filterServiceTable()"
+                            />
+                        </div>
                         <div class="table-container">
-                            <table class="table">
+                            <table class="table" id="serviceTable">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
                                         <th>Código</th>
-                                        <th>Categoría</th>
+                                        <th>Categoria</th>
                                         <th>Subtítulo</th>
                                         <th>Descripción</th>
                                         <th>Precio neto</th>

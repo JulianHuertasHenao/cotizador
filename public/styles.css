@@ -960,6 +960,8 @@ input:checked + .toggle-slider:before {
 #dataManagement .table-container {
     overflow-x: auto;
     margin-bottom: 1.5rem;
+    overflow-y: auto;
+    max-height: 400px; /* Adjust as needed */
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
 }
