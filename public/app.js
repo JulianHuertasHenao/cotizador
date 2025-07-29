@@ -2,7 +2,9 @@
 async function enviarCotizacionAPI() {
     try {
         // Obtener id del paciente seleccionado
-        const pacienteId = document.getElementById("pacienteSelect")?.value;
+        const pacienteId = document.getElementById(
+            "pacienteSearchInput"
+        )?.value;
         if (!pacienteId) {
             alert("Debe seleccionar un paciente");
             return;
@@ -176,14 +178,18 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
             const precioInput = servicioItem.querySelector(
                 ".precio-unitario-servicio"
             );
+            const subtitleInput =
+                servicioItem.querySelector(".service-subtitle");
 
             if (servicio) {
                 if (descInput) descInput.value = servicio.descripcion;
                 if (precioInput) precioInput.value = servicio.precio_neto;
+                if (subtitleInput) subtitleInput.value = servicio.subtitulo;
                 servicioItem._servicioSeleccionadoAnterior = servicio.id;
             } else {
                 if (descInput) descInput.value = "";
                 if (precioInput) precioInput.value = "";
+                if (subtitleInput) subtitleInput.value = "";
                 servicioItem._servicioSeleccionadoAnterior = null;
             }
 
@@ -224,6 +230,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
             actualizarTotalCategorias(); // Actualizar total global
         });
     }
+    //evento de subtitlo
 
     // Botón para agregar más servicios dentro de la misma categoría
     const agregarBtn = servicioItem.querySelector(".agregar-servicio");
@@ -808,6 +815,17 @@ document.addEventListener("DOMContentLoaded", function () {
                           }" value="${escapeHtml(service.descripcion)}">`
                         : `<span class="text-dark">${escapeHtml(
                               service.descripcion
+                          )}</span>`
+                }
+              </td>
+              <td class="py-2 px-4">
+                ${
+                    isEditing
+                        ? `<input type="text" class="input" id="edit-service-subtitle-${
+                              service.id
+                          }" value="${escapeHtml(service.subtitulo)}">`
+                        : `<span class="text-dark">${escapeHtml(
+                              service.subtitulo
                           )}</span>`
                 }
               </td>
@@ -1693,10 +1711,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 const precioInput = servicioItem.querySelector(
                     ".precio-unitario-servicio"
                 );
+                const subtitleInput =
+                    servicioItem.querySelector(".service-subtitle");
 
                 if (servicio) {
                     if (descInput) descInput.value = servicio.descripcion;
                     if (precioInput) precioInput.value = servicio.precio_neto;
+                    if (subtitleInput)
+                        subtitleInput.value = servicio.subtitulo || "";
                 }
 
                 actualizarPrecioServicio(servicioItem);
@@ -2539,7 +2561,7 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
 
         // Obtener datos del paciente
-        let pacienteId = document.getElementById("pacienteSelect").value;
+        let pacienteId = document.getElementById("pacienteSearchInput").value;
         const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
 
         // Si es un nuevo paciente
@@ -2548,7 +2570,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 nombre: document.getElementById("nombrePaciente").value,
                 correo: document.getElementById("correoPaciente").value,
                 telefono: document.getElementById("telefonoPaciente").value,
-                direccion: document.getElementById("direccionPaciente").value,
             };
 
             if (!nuevoPaciente.nombre) {
@@ -2576,7 +2597,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Debe seleccionar o crear un paciente");
             return;
         }
-
+        let fases = document.getElementById("phases-container");
         // Recolectar datos de la cotización
         const cotizacion = {
             id: currentQuoteId,
@@ -2637,7 +2658,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Enviar al servidor
-        try {
+        console.log("Cotización a guardar:", cotizacion);
+        /*
+       
+    try {
             const url =
                 isEditing && currentQuoteId
                     ? `/api/cotizaciones/${currentQuoteId}`
@@ -2659,7 +2683,9 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             console.error("Error al guardar cotización:", error);
             alert(`Error: ${error.message}`);
-        }
+    }
+        */
+        //
     }
 
     // calculo de totales

@@ -384,7 +384,8 @@ app.get("/api/servicios", (req, res) => {
             codigo, 
             descripcion, 
             precio_neto,
-            categoria_id
+            categoria_id,
+            subtitulo
         FROM Servicios
     `;
 
@@ -412,6 +413,7 @@ app.get("/api/servicios", (req, res) => {
             descripcion: servicio.descripcion,
             precio_neto: servicio.precio_neto,
             categoria_id: servicio.categoria_id,
+            subtitulo: servicio.subtitulo,
         }));
 
         res.json(serviciosFormateados);

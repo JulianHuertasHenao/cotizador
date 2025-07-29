@@ -26,8 +26,7 @@
         <div id="newQuoteTab" class="tab-content active">
             <div class="card">
                 <h2 id="quoteTitle">Nueva Cotización</h2>
-                <form id="cotizacionForm">
-                    <!-- Sección de paciente mejorada -->
+                <form id="cotizacionForm" name="cotizacionForm">
                     <div class="form-group">
                         <label class="patient-selection-label"
                             ><i class="fas fa-user"></i> Paciente</label
@@ -38,7 +37,7 @@
                                     type="text"
                                     id="pacienteSearchInput"
                                     class="form-control"
-                                    placeholder="Buscar por nombre o correo... "
+                                    placeholder="Buscar por nombre o correo..."
                                     autocomplete="off"
                                 />
                                 <div
@@ -47,7 +46,6 @@
                                     style="display: none; width: 100%"
                                 ></div>
                             </div>
-
                             <button
                                 type="button"
                                 id="nuevoPacienteBtn"
@@ -56,7 +54,6 @@
                                 <i class="fas fa-plus"></i> Nuevo paciente
                             </button>
                         </div>
-
                         <div
                             id="nuevoPacienteForm"
                             style="display: none; margin-top: 1rem"
@@ -96,9 +93,7 @@
                             </button>
                         </div>
                     </div>
-
                     <div class="form-section">
-                        <!-- Toggle para activar/desactivar fases (igual en ambos) -->
                         <div class="toggle-container">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="use-phases" />
@@ -108,8 +103,6 @@
                                 >Organizar tratamiento en fases</span
                             >
                         </div>
-
-                        <!-- Sección de fases (oculta inicialmente) -->
                         <div id="phases-container" class="hidden">
                             <div
                                 id="no-phases-message"
@@ -123,10 +116,7 @@
                                     Añadir Primera Fase
                                 </button>
                             </div>
-
-                            <!-- Grid de fases -->
                             <div id="phases-grid" class="phases-grid">
-                                <!-- Plantilla de fase (hidden) -->
                                 <template id="phase-template">
                                     <div class="phase-container">
                                         <div class="phase-header">
@@ -149,7 +139,6 @@
                                                 ×
                                             </button>
                                         </div>
-
                                         <div class="duration-input">
                                             <label class="duration-label"
                                                 >Duración:</label
@@ -163,8 +152,6 @@
                                             />
                                             <span>meses</span>
                                         </div>
-
-                                        <!-- Categorías dentro de la fase -->
                                         <div class="category-group">
                                             <div class="category-header">
                                                 <select
@@ -179,7 +166,6 @@
                                                         categoría...</option
                                                     >
                                                 </select>
-
                                                 <div class="category-actions">
                                                     <button
                                                         class="btn btn-sm btn-primary add-service-btn"
@@ -194,21 +180,21 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <div class="service-list">
-                                                <!-- Los servicios se agregarán aquí -->
-                                            </div>
+                                            <div class="service-list"></div>
                                             <div class="form-group">
-                        <label for="observaciones"
-                            ><i class="fas fa-comment"></i> Observaciones</label
-                        >
-                        <textarea
-                            id="observaciones"
-                            rows="1"
-                            class="form-control"
-                        ></textarea>
-                    </div>
+                                                <label for="observaciones"
+                                                    ><i
+                                                        class="fas fa-comment"
+                                                    ></i>
+                                                    Observaciones</label
+                                                >
+                                                <textarea
+                                                    id="observaciones"
+                                                    rows="1"
+                                                    class="form-control"
+                                                ></textarea>
+                                            </div>
                                         </div>
-
                                         <div style="margin-top: 0.75rem">
                                             <button
                                                 class="btn btn-primary add-category-btn"
@@ -216,8 +202,6 @@
                                                 Añadir Categoría
                                             </button>
                                         </div>
-
-                                        <!-- Sección de totales por fase (añadido) -->
                                         <div class="fase-totals">
                                             <div class="totals-row">
                                                 <span>Subtotal Fase:</span>
@@ -241,7 +225,6 @@
                                     </div>
                                 </template>
                             </div>
-
                             <div style="margin-top: 0.75rem">
                                 <button
                                     id="add-phase-btn"
@@ -251,8 +234,6 @@
                                 </button>
                             </div>
                         </div>
-
-                        <!-- Sección sin fases (visible inicialmente) - ahora idéntica al otro HTML -->
                         <div id="no-phase-categories">
                             <div class="category-group">
                                 <div class="category-header">
@@ -279,137 +260,125 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div class="service-list">
-                                    <!-- Los servicios se agregarán aquí -->
+                                <div class="service-list"></div>
+                                <div class="form-group">
+                                    <label for="observaciones"
+                                        >Observaciones</label
+                                    >
+                                    <textarea
+                                        id="observaciones"
+                                        rows="1"
+                                        class="form-control"
+                                    ></textarea>
                                 </div>
-                                 <div class="form-group">
-                        <label for="observaciones"
-                            ><i class="fas fa-comment"></i> Observaciones</label
-                        >
-                        <textarea
-                            id="observaciones"
-                            rows="1"
-                            class="form-control"
-                        ></textarea>
-                    </div>
                             </div>
                             <div style="margin-top: 0.75rem">
+                                <button
+                                    id="add-category-btn"
+                                    class="btn btn-primary"
+                                >
+                                    + Añadir Categoría
+                                </button>
+                            </div>
+                        </div>
+                        <template id="service-template">
+                            <div class="service-item">
+                                <select
+                                    class="form-control servicio-select"
+                                    style="flex: 1"
+                                >
+                                    <option value=""
+                                        >Seleccionar servicio...</option
+                                    >
+                                </select>
+                                <input
+                                    type="text"
+                                    class="form-control service-description"
+                                    placeholder="Descripción"
+                                />
+                                <input
+                                    type="text"
+                                    class="form-control service-subtitle"
+                                    placeholder="Subtítulo"
+                                />
+                                <input
+                                    type="number"
+                                    class="form-control cantidad-servicio"
+                                    placeholder="Cantidad"
+                                    min="1"
+                                    value="1"
+                                />
+                                <input
+                                    type="number"
+                                    class="form-control descuento-servicio"
+                                    placeholder="Descuento %"
+                                    min="0"
+                                    max="100"
+                                    value=""
+                                    step="1"
+                                />
+                                <input
+                                    type="number"
+                                    class="form-control precio-unitario-servicio"
+                                    placeholder="Precio"
+                                    min="0"
+                                    step="0.01"
+                                />
+                                <div class="service-actions">
+                                    <span
+                                        class="precio-servicio"
+                                        style="
+                                            min-width: 60px;
+                                            text-align: center;
+                                        "
+                                        ><button
+                                            class="btn btn-sm btn-danger remove-servicio"
+                                            title="Eliminar este servicio"
+                                        >
+                                            ×
+                                        </button></span
+                                    >
+                                </div>
+                            </div>
+                        </template>
+                        <div class="totals-display">
+                            <h4>Totales de la cotización</h4>
+                            <div class="totals-row">
+                                <span>Subtotal:</span>
+                                <span id="subtotal-cotizacion">$0.00</span>
+                            </div>
+                            <div class="totals-row">
+                                <span>Descuento total:</span>
+                                <span id="descuento-cotizacion">$0.00</span>
+                            </div>
+                            <div class="totals-row total">
+                                <span>Total a pagar:</span>
+                                <span id="total-cotizacion">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="reset-btn" class="btn btn-danger">
+                                Reiniciar Formulario
+                            </button>
                             <button
-                                id="add-category-btn"
-                                class="btn btn-primary"
+                                type="button"
+                                class="btn btn-success"
+                                id="generatePdfBtn"
                             >
-                                + Añadir Categoría
+                                <i class="fas fa-file-pdf"></i> Generar PDF
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-warning"
+                                id="sendEmailBtn"
+                            >
+                                <i class="fas fa-paper-plane"></i> Enviar por
+                                Email
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cotización
                             </button>
                         </div>
-                        
-                        </div>
-
-                    <!-- Plantilla para servicio (hidden) - ahora idéntica al otro HTML pero con tus campos -->
-                    <template id="service-template">
-                         
-                        <div class="service-item">
-                            
-                            <select
-                                class="form-control servicio-select"
-                                style="flex: 1"
-                            >
-                                <option value=""
-                                    >Seleccionar servicio...</option
-                                >
-                            </select>
-                            <input
-                                type="text"
-                                class="form-control service-description"
-                                placeholder="Descripción"
-                            />
-                            <input
-                                type="number"
-                                class="form-control cantidad-servicio"
-                                placeholder="Cantidad"
-                                min="1"
-                                value="1"
-                            />
-                            <input
-                                type="number"
-                                class="form-control descuento-servicio"
-                                placeholder="Descuento %"
-                                min="0"
-                                max="100"
-                                value=""
-                                step="1"
-                            />
-                           
-
-                            <input
-                                type="number"
-                                class="form-control precio-unitario-servicio"
-                                placeholder="Precio"
-                                min="0"
-                                step="0.01"
-                            />
-                            <span
-                                class="precio-servicio"
-                                style="min-width: 60px; text-align: center"
-                            >
-                                <div class="service-actions">
-                                    <button
-                                        class="btn btn-sm btn-danger remove-servicio"
-                                        title="Eliminar este servicio"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            </span>
-                            
-                        </div>
-                       
-                    </template>
-
-                    <!-- Observaciones -->
-                    
-
-                    <!-- Totales generales -->
-                    <div class="totals-display">
-                        <h4>Totales de la cotización</h4>
-                        <div class="totals-row">
-                            <span>Subtotal:</span>
-                            <span id="subtotal-cotizacion">$0.00</span>
-                        </div>
-                        <div class="totals-row">
-                            <span>Descuento total:</span>
-                            <span id="descuento-cotizacion">$0.00</span>
-                        </div>
-                        <div class="totals-row total">
-                            <span>Total a pagar:</span>
-                            <span id="total-cotizacion">$0.00</span>
-                        </div>
-                    </div>
-
-                    <!-- Botones de acción -->
-                    <div class="action-buttons">
-                        <!-- Acciones -->
-
-                        <button id="reset-btn" class="btn btn-danger">
-                            Reiniciar Formulario
-                        </button>
-
-                        <button
-                            type="button"
-                            class="btn btn-success"
-                            id="generatePdfBtn"
-                        >
-                            <i class="fas fa-file-pdf"></i> Generar PDF
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-warning"
-                            id="sendEmailBtn"
-                        >
-                            <i class="fas fa-paper-plane"></i> Enviar por Email
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Guardar Cotización
-                        </button>
                     </div>
                 </form>
             </div>
@@ -593,6 +562,17 @@
                                         class="input"
                                     />
                                 </div>
+                                <div class="form-group">
+                                    <label for="serviceSubtitle"
+                                        >Subtítulo</label
+                                    >
+                                    <input
+                                        type="text"
+                                        id="serviceSubtitle"
+                                        required
+                                        class="input"
+                                    />
+                                </div>
                                 <div class="form-group input-with-prefix">
                                     <label for="servicePrice"
                                         >Precio Neto</label
@@ -628,9 +608,10 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Código</th>
-                                        <th>Descripción</th>
-                                        <th>Precio Neto</th>
                                         <th>Categoría</th>
+                                        <th>Subtítulo</th>
+                                        <th>Descripción</th>
+                                        <th>Precio neto</th>
                                         <th class="center">Acciones</th>
                                     </tr>
                                 </thead>
