@@ -360,6 +360,9 @@ async function actualizarServicio(id) {
     const descriptionInput = document.getElementById(
         `edit-service-description-${id}`
     );
+    const subtitleInput = document.getElementById(
+        `edit-service-subtitle-${id}`
+    );
     const priceInput = document.getElementById(`edit-service-price-${id}`);
     const categoryInput = document.getElementById(
         `edit-service-category-${id}`
@@ -370,9 +373,16 @@ async function actualizarServicio(id) {
     }
     const codigo = codeInput.value.trim();
     const descripcion = descriptionInput.value.trim();
+    const subtitulo = subtitleInput.value.trim();
     const precio_neto = parseFloat(priceInput.value);
     const categoria_id = parseInt(categoryInput.value);
-    if (!codigo || !descripcion || isNaN(precio_neto) || isNaN(categoria_id)) {
+    if (
+        !codigo ||
+        !descripcion ||
+        !subtitulo ||
+        isNaN(precio_neto) ||
+        isNaN(categoria_id)
+    ) {
         alert("Todos los campos son obligatorios y deben ser válidos");
         return;
     }
@@ -383,6 +393,7 @@ async function actualizarServicio(id) {
             body: JSON.stringify({
                 codigo,
                 descripcion,
+                subtitulo,
                 precio_neto,
                 categoria_id,
             }),
@@ -651,6 +662,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const description = document
                 .getElementById("serviceDescription")
                 .value.trim();
+            const subtitle = document
+                .getElementById("serviceSubtitle")
+                .value.trim();
             const price = parseFloat(
                 document.getElementById("servicePrice").value
             );
@@ -658,9 +672,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("serviceCategory").value
             );
             console.log(
-                `Adding service: ${code}, ${description}, ${price}, category ID: ${categoryId}`
+                `Adding service: ${code}, ${description}, ${subtitle}, ${price}, category ID: ${categoryId}`
             );
-            guardarServicio(categoryId, code, description, price);
+            guardarServicio(categoryId, code, description, subtitle, price);
         });
 
         // Add new category
@@ -901,35 +915,30 @@ document.addEventListener("DOMContentLoaded", function () {
                               categoryName
                           )}</span>`
                 }
-              </td>
               <td class="py-2 px-4">
-                <div class="flex justify-center space-x-2">
-                  <button class="btn btn-sm btn-primary edit-service-btn" data-id="${
-                      service.id
-                  }">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="btn btn-sm btn-success save-service-btn" data-id="${
-                      service.id
-                  }"${
-                        isEditing ? "" : " disabled"
-                    } style="display:inline-block;">
-                    <i class="fas fa-check"></i>
-                  </button>
-                  <button class="btn btn-sm btn-gray cancel-edit-service-btn" data-id="${
-                      service.id
-                  }"${
-                        isEditing ? "" : " disabled"
-                    } style="display:inline-block;">
-                    <i class="fas fa-times"></i>
-                  </button>
-                  <button class="btn btn-sm btn-danger delete-service-btn" data-id="${
-                      service.id
-                  }">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </td>
+  <div class="flex justify-center space-x-2">
+    ${
+        isEditing
+            ? `
+      <button class="btn btn-sm btn-success save-service-btn" data-id="${service.id}">
+        <i class="fas fa-check"></i>
+      </button>
+      <button class="btn btn-sm btn-gray cancel-edit-service-btn" data-id="${service.id}">
+        <i class="fas fa-times"></i>
+      </button>
+      `
+            : `
+      <button class="btn btn-sm btn-primary edit-service-btn" data-id="${service.id}">
+        <i class="fas fa-edit"></i>
+      </button>
+      <button class="btn btn-sm btn-danger delete-service-btn" data-id="${service.id}">
+        <i class="fas fa-trash"></i>
+      </button>
+      `
+    }
+  </div>
+</td>
+
             `;
 
                     serviceTableBody.appendChild(row);
@@ -2192,9 +2201,16 @@ document.addEventListener("DOMContentLoaded", function () {
         categoriaId,
         codigo,
         descripcion,
+        subtitulo,
         precioNeto
     ) {
-        if (!categoriaId || !codigo || !descripcion || !precioNeto) {
+        if (
+            !categoriaId ||
+            !codigo ||
+            !descripcion ||
+            !precioNeto ||
+            !subtitulo
+        ) {
             alert("Todos los campos son obligatorios");
             return;
         }
@@ -2205,6 +2221,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({
                     codigo: codigo,
                     descripcion: descripcion,
+                    subtitulo: subtitulo,
                     precio_neto: precioNeto,
                     categoria_id: categoriaId,
                 }),
@@ -2216,13 +2233,15 @@ document.addEventListener("DOMContentLoaded", function () {
             lastAddedService =
                 nuevoServicio.nombre_servicio ||
                 nuevoServicio.descripcion ||
-                nuevoServicio.codigo;
+                nuevoServicio.codigo ||
+                nuevoServicio.subtitulo;
             updateServiceStats();
             showToast(
                 `Servicio "${
                     nuevoServicio.nombre_servicio ||
                     nuevoServicio.descripcion ||
-                    nuevoServicio.codigo
+                    nuevoServicio.codigo ||
+                    nuevoServicio.subtitulo
                 }" guardado correctamente`
             );
             // Renderizar tabla y dropdowns para reflejar el cambio

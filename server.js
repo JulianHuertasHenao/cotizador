@@ -304,11 +304,12 @@ app.delete("/api/fases/:id", async (req, res) => {
     }
 });
 app.post("/api/servicios", (req, res) => {
-    const { codigo, descripcion, precio_neto, categoria_id } = req.body;
+    const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
+        req.body;
     db.run(
-        `INSERT INTO Servicios (codigo, descripcion, precio_neto, categoria_id) 
-         VALUES (?, ?, ?, ?)`,
-        [codigo, descripcion, precio_neto, categoria_id],
+        `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [codigo, descripcion, subtitulo, precio_neto, categoria_id],
         function (err) {
             if (err) {
                 console.error("Error al guardar servicio:", err.message);
@@ -323,12 +324,13 @@ app.post("/api/servicios", (req, res) => {
 
 app.put("/api/servicios/:id", (req, res) => {
     const { id } = req.params;
-    const { codigo, descripcion, precio_neto, categoria_id } = req.body;
+    const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
+        req.body;
     db.run(
         `UPDATE Servicios 
-         SET codigo = ?, descripcion = ?, precio_neto = ?, categoria_id = ? 
+         SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ? 
          WHERE id = ?`,
-        [codigo, descripcion, precio_neto, categoria_id, id],
+        [codigo, descripcion, subtitulo, precio_neto, categoria_id, id],
         function (err) {
             if (err) {
                 console.error("Error al actualizar servicio:", err.message);
