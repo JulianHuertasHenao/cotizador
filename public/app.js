@@ -876,14 +876,13 @@ document.addEventListener("DOMContentLoaded", function () {
               <td class="py-2 px-4">
                 ${
                     isEditing
-                        ? `<input type="text" class="input" id="edit-service-description-${
-                              service.id
-                          }" value="${escapeHtml(service.descripcion)}">`
+                        ? `<select class="input" id="edit-service-category-${service.id}">${categoryOptionsHtml}</select>`
                         : `<span class="text-dark">${escapeHtml(
-                              service.descripcion
+                              categoryName
                           )}</span>`
                 }
               </td>
+              
               <td class="py-2 px-4">
                 ${
                     isEditing
@@ -892,6 +891,18 @@ document.addEventListener("DOMContentLoaded", function () {
                           }" value="${escapeHtml(service.subtitulo)}">`
                         : `<span class="text-dark">${escapeHtml(
                               service.subtitulo
+                          )}</span>`
+                }
+              </td>
+              
+              <td class="py-2 px-4">
+                ${
+                    isEditing
+                        ? `<input type="text" class="input" id="edit-service-description-${
+                              service.id
+                          }" value="${escapeHtml(service.descripcion)}">`
+                        : `<span class="text-dark">${escapeHtml(
+                              service.descripcion
                           )}</span>`
                 }
               </td>
@@ -907,15 +918,6 @@ document.addEventListener("DOMContentLoaded", function () {
                   }
                 </div>
               </td>
-              <td class="py-2 px-4">
-                ${
-                    isEditing
-                        ? `<select class="input" id="edit-service-category-${service.id}">${categoryOptionsHtml}</select>`
-                        : `<span class="text-dark">${escapeHtml(
-                              categoryName
-                          )}</span>`
-                }
-              <td class="py-2 px-4">
   <div class="flex justify-center space-x-2">
     ${
         isEditing
