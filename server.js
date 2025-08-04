@@ -118,7 +118,8 @@ app.post("/api/categorias", async (req, res) => {
 });
 // Rutas para Fases
 app.post("/api/fases", async (req, res) => {
-    const { cotizacion_id, numero_fase, duracion_meses } = req.body;
+    const { cotizacion_id, numero_fase, duracion_meses, nombre_fase } =
+        req.body;
 
     try {
         // Validaciones básicas
@@ -147,9 +148,9 @@ app.post("/api/fases", async (req, res) => {
         // Insertar la nueva fase
         const result = await new Promise((resolve, reject) => {
             db.run(
-                `INSERT INTO Fases (cotizacion_id, numero_fase, duracion_meses) 
-         VALUES (?, ?, ?)`,
-                [cotizacion_id, numero_fase, duracion_meses || 1],
+                `INSERT INTO Fases (cotizacion_id, numero_fase,  nombre_fase, duracion_meses) 
+         VALUES (?, ?, ?, ?)`,
+                [cotizacion_id, numero_fase, nombre_fase, duracion_meses || 1],
                 function (err) {
                     if (err) reject(err);
                     else resolve(this);
@@ -535,7 +536,7 @@ app.get("/api/servicios/search", (req, res) => {
         res.json(rows);
     });
 });
-
+/*
 app.post("/api/fases", (req, res) => {
     const { cotizacion_id, numero_fase } = req.body;
 
@@ -551,6 +552,7 @@ app.post("/api/fases", (req, res) => {
         }
     );
 });
+*/
 
 // Ruta para obtener todos los pacientes
 app.get("/api/pacientes", (req, res) => {

@@ -1,3 +1,69 @@
+function configurarBotonEliminar(servicioItem) {
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (removeBtn) {
+        removeBtn.addEventListener("click", () => {
+            const serviceList = servicioItem.parentNode;
+            const allServices = serviceList.querySelectorAll(".service-item");
+            if (allServices.length > 1) {
+                servicioItem.remove();
+                actualizarTotalCategorias();
+                const faseContainer = servicioItem.closest(".phase-container");
+                if (faseContainer) calcularTotalesFase(faseContainer);
+            } else {
+                alert("Cada categoría debe tener al menos un servicio.");
+            }
+        });
+    }
+}
+
+function calcularTotalesFase(faseContainer) {
+    let subtotal = 0;
+    let totalDescuento = 0;
+
+    // Seleccionar todos los items de servicio dentro de la fase
+    const servicioItems = faseContainer.querySelectorAll(".service-item");
+
+    servicioItems.forEach((item) => {
+        const precioInput = item.querySelector(".precio-unitario-servicio");
+        const cantidadInput = item.querySelector(".cantidad-servicio");
+        const descuentoInput = item.querySelector(".descuento-servicio");
+
+        let precio = parseFloat(precioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 1);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+        if (isNaN(descuento)) descuento = 0;
+
+        const subtotalServicio = precio * cantidad;
+        const descuentoValor = subtotalServicio * (descuento / 100);
+        const totalServicio = subtotalServicio - descuentoValor;
+
+        subtotal += subtotalServicio;
+        totalDescuento += descuentoValor;
+    });
+
+    const totalFase = subtotal - totalDescuento;
+
+    // Actualizar en el DOM los valores de la fase
+    const subtotalEl = faseContainer.querySelector(".fase-subtotal");
+    const descuentoEl = faseContainer.querySelector(".fase-descuento");
+    const totalEl = faseContainer.querySelector(".fase-total-amount");
+
+    if (subtotalEl)
+        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (descuentoEl)
+        descuentoEl.textContent = `$${totalDescuento.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (totalEl)
+        totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+}
 // --- Función para enviar cotización al endpoint POST /api/cotizar ---
 async function enviarCotizacionAPI() {
     try {
@@ -145,7 +211,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     }
     const clone = template.content.cloneNode(true);
     const servicioItem = clone.querySelector(".service-item");
-
+    configurarBotonEliminar(servicioItem);
     // Llenar servicios SOLO de la categoría seleccionada
     const servicioSelect = servicioItem.querySelector(".servicio-select");
     if (servicioSelect) {
@@ -244,17 +310,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     }
 
     // Botón para eliminar servicio
-    const removeBtn = servicioItem.querySelector(".remove-servicio");
-    if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
-            servicioItem.remove();
-            const faseContainer = servicioItem.closest(".phase-container");
-            if (faseContainer) {
-                calcularTotalesFase(faseContainer); // Recalcular total de fase
-            }
-            actualizarTotalCategorias(); // Actualizar total global
-        });
-    }
+    //configurarBotonEliminar(servicioItem);
 
     serviciosContainer.appendChild(servicioItem);
 
@@ -348,6 +404,10 @@ function actualizarPrecioServicio(servicioItem) {
             }
         )}`;
         precioTotalSpan.style.display = "inline-block";
+    }
+    const faseContainer = servicioItem.closest(".phase-container");
+    if (faseContainer) {
+        calcularTotalesFase(faseContainer);
     }
 }
 
@@ -1335,7 +1395,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (addServiceBtn) {
                 addServiceBtn.addEventListener("click", function (e) {
-                    e.preventDefault();
+                    //e.preventDefault();
                     if (categoriaSelect.value && serviciosContainer) {
                         agregarServicioEnCategoriasDinamico(
                             serviciosContainer,
@@ -1404,8 +1464,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const cotizacionForm = document.getElementById("cotizacionForm");
         if (cotizacionForm) {
             cotizacionForm.addEventListener("submit", (e) => {
-                e.preventDefault();
-                guardarCotizacion(e);
+                //e.preventDefault();
+                guardarCotizacion();
             });
         }
 
@@ -1547,6 +1607,16 @@ document.addEventListener("DOMContentLoaded", function () {
             phaseCount;
         phaseContainer.querySelector(".phase-number-text").textContent =
             phaseCount;
+
+        // Asignar ID único y actualizar label
+        const inputDuracion = phaseContainer.querySelector(".phase-duration");
+        const labelDuracion = phaseContainer.querySelector(".duration-label");
+
+        if (inputDuracion && labelDuracion) {
+            const idUnico = `duracion-fase-${phaseCount}`;
+            inputDuracion.id = idUnico;
+            labelDuracion.setAttribute("for", idUnico);
+        }
 
         phaseContainer
             .querySelector(".remove-phase-btn")
@@ -1727,6 +1797,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const newService = template.content.cloneNode(true);
         const servicioItem = newService.querySelector(".service-item");
 
+        configurarBotonEliminar(servicioItem);
         // Set up botón de eliminar servicio
         const removeBtn = servicioItem.querySelector(".remove-servicio");
         if (removeBtn) {
@@ -2643,7 +2714,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 // Primero guardamos la cotización si no está guardada
                 if (!currentQuoteId) {
-                    await guardarCotizacion(new Event("submit"));
+                    await guardarCotizacion();
                     return; // El guardado recargará la página y podremos enviar después
                 }
 
@@ -2667,8 +2738,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     //
-    async function guardarCotizacion(e) {
-        e.preventDefault();
+    async function guardarCotizacion() {
+        //e.preventDefault();
 
         // Obtener ID del paciente desde input oculto
         let pacienteId = document.querySelector("[name='paciente_id']")?.value;
@@ -2771,9 +2842,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document
             .querySelectorAll("#phases-container .phase-container")
             .forEach((faseEl, index) => {
+                const duracionInput = faseEl.querySelector(
+                    `#duracion-fase-${index + 1}`
+                );
+                const duracion = duracionInput
+                    ? parseInt(duracionInput.value || "1")
+                    : 1;
                 const fase = {
                     numero_fase: index + 1,
                     servicios: [],
+                    duracion: duracion,
+                    nombreFase: "Fase " + (index + 1),
                 };
 
                 faseEl.querySelectorAll(".service-item").forEach((item) => {
@@ -2811,13 +2890,13 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
         // Mostrar en consola info completa (no enviada aún)
+        /*
         console.log(
             "📤 Cotización simplificada a enviar:",
             cotizacionSimplificada
         );
-        console.log("📝 Observaciones adicionales:", observaciones);
-        console.log("🧩 Fases con servicios:", fases);
-
+        console.log("Fases con servicios:", fases);
+        */
         // Enviar cotización básica al backend
         try {
             const url = currentQuoteId
@@ -2834,10 +2913,45 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!response.ok) throw new Error("Error al guardar cotización");
 
             const result = await response.json();
+            currentQuoteId = result.id; // Actualizar ID de cotización
+            console.log("Cotización guardada con ID:", currentQuoteId);
+            // Guardar cada fase en el backend
+            for (const fase of fases) {
+                try {
+                    const responseFase = await fetch("/api/fases", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            cotizacion_id: currentQuoteId,
+                            numero_fase: fase.numero_fase,
+                            nombre_fase: fase.nombreFase,
+                            duracion_meses: fase.duracion,
+                        }),
+                    });
+
+                    if (!responseFase.ok) {
+                        const errText = await responseFase.text();
+                        console.warn(
+                            `Error guardando fase ${fase.numero_fase}:`,
+                            errText
+                        );
+                    } else {
+                        const savedFase = await responseFase.json();
+                        console.log(
+                            `✅ Fase ${savedFase.numero_fase} guardada con ID ${savedFase.id}`
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        `Error inesperado al guardar fase ${fase.numero_fase}:`,
+                        error
+                    );
+                }
+            }
+
             alert("Cotización guardada exitosamente");
             switchTab("history");
             cargarCotizaciones();
-
             // 👉 Si deseas guardar las fases/observaciones en endpoints adicionales, se puede hacer aquí.
         } catch (error) {
             console.error("Error al guardar cotización:", error);
@@ -2846,58 +2960,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // calculo de totales
-
-    function calcularTotalesFase(faseContainer) {
-        let subtotal = 0;
-        let totalDescuento = 0;
-
-        // Seleccionar todos los items de servicio dentro de la fase
-        const servicioItems = faseContainer.querySelectorAll(".service-item");
-
-        servicioItems.forEach((item) => {
-            const precioInput = item.querySelector(".precio-unitario-servicio");
-            const cantidadInput = item.querySelector(".cantidad-servicio");
-            const descuentoInput = item.querySelector(".descuento-servicio");
-
-            let precio = parseFloat(precioInput?.value || 0);
-            let cantidad = parseInt(cantidadInput?.value || 1);
-            let descuento = parseFloat(descuentoInput?.value || 0);
-
-            if (isNaN(precio)) precio = 0;
-            if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
-            if (isNaN(descuento)) descuento = 0;
-
-            const subtotalServicio = precio * cantidad;
-            const descuentoValor = subtotalServicio * (descuento / 100);
-            const totalServicio = subtotalServicio - descuentoValor;
-
-            subtotal += subtotalServicio;
-            totalDescuento += descuentoValor;
-        });
-
-        const totalFase = subtotal - totalDescuento;
-
-        // Actualizar en el DOM los valores de la fase
-        const subtotalEl = faseContainer.querySelector(".fase-subtotal");
-        const descuentoEl = faseContainer.querySelector(".fase-descuento");
-        const totalEl = faseContainer.querySelector(".fase-total-amount");
-
-        if (subtotalEl)
-            subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-            })}`;
-        if (descuentoEl)
-            descuentoEl.textContent = `$${totalDescuento.toLocaleString(
-                "es-CO",
-                {
-                    minimumFractionDigits: 2,
-                }
-            )}`;
-        if (totalEl)
-            totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-            })}`;
-    }
 
     function calcularTotalesGenerales() {
         try {
@@ -2988,14 +3050,21 @@ document.addEventListener("DOMContentLoaded", function () {
   </thead>
   <tbody>
     ${cotizaciones
-        .map(
-            (cotizacion) => `
+        .map((cotizacion) => {
+            const paciente = pacientes.find(
+                (p) => p.id === cotizacion.paciente_id
+            );
+            const nombrePaciente = paciente
+                ? paciente.nombre
+                : "Paciente no encontrado";
+
+            return `
       <tr>
         <td>${String(cotizacion.id).slice(-6)}</td>
-        <td>${cotizacion.nombre_paciente}</td>
-        <td>${new Date(cotizacion.fecha_creacion).toLocaleDateString()}</td>
+        <td>${nombrePaciente}</td>
+        <td>${new Date(cotizacion.fecha).toLocaleDateString()}</td>
         <td>$${
-            cotizacion.total_neto?.toLocaleString("es-CO", {
+            cotizacion.total_con_descuento?.toLocaleString("es-CO", {
                 minimumFractionDigits: 2,
             }) || "0.00"
         }</td>
@@ -3006,11 +3075,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </td>
         <td>
           <div class="action-buttons">
-            <button class="btn btn-sm btn-primary" title="Editar" onclick="editarCotizacion('${
-                cotizacion.id
-            }')">
-              <i class="fas fa-edit"></i>
-            </button>
+            
             <button class="btn btn-sm btn-success" title="Descargar PDF" onclick="descargarPDF('${
                 cotizacion.id
             }')">
@@ -3021,17 +3086,14 @@ document.addEventListener("DOMContentLoaded", function () {
             }')">
               <i class="fas fa-paper-plane"></i>
             </button>
-            <button class="btn btn-sm btn-secondary" title="Duplicar" onclick="duplicarCotizacion('${
-                cotizacion.id
-            }')">
-              <i class="fas fa-copy"></i>
-            </button>
+          
           </div>
         </td>
       </tr>
-    `
-        )
+    `;
+        })
         .join("")}
+
   </tbody>
 `;
             cotizacionesList.appendChild(table);
