@@ -1346,6 +1346,8 @@ document.addEventListener("DOMContentLoaded", function () {
         window.updateServiceStats = updateServiceStats;
         window.populateCategoryDropdowns = populateCategoryDropdowns;
         window.showToast = showToast;
+        window.renderCategoryTable = renderCategoryTable;
+        window.updateCategoryStats = updateCategoryStats;
     }
 
     function inicializarPrimeraCategoria() {
@@ -2299,13 +2301,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 */
-    async function guardarCategoria(nombre, descripcion) {
+    async function guardarCategoria(name, descripcion) {
         try {
             const response = await fetch("/api/categorias", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    nombre_categoria: nombre.trim(),
+                    name: name,
                     descripcion: descripcion.trim(),
                 }),
             });
@@ -2315,22 +2317,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const nuevaCategoria = await response.json();
 
-            // Añadir a la lista local
             categorias.push(nuevaCategoria);
             lastAddedCategory = nuevaCategoria.nombre_categoria;
 
-            // 🔹 Refrescar tabla y estadísticas
             renderCategoryTable();
             updateCategoryStats();
-            populateCategoryDropdowns(); // actualizar selects de categoría
-            inicializarPrimeraCategoria(); // si aplica al formulario de cotización
+            populateCategoryDropdowns();
+            inicializarPrimeraCategoria();
 
             showToast(
                 `Categoría "${nuevaCategoria.nombre_categoria}" añadida correctamente`
             );
 
-            // Resetear formulario
             document.getElementById("addCategoryForm").reset();
+
+            // 🔹 Recargar página después de un pequeño delay para que se vea el toast
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         } catch (error) {
             alert("Error al guardar categoría: " + error.message);
         }
@@ -2427,7 +2431,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     codigo: codigo.trim(),
                     descripcion: descripcion.trim(),
                     subtitulo: subtitulo.trim(),
-                    precio_neto: parseFloat(precio) || 0, // 🔹 siempre número
+                    precio_neto: parseFloat(precio) || 0, // asegurar número
                 }),
             });
 
@@ -2435,24 +2439,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error("Error en la respuesta del servidor");
 
             const nuevoServicio = await response.json();
-
-            // 🔹 Asegurar que precio_neto sea número
             nuevoServicio.precio_neto =
                 parseFloat(nuevoServicio.precio_neto) || 0;
 
-            // Añadir a la lista local
             servicios.push(nuevoServicio);
             lastAddedService = nuevoServicio.descripcion;
 
-            // Refrescar tabla y estadísticas sin recargar página
             renderServiceTable();
             updateServiceStats();
             showToast(
                 `Servicio "${nuevoServicio.descripcion}" añadido correctamente`
             );
 
-            // Resetear formulario
             document.getElementById("addServiceForm").reset();
+
+            // 🔹 Recargar página después de un pequeño delay para que se vea el toast
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         } catch (error) {
             alert("Error al guardar servicio: " + error.message);
         }
