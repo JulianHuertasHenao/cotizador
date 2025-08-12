@@ -468,7 +468,7 @@ async function actualizarServicio(id) {
  */
 async function borrarServicio(id) {
     if (!id) {
-        alert("ID de servicio no válido");
+        showToast("ID de servicio no válido");
         return;
     }
     try {
@@ -476,15 +476,17 @@ async function borrarServicio(id) {
             method: "DELETE",
         });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        // Eliminar de la lista local
+
         servicios = servicios.filter((srv) => srv.id !== id);
         updateServiceStats && updateServiceStats();
         if (typeof renderServiceTable === "function") renderServiceTable();
-        showToast && showToast("Servicio eliminado correctamente");
+        showToast("Servicio eliminado correctamente");
     } catch (error) {
-        alert("Error al eliminar servicio: " + error.message);
+        console.error("Error al eliminar servicio:", error);
+        showToast("No se pudo eliminar el servicio");
     }
 }
+
 function filterCategoryTable() {
     const input = document.getElementById("categorySearchInput"); // Obtener la barra de búsqueda
     const filter = input.value.toLowerCase(); // Convertir el valor de búsqueda a minúsculas
@@ -511,23 +513,26 @@ function filterCategoryTable() {
 // Función para filtrar la tabla de Servicios
 function filterServiceTable() {
     const input = document.getElementById("serviceSearchInput");
-    const filter = input.value.toLowerCase(); // Obtener el valor de búsqueda en minúsculas
+    const filter = input.value.toLowerCase();
     const serviceTable = document.getElementById("serviceTable");
-    const serviceRows = serviceTable.getElementsByTagName("tr"); // Obtener todas las filas de la tabla
+    const serviceRows = serviceTable.getElementsByTagName("tr");
 
-    // Recorrer todas las filas de la tabla de servicios
     for (let i = 1; i < serviceRows.length; i++) {
         const cells = serviceRows[i].getElementsByTagName("td");
-        const descriptionCell = cells[2]; // La celda de "Descripción"
+        const codeCell = cells[1]; // Código
+        const descriptionCell = cells[4]; // Descripción
 
-        // Si la descripción del servicio contiene el texto de búsqueda, mostrar la fila
-        if (descriptionCell) {
-            const textValue =
+        if (codeCell && descriptionCell) {
+            const codeText = codeCell.textContent || codeCell.innerText;
+            const descText =
                 descriptionCell.textContent || descriptionCell.innerText;
-            if (textValue.toLowerCase().indexOf(filter) > -1) {
-                serviceRows[i].style.display = ""; // Mostrar fila
+            if (
+                codeText.toLowerCase().includes(filter) ||
+                descText.toLowerCase().includes(filter)
+            ) {
+                serviceRows[i].style.display = "";
             } else {
-                serviceRows[i].style.display = "none"; // Ocultar fila
+                serviceRows[i].style.display = "none";
             }
         }
     }
