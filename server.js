@@ -702,11 +702,24 @@ app.get("/api/cotizaciones/:id", (req, res) => {
 
 // Ruta para crear una nueva cotización
 app.post("/api/cotizaciones", (req, res) => {
-    const { paciente_id, total, estado, descuento, total_con_descuento } =
-        req.body;
+    const {
+        paciente_id,
+        total,
+        estado,
+        descuento,
+        total_con_descuento,
+        observaciones,
+    } = req.body;
     db.run(
-        "INSERT INTO Cotizaciones (paciente_id, total, estado, descuento, total_con_descuento) VALUES (?, ?, ?, ?, ?)",
-        [paciente_id, total, estado, descuento, total_con_descuento],
+        "INSERT INTO Cotizaciones (paciente_id, total, estado, descuento, total_con_descuento, observaciones) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+            paciente_id,
+            total,
+            estado,
+            descuento,
+            total_con_descuento,
+            observaciones,
+        ],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
@@ -718,6 +731,7 @@ app.post("/api/cotizaciones", (req, res) => {
                 estado,
                 descuento,
                 total_con_descuento,
+                observaciones,
             });
         }
     );
