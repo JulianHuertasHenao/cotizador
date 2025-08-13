@@ -123,13 +123,15 @@
                       </button>
                     </div>
                     <div class="duration-input">
-                      <label class="duration-label">Duración:</label>
+                      <label class="duration-label" for="duracion-fase-{n}"
+                        >Duración:</label
+                      >
                       <input
                         type="number"
                         class="phase-duration form-control"
                         min="1"
                         value="1"
-                        id="duracion-fase-{{n}}"
+                        id="duracion-fase-{n}"
                       />
                       <span>meses</span>
                     </div>
@@ -144,6 +146,7 @@
                         <div class="category-actions">
                           <button
                             class="btn btn-sm btn-primary add-service-btn"
+                            type="button"
                           >
                             Añadir Servicio
                           </button>
@@ -168,7 +171,10 @@
                       </div>
                     </div>
                     <div style="margin-top: 0.75rem">
-                      <button class="btn btn-primary add-category-btn">
+                      <button
+                        class="btn btn-primary add-category-btn"
+                        type="button"
+                      >
                         Añadir Categoría
                       </button>
                     </div>
@@ -190,7 +196,11 @@
                 </template>
               </div>
               <div style="margin-top: 0.75rem">
-                <button id="add-phase-btn" class="btn btn-secondary">
+                <button
+                  id="add-phase-btn"
+                  class="btn btn-secondary"
+                  type="button"
+                >
                   + Añadir Fase
                 </button>
               </div>
@@ -206,7 +216,10 @@
                     <option value="">Seleccionar categoría...</option>
                   </select>
                   <div class="category-actions">
-                    <button class="btn btn-sm btn-primary add-service-btn">
+                    <button
+                      class="btn btn-sm btn-primary add-service-btn"
+                      type="button"
+                    >
                       Añadir Servicio
                     </button>
                     <button
@@ -229,7 +242,11 @@
               </div>
             </div>
             <div style="margin-top: 0.75rem; margin-bottom: 0.75rem">
-              <button id="add-category-btn" class="btn btn-primary">
+              <button
+                id="add-category-btn"
+                class="btn btn-primary"
+                type="button"
+              >
                 + Añadir Categoría
               </button>
             </div>
@@ -253,7 +270,6 @@
                   class="form-control cantidad-servicio"
                   placeholder="Cantidad"
                   min="1"
-                  value="1"
                 />
                 <input
                   type="number"
@@ -261,7 +277,6 @@
                   placeholder="Descuento %"
                   min="0"
                   max="100"
-                  value=""
                   step="1"
                 />
                 <input
@@ -275,13 +290,13 @@
                   <span
                     class="precio-servicio"
                     style="min-width: 60px; text-align: center"
-                    ><button
-                      class="btn btn-sm btn-danger remove-servicio"
-                      title="Eliminar este servicio"
-                    >
-                      ×
-                    </button></span
+                  ></span>
+                  <button
+                    class="btn btn-sm btn-danger remove-servicio"
+                    title="Eliminar este servicio"
                   >
+                    ×
+                  </button>
                 </div>
               </div>
             </template>

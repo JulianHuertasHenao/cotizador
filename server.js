@@ -118,7 +118,8 @@ app.post("/api/categorias", async (req, res) => {
 });
 // Rutas para Fases
 app.post("/api/fases", async (req, res) => {
-    const { cotizacion_id, numero_fase, duracion_meses } = req.body;
+    const { cotizacion_id, numero_fase, duracion_meses, observaciones_fase } =
+        req.body;
 
     try {
         // Validaciones básicas
@@ -147,9 +148,14 @@ app.post("/api/fases", async (req, res) => {
         // Insertar la nueva fase
         const result = await new Promise((resolve, reject) => {
             db.run(
-                `INSERT INTO Fases (cotizacion_id, numero_fase, duracion_meses) 
-         VALUES (?, ?, ?)`,
-                [cotizacion_id, numero_fase, duracion_meses || 1],
+                `INSERT INTO Fases (cotizacion_id, numero_fase,  observaciones_fase, duracion_meses) 
+         VALUES (?, ?, ?, ?)`,
+                [
+                    cotizacion_id,
+                    numero_fase,
+                    observaciones_fase,
+                    duracion_meses || 1,
+                ],
                 function (err) {
                     if (err) reject(err);
                     else resolve(this);
@@ -174,6 +180,38 @@ app.post("/api/fases", async (req, res) => {
         }
 
         res.status(500).json({ error: "Error interno al crear fase" });
+    }
+});
+
+app.post("/api/fases/categoria", async (req, res) => {
+    const { fase_id, categoria_id } = req.body;
+
+    console.log("[PRUEBA] Datos recibidos:", fase_id, categoria_id);
+
+    try {
+        // Inserción directa sin verificar si existen fase o categoría
+        await new Promise((resolve, reject) => {
+            db.run(
+                `INSERT INTO FaseCategorias (fase_id, categoria_id) VALUES (?, ?)`,
+                [fase_id, categoria_id],
+                function (err) {
+                    if (err) return reject(err);
+                    resolve(this);
+                }
+            );
+        });
+
+        res.status(201).json({
+            fase_id,
+            categoria_id,
+            message: "Asociación creada sin validaciones",
+        });
+    } catch (error) {
+        console.error("Error al asociar fase con categoría:", error.message);
+        res.status(500).json({
+            error: "Error interno al asociar fase con categoría",
+            detail: error.message,
+        });
     }
 });
 
@@ -535,7 +573,7 @@ app.get("/api/servicios/search", (req, res) => {
         res.json(rows);
     });
 });
-
+/*
 app.post("/api/fases", (req, res) => {
     const { cotizacion_id, numero_fase } = req.body;
 
@@ -551,6 +589,7 @@ app.post("/api/fases", (req, res) => {
         }
     );
 });
+*/
 
 // Ruta para obtener todos los pacientes
 app.get("/api/pacientes", (req, res) => {
@@ -663,11 +702,24 @@ app.get("/api/cotizaciones/:id", (req, res) => {
 
 // Ruta para crear una nueva cotización
 app.post("/api/cotizaciones", (req, res) => {
-    const { paciente_id, total, estado, descuento, total_con_descuento } =
-        req.body;
+    const {
+        paciente_id,
+        total,
+        estado,
+        descuento,
+        total_con_descuento,
+        observaciones,
+    } = req.body;
     db.run(
-        "INSERT INTO Cotizaciones (paciente_id, total, estado, descuento, total_con_descuento) VALUES (?, ?, ?, ?, ?)",
-        [paciente_id, total, estado, descuento, total_con_descuento],
+        "INSERT INTO Cotizaciones (paciente_id, total, estado, descuento, total_con_descuento, observaciones) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+            paciente_id,
+            total,
+            estado,
+            descuento,
+            total_con_descuento,
+            observaciones,
+        ],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
@@ -679,6 +731,7 @@ app.post("/api/cotizaciones", (req, res) => {
                 estado,
                 descuento,
                 total_con_descuento,
+                observaciones,
             });
         }
     );

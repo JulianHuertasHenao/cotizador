@@ -1,99 +1,96 @@
-// --- Función para enviar cotización al endpoint POST /api/cotizar ---
-async function enviarCotizacionAPI() {
-    try {
-        // Obtener id del paciente seleccionado
-        const pacienteId = document.getElementById(
-            "pacienteSearchInput"
-        )?.value;
-        if (!pacienteId) {
-            alert("Debe seleccionar un paciente");
-            return;
+function configurarBotonEliminar(servicioItem) {
+    const removeBtn = servicioItem.querySelector(".remove-servicio");
+    if (!removeBtn) return;
+
+    removeBtn.addEventListener("click", () => {
+        // Contenedor de LA MISMA CATEGORÍA:
+        const categoryGroup = servicioItem.closest(".category-group");
+        const serviciosContainer =
+            categoryGroup?.querySelector(".service-list");
+        if (!serviciosContainer) return;
+
+        const itemsDeEstaCategoria =
+            serviciosContainer.querySelectorAll(".service-item");
+
+        if (itemsDeEstaCategoria.length > 1) {
+            servicioItem.remove();
+
+            // Recalcular totales de la fase (si existe) y globales
+            const faseContainer = servicioItem.closest(".phase-container");
+            if (faseContainer) calcularTotalesFase(faseContainer);
+            actualizarTotalCategorias();
+        } else {
+            // ❗ Queda 1 solo en ESTA categoría → no permitir
+            alert("Cada categoría debe tener al menos un servicio.");
         }
-
-        // Obtener precio total y descuento
-        const totalEl = document.getElementById("total-cotizacion");
-        const descuentoEl = document.getElementById("descuento-cotizacion");
-        let total = 0;
-        let descuento = 0;
-        if (totalEl) {
-            total =
-                parseFloat(
-                    totalEl.textContent
-                        .replace("$", "")
-                        .replace(/\./g, "")
-                        .replace(",", ".")
-                ) || 0;
-        }
-        if (descuentoEl) {
-            // Puede venir en formato "$123,45" o "12,34%"
-            let descText = descuentoEl.textContent
-                .replace("$", "")
-                .replace("%", "")
-                .trim();
-            descuento =
-                parseFloat(descText.replace(/\./g, "").replace(",", ".")) || 0;
-        }
-
-        // Tomar solo el valor del campo con id 'observaciones' y meterlo en array si tiene valor
-        let observaciones = [];
-        const obs = document.getElementById("observaciones");
-        if (obs && obs.value && obs.value.trim() !== "") {
-            observaciones.push(obs.value.trim());
-        }
-
-        // Construir el body para el endpoint
-        const body = {
-            paciente_id: pacienteId,
-            total: total,
-            descuento: descuento,
-            observaciones: observaciones,
-        };
-
-        // Llamar al endpoint POST /api/cotizar
-        const response = await fetch("/api/cotizar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error("Error al cotizar: " + errorText);
-        }
-
-        const result = await response.json();
-        alert(
-            "Cotización enviada correctamente. ID: " + (result.id || "(sin id)")
-        );
-        return result;
-    } catch (error) {
-        alert(error.message);
-    }
+    });
 }
-// Variable global para el total de la cotización
+
+function calcularTotalesFase(faseContainer) {
+    let subtotal = 0;
+    let totalDescuento = 0;
+
+    // Seleccionar todos los items de servicio dentro de la fase
+    const servicioItems = faseContainer.querySelectorAll(".service-item");
+
+    servicioItems.forEach((item) => {
+        const precioInput = item.querySelector(".precio-unitario-servicio");
+        const cantidadInput = item.querySelector(".cantidad-servicio");
+        const descuentoInput = item.querySelector(".descuento-servicio");
+
+        let precio = parseFloat(precioInput?.value || 0);
+        let cantidad = parseInt(cantidadInput?.value || 0);
+        let descuento = parseFloat(descuentoInput?.value || 0);
+
+        if (isNaN(precio)) precio = 0;
+        if (isNaN(cantidad) || cantidad < 1) cantidad = 0;
+        if (isNaN(descuento)) descuento = 0;
+
+        const subtotalServicio = precio * cantidad;
+        const descuentoValor = subtotalServicio * (descuento / 100);
+        const totalServicio = subtotalServicio - descuentoValor;
+
+        subtotal += subtotalServicio;
+        totalDescuento += descuentoValor;
+    });
+
+    const totalFase = subtotal - totalDescuento;
+
+    // Actualizar en el DOM los valores de la fase
+    const subtotalEl = faseContainer.querySelector(".fase-subtotal");
+    const descuentoEl = faseContainer.querySelector(".fase-descuento");
+    const totalEl = faseContainer.querySelector(".fase-total-amount");
+
+    if (subtotalEl)
+        subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (descuentoEl)
+        descuentoEl.textContent = `$${totalDescuento.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+    if (totalEl)
+        totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
+            minimumFractionDigits: 2,
+        })}`;
+}
 
 function actualizarTotalCategorias() {
     let subtotal = 0;
     let totalDescuentos = 0;
     let total = 0;
     precioCotizacion = 0;
-    // Recalcular precioCotizacion desde cero para reflejar el estado real
-    // console.log("actualizar total categorias");
+
     document.querySelectorAll(".service-item").forEach((item) => {
-        const precioUnitarioInput = item.querySelector(
-            ".precio-unitario-servicio"
-        );
-        const cantidadInput = item.querySelector(".cantidad-servicio");
-        const descuentoInput = item.querySelector(".descuento-servicio");
-        const servicioSelect = item.querySelector(".servicio-select");
-
-        let precio = parseFloat(precioUnitarioInput?.value || 0);
-        let cantidad = parseInt(cantidadInput?.value || 1);
-        let descuento = parseFloat(descuentoInput?.value || 0);
-
-        if (isNaN(precio)) precio = 0;
-        if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
-        if (isNaN(descuento)) descuento = 0;
+        const precio =
+            parseFloat(
+                item.querySelector(".precio-unitario-servicio")?.value || 0
+            ) || 0;
+        const cantidad =
+            parseInt(item.querySelector(".cantidad-servicio")?.value || 1) || 1;
+        const descuento =
+            parseFloat(item.querySelector(".descuento-servicio")?.value || 0) ||
+            0;
 
         const subtotalServicio = precio * cantidad;
         const descuentoValor = subtotalServicio * (descuento / 100);
@@ -102,8 +99,8 @@ function actualizarTotalCategorias() {
         subtotal += subtotalServicio;
         totalDescuentos += descuentoValor;
         total += totalServicio;
-        console.log("TOTAL SERVICIO", total);
-        // Solo sumar al precioCotizacion si hay un servicio seleccionado
+
+        const servicioSelect = item.querySelector(".servicio-select");
         if (servicioSelect && servicioSelect.value) {
             precioCotizacion += totalServicio;
         }
@@ -119,24 +116,19 @@ function actualizarTotalCategorias() {
         })}`;
     }
     if (descuentoEl) {
-        // Mostrar el porcentaje total de descuento aplicado sobre el subtotal
-        let porcentajeDescuento = 0;
-        if (subtotal > 0) {
-            porcentajeDescuento = (totalDescuentos / subtotal) * 100;
-        }
-        descuentoEl.textContent = `${porcentajeDescuento.toLocaleString(
-            "es-CO",
-            { minimumFractionDigits: 2 }
-        )}%`;
-    }
-    if (totalEl) {
-        totalEl.textContent = `$${precioCotizacion.toLocaleString("es-CO", {
+        // ⬅️ ahora se muestra en dinero, no %
+        descuentoEl.textContent = `$${totalDescuentos.toLocaleString("es-CO", {
             minimumFractionDigits: 2,
         })}`;
     }
-    // También mostrar en consola para debug
-    //console.log("precioCotizacion actual:", precioCotizacion);
+    if (totalEl) {
+        totalEl.textContent = `$${(subtotal - totalDescuentos).toLocaleString(
+            "es-CO",
+            { minimumFractionDigits: 2 }
+        )}`;
+    }
 }
+
 function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     const template = document.getElementById("service-template");
     if (!template) {
@@ -145,7 +137,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     }
     const clone = template.content.cloneNode(true);
     const servicioItem = clone.querySelector(".service-item");
-
+    configurarBotonEliminar(servicioItem);
     // Llenar servicios SOLO de la categoría seleccionada
     const servicioSelect = servicioItem.querySelector(".servicio-select");
     if (servicioSelect) {
@@ -185,7 +177,19 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
                 if (descInput) descInput.value = servicio.descripcion;
                 if (precioInput) precioInput.value = servicio.precio_neto;
                 if (subtitleInput) subtitleInput.value = servicio.subtitulo;
+
+                // ✅ descuento inicial en 0
+                const descuentoInput = servicioItem.querySelector(
+                    ".descuento-servicio"
+                );
+                if (descuentoInput && descuentoInput.value === "") {
+                    descuentoInput.value = 0;
+                }
+
                 servicioItem._servicioSeleccionadoAnterior = servicio.id;
+
+                // ✅ calcular precio inicial al momento de seleccionar
+                actualizarPrecioServicio(servicioItem);
             } else {
                 if (descInput) descInput.value = "";
                 if (precioInput) precioInput.value = "";
@@ -244,17 +248,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     }
 
     // Botón para eliminar servicio
-    const removeBtn = servicioItem.querySelector(".remove-servicio");
-    if (removeBtn) {
-        removeBtn.addEventListener("click", () => {
-            servicioItem.remove();
-            const faseContainer = servicioItem.closest(".phase-container");
-            if (faseContainer) {
-                calcularTotalesFase(faseContainer); // Recalcular total de fase
-            }
-            actualizarTotalCategorias(); // Actualizar total global
-        });
-    }
+    //configurarBotonEliminar(servicioItem);
 
     serviciosContainer.appendChild(servicioItem);
 
@@ -329,11 +323,11 @@ function actualizarPrecioServicio(servicioItem) {
     const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
 
     let precio = parseFloat(precioUnitarioInput?.value || 0);
-    let cantidad = parseInt(cantidadInput?.value || 1);
+    let cantidad = parseInt(cantidadInput?.value || 0);
     let descuento = parseFloat(descuentoInput?.value || 0);
 
     if (isNaN(precio)) precio = 0;
-    if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
+    if (isNaN(cantidad) || cantidad < 1) cantidad = 0;
     if (isNaN(descuento)) descuento = 0;
 
     const subtotal = precio * cantidad;
@@ -348,6 +342,10 @@ function actualizarPrecioServicio(servicioItem) {
             }
         )}`;
         precioTotalSpan.style.display = "inline-block";
+    }
+    const faseContainer = servicioItem.closest(".phase-container");
+    if (faseContainer) {
+        calcularTotalesFase(faseContainer);
     }
 }
 
@@ -418,7 +416,7 @@ async function actualizarServicio(id) {
  */
 async function borrarServicio(id) {
     if (!id) {
-        alert("ID de servicio no válido");
+        showToast("ID de servicio no válido");
         return;
     }
     try {
@@ -426,15 +424,17 @@ async function borrarServicio(id) {
             method: "DELETE",
         });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        // Eliminar de la lista local
+
         servicios = servicios.filter((srv) => srv.id !== id);
         updateServiceStats && updateServiceStats();
         if (typeof renderServiceTable === "function") renderServiceTable();
-        showToast && showToast("Servicio eliminado correctamente");
+        showToast("Servicio eliminado correctamente");
     } catch (error) {
-        alert("Error al eliminar servicio: " + error.message);
+        console.error("Error al eliminar servicio:", error);
+        showToast("No se pudo eliminar el servicio");
     }
 }
+
 function filterCategoryTable() {
     const input = document.getElementById("categorySearchInput"); // Obtener la barra de búsqueda
     const filter = input.value.toLowerCase(); // Convertir el valor de búsqueda a minúsculas
@@ -461,23 +461,26 @@ function filterCategoryTable() {
 // Función para filtrar la tabla de Servicios
 function filterServiceTable() {
     const input = document.getElementById("serviceSearchInput");
-    const filter = input.value.toLowerCase(); // Obtener el valor de búsqueda en minúsculas
+    const filter = input.value.toLowerCase();
     const serviceTable = document.getElementById("serviceTable");
-    const serviceRows = serviceTable.getElementsByTagName("tr"); // Obtener todas las filas de la tabla
+    const serviceRows = serviceTable.getElementsByTagName("tr");
 
-    // Recorrer todas las filas de la tabla de servicios
     for (let i = 1; i < serviceRows.length; i++) {
         const cells = serviceRows[i].getElementsByTagName("td");
-        const descriptionCell = cells[2]; // La celda de "Descripción"
+        const codeCell = cells[1]; // Código
+        const descriptionCell = cells[4]; // Descripción
 
-        // Si la descripción del servicio contiene el texto de búsqueda, mostrar la fila
-        if (descriptionCell) {
-            const textValue =
+        if (codeCell && descriptionCell) {
+            const codeText = codeCell.textContent || codeCell.innerText;
+            const descText =
                 descriptionCell.textContent || descriptionCell.innerText;
-            if (textValue.toLowerCase().indexOf(filter) > -1) {
-                serviceRows[i].style.display = ""; // Mostrar fila
+            if (
+                codeText.toLowerCase().includes(filter) ||
+                descText.toLowerCase().includes(filter)
+            ) {
+                serviceRows[i].style.display = "";
             } else {
-                serviceRows[i].style.display = "none"; // Ocultar fila
+                serviceRows[i].style.display = "none";
             }
         }
     }
@@ -509,7 +512,7 @@ let nextCategoryId = 4;
 let nextServiceId = 4;
 let deleteId = null;
 let deleteType = null; // 'category' or 'service'
-let lastAddedCategory = "";
+let lastAddedCategory = "-";
 let lastUpdatedCategory = "-";
 let lastAddedService = "";
 let editingCategoryId = null;
@@ -1291,6 +1294,13 @@ document.addEventListener("DOMContentLoaded", function () {
             div.textContent = text;
             return div.innerHTML;
         }
+        // al final de setupDataManagement(), después de declarar renderServiceTable, updateServiceStats, populateCategoryDropdowns, showToast, etc.
+        window.renderServiceTable = renderServiceTable;
+        window.updateServiceStats = updateServiceStats;
+        window.populateCategoryDropdowns = populateCategoryDropdowns;
+        window.showToast = showToast;
+        window.renderCategoryTable = renderCategoryTable;
+        window.updateCategoryStats = updateCategoryStats;
     }
 
     function inicializarPrimeraCategoria() {
@@ -1335,7 +1345,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (addServiceBtn) {
                 addServiceBtn.addEventListener("click", function (e) {
-                    e.preventDefault();
+                    //e.preventDefault();
                     if (categoriaSelect.value && serviciosContainer) {
                         agregarServicioEnCategoriasDinamico(
                             serviciosContainer,
@@ -1403,9 +1413,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const cotizacionForm = document.getElementById("cotizacionForm");
         if (cotizacionForm) {
-            cotizacionForm.addEventListener("submit", (e) => {
+            cotizacionForm.addEventListener("submit", async (e) => {
                 e.preventDefault();
-                guardarCotizacion(e);
+                await guardarCotizacion(e);
             });
         }
 
@@ -1547,6 +1557,29 @@ document.addEventListener("DOMContentLoaded", function () {
             phaseCount;
         phaseContainer.querySelector(".phase-number-text").textContent =
             phaseCount;
+
+        // Asignar ID único y actualizar label
+        const inputDuracion = phaseContainer.querySelector(".phase-duration");
+        const labelDuracion = phaseContainer.querySelector(".duration-label");
+
+        if (inputDuracion && labelDuracion) {
+            const idUnico = `duracion-fase-${phaseCount}`;
+            inputDuracion.id = idUnico;
+            labelDuracion.setAttribute("for", idUnico);
+        }
+        // Asignar ID único y actualizar label de observaciones
+        const inputObservaciones = phaseContainer.querySelector(
+            ".observaciones-fases"
+        );
+        const labelObservaciones = phaseContainer.querySelector(
+            "label[for^='observaciones-fases']"
+        );
+
+        if (inputObservaciones && labelObservaciones) {
+            const idObservacion = `observaciones-fases-${phaseCount}`;
+            inputObservaciones.id = idObservacion;
+            labelObservaciones.setAttribute("for", idObservacion);
+        }
 
         phaseContainer
             .querySelector(".remove-phase-btn")
@@ -1727,21 +1760,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const newService = template.content.cloneNode(true);
         const servicioItem = newService.querySelector(".service-item");
 
+        configurarBotonEliminar(servicioItem);
         // Set up botón de eliminar servicio
-        const removeBtn = servicioItem.querySelector(".remove-servicio");
-        if (removeBtn) {
-            removeBtn.addEventListener("click", () => {
-                const allServices =
-                    serviceList.querySelectorAll(".service-item");
-                if (allServices.length > 1) {
-                    servicioItem.remove();
-                    actualizarTotalCategorias();
-                } else {
-                    alert("Cada categoría debe tener al menos un servicio.");
-                }
-            });
-        }
-
+        /*
+         */
         // Obtener categoría seleccionada
         const categorySelect = serviceList
             .closest(".category-group")
@@ -1843,8 +1865,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Insertar servicio y aplicar valores por defecto
         serviceList.appendChild(servicioItem);
         setTimeout(() => {
-            if (cantidadInput) cantidadInput.value = "1";
-            if (descuentoInput) descuentoInput.value = "0";
+            if (cantidadInput) cantidadInput.value = "";
+            if (descuentoInput) descuentoInput.value = "";
 
             actualizarPrecioServicio(servicioItem);
             actualizarTotalCategorias();
@@ -2178,6 +2200,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    async function safeJson(response) {
+        const ct = response.headers.get("content-type") || "";
+        if (!ct.includes("application/json")) return null;
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+    }
+
+    /*
     async function guardarCategoria(name, descripcion) {
         if (!name) {
             alert("El nombre de la categoría es obligatorio");
@@ -2211,6 +2241,45 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Error al guardar categoría: " + error.message);
         }
     }
+*/
+    async function guardarCategoria(name, descripcion) {
+        try {
+            const response = await fetch("/api/categorias", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: name,
+                    descripcion: descripcion.trim(),
+                }),
+            });
+
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+
+            const nuevaCategoria = await response.json();
+
+            categorias.push(nuevaCategoria);
+            lastAddedCategory = nuevaCategoria.nombre_categoria;
+
+            renderCategoryTable();
+            updateCategoryStats();
+            populateCategoryDropdowns();
+            inicializarPrimeraCategoria();
+
+            showToast(
+                `Categoría "${nuevaCategoria.nombre_categoria}" añadida correctamente`
+            );
+
+            document.getElementById("addCategoryForm").reset();
+
+            // 🔹 Recargar página después de un pequeño delay para que se vea el toast
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
+        } catch (error) {
+            alert("Error al guardar categoría: " + error.message);
+        }
+    }
 
     async function borrarCategoria(id) {
         if (!id) {
@@ -2230,7 +2299,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Error al eliminar categoría: " + error.message);
         }
     }
-
+    /*
     async function guardarServicio(
         categoriaId,
         codigo,
@@ -2282,6 +2351,53 @@ document.addEventListener("DOMContentLoaded", function () {
             if (typeof renderServiceTable === "function") renderServiceTable();
             if (typeof populateServiceDropdowns === "function")
                 populateServiceDropdowns();
+        } catch (error) {
+            alert("Error al guardar servicio: " + error.message);
+        }
+    }
+*/
+    async function guardarServicio(
+        categoriaId,
+        codigo,
+        descripcion,
+        subtitulo,
+        precio
+    ) {
+        try {
+            const response = await fetch("/api/servicios", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    categoria_id: parseInt(categoriaId),
+                    codigo: codigo.trim(),
+                    descripcion: descripcion.trim(),
+                    subtitulo: subtitulo.trim(),
+                    precio_neto: parseFloat(precio) || 0, // asegurar número
+                }),
+            });
+
+            if (!response.ok)
+                throw new Error("Error en la respuesta del servidor");
+
+            const nuevoServicio = await response.json();
+            nuevoServicio.precio_neto =
+                parseFloat(nuevoServicio.precio_neto) || 0;
+
+            servicios.push(nuevoServicio);
+            lastAddedService = nuevoServicio.descripcion;
+
+            renderServiceTable();
+            updateServiceStats();
+            showToast(
+                `Servicio "${nuevoServicio.descripcion}" añadido correctamente`
+            );
+
+            document.getElementById("addServiceForm").reset();
+
+            // 🔹 Recargar página después de un pequeño delay para que se vea el toast
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         } catch (error) {
             alert("Error al guardar servicio: " + error.message);
         }
@@ -2357,6 +2473,692 @@ document.addEventListener("DOMContentLoaded", function () {
     // Fin De pacientes
 
     // Inicio --- Cotizaciones / quote tab ---
+    // ⬇️ Reemplaza por completo tu función guardarCotizacion con esta versión
+    /*
+    async function guardarCotizacion(e) {
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        alert("Inicio: guardarCotizacion()");
+
+        // ====== 1) PACIENTE ======
+        let pacienteId = document.querySelector("[name='paciente_id']")?.value;
+        const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
+
+        if (nuevoPacienteForm && nuevoPacienteForm.style.display !== "none") {
+            const nuevoPaciente = {
+                nombre: document.getElementById("nombrePaciente").value,
+                correo: document.getElementById("correoPaciente").value,
+                telefono: document.getElementById("telefonoPaciente").value,
+            };
+
+            if (!nuevoPaciente.nombre) {
+                alert("El nombre del paciente es obligatorio");
+                return;
+            }
+
+            try {
+                console.log("[Paciente] POST /api/pacientes", nuevoPaciente);
+                const response = await fetch("/api/pacientes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(nuevoPaciente),
+                });
+                if (!response.ok) throw new Error(await response.text());
+                const result = await response.json();
+                pacienteId = result.id;
+
+                // Inserta/actualiza hidden
+                let hidden = document.getElementById("pacienteSelectIdHidden");
+                if (!hidden) {
+                    hidden = document.createElement("input");
+                    hidden.type = "hidden";
+                    hidden.id = "pacienteSelectIdHidden";
+                    hidden.name = "paciente_id";
+                    document
+                        .getElementById("pacienteSearchInput")
+                        .parentNode.appendChild(hidden);
+                }
+                hidden.value = pacienteId;
+
+                alert(`Paciente OK. ID=${pacienteId}`);
+            } catch (err) {
+                console.error("[Paciente] Error:", err);
+                alert("Error al guardar paciente");
+                return;
+            }
+        }
+
+        if (!pacienteId) {
+            alert("Debe seleccionar o crear un paciente");
+            return;
+        }
+
+        // ====== 2) TOTALES ======
+        const parseMoney = (txt) =>
+            parseFloat(
+                (txt || "")
+                    .replace(/\s/g, "")
+                    .replace("$", "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+            ) || 0;
+        const parsePercent = (txt) =>
+            parseFloat(
+                (txt || "")
+                    .replace("%", "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+            ) || 0;
+
+        const total = parseMoney(
+            document.getElementById("total-cotizacion")?.textContent
+        );
+        const descuento = parsePercent(
+            document.getElementById("descuento-cotizacion")?.textContent
+        );
+        const subtotal = parseMoney(
+            document.getElementById("subtotal-cotizacion")?.textContent
+        );
+        const totalConDescuento = subtotal - (subtotal * descuento) / 100;
+
+        const cotizacionSimplificada = {
+            paciente_id: pacienteId,
+            total: subtotal,
+            estado: "borrador",
+            descuento: descuento,
+            total_con_descuento: totalConDescuento,
+        };
+
+        // ====== 3) FASES (recolección completa) ======
+        const fases = [];
+        document
+            .querySelectorAll("#phases-container .phase-container")
+            .forEach((faseEl, index) => {
+                const duracionInput = faseEl.querySelector(".phase-duration");
+                const duracion = duracionInput
+                    ? parseInt(duracionInput.value || "1")
+                    : 1;
+
+                // Observaciones: unir múltiples en una sola cadena
+                const obsUnicas = Array.from(
+                    new Set(
+                        Array.from(
+                            faseEl.querySelectorAll(".observaciones-fases")
+                        )
+                            .map((i) => (i.value || "").trim())
+                            .filter((v) => v.length > 0)
+                    )
+                );
+                const observacion = obsUnicas.join(", ");
+
+                const categoriasSet = new Set();
+                const servicios = [];
+
+                faseEl.querySelectorAll(".service-item").forEach((item) => {
+                    const servicioId =
+                        item.querySelector(".servicio-select")?.value;
+                    if (!servicioId) return;
+
+                    const cantidad =
+                        parseInt(
+                            item.querySelector(".cantidad-servicio")?.value
+                        ) || 1;
+                    const precio =
+                        parseFloat(
+                            item.querySelector(".precio-unitario-servicio")
+                                ?.value
+                        ) || 0;
+                    const desc =
+                        parseFloat(
+                            item.querySelector(".descuento-servicio")?.value
+                        ) || 0;
+
+                    const sub = precio * cantidad;
+                    const total = sub - (sub * desc) / 100;
+
+                    const catSelect = item
+                        .closest(".category-group")
+                        ?.querySelector(".categoria-fase-select");
+                    const categoriaId = catSelect?.value;
+                    if (
+                        categoriaId != null &&
+                        categoriaId !== "" &&
+                        !Number.isNaN(Number(categoriaId))
+                    ) {
+                        categoriasSet.add(Number(categoriaId));
+                    }
+
+                    servicios.push({
+                        servicio_id: Number(servicioId) || servicioId,
+                        cantidad,
+                        precio_unitario: precio,
+                        descuento: desc,
+                        total,
+                    });
+                });
+
+                if (servicios.length > 0) {
+                    fases.push({
+                        numero_fase: index + 1,
+                        duracion,
+                        observacion,
+                        servicios,
+                        categorias: Array.from(categoriasSet),
+                    });
+                }
+            });
+
+        // Debug antes de enviar
+        alert(`Fases detectadas: ${fases.length}`);
+        fases.forEach((f) =>
+            alert(
+                `Fase ${f.numero_fase} | dur=${
+                    f.duracion
+                } | cats=[${f.categorias.join(", ")}] | obs="${f.observacion}"`
+            )
+        );
+
+        // ====== 4) GUARDAR COTIZACIÓN ======
+        try {
+            const url =
+                typeof currentQuoteId !== "undefined" && currentQuoteId
+                    ? `/api/cotizaciones/${currentQuoteId}`
+                    : "/api/cotizaciones";
+            const method =
+                typeof currentQuoteId !== "undefined" && currentQuoteId
+                    ? "PUT"
+                    : "POST";
+
+            console.log(
+                "[Cotización] %s %s",
+                method,
+                url,
+                cotizacionSimplificada
+            );
+            alert("Guardando cotización…");
+
+            const response = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cotizacionSimplificada),
+            });
+            if (!response.ok) throw new Error(await response.text());
+
+            const result = await response.json();
+            if (typeof currentQuoteId !== "undefined")
+                currentQuoteId = result.id || currentQuoteId;
+
+            alert(
+                `Cotización guardada. ID=${
+                    result.id || currentQuoteId || "(no retornado)"
+                }`
+            );
+        } catch (err) {
+            console.error("[Cotización] Error:", err);
+            alert("Error al guardar cotización");
+            return;
+        }
+
+        // ====== 5) GUARDAR FASES (todas) + FASE↔CATEGORÍAS ======
+        const faseOps = fases.map(async (fase) => {
+            try {
+                console.log(
+                    `[Fase] POST /api/fases | fase=${fase.numero_fase}`,
+                    fase
+                );
+                const respFase = await fetch("/api/fases", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        cotizacion_id: currentQuoteId,
+                        numero_fase: fase.numero_fase,
+                        duracion_meses: fase.duracion,
+                        observaciones_fase: fase.observacion,
+                    }),
+                });
+
+                if (!respFase.ok) {
+                    const t = await respFase.text();
+                    throw new Error(`Fase ${fase.numero_fase} falló: ${t}`);
+                }
+
+                const savedFase = await respFase.json();
+                const faseId = savedFase?.id;
+                console.log(
+                    `[Fase] OK fase ${fase.numero_fase} => id=${faseId}`
+                );
+                alert(
+                    `Fase ${fase.numero_fase} guardada (id=${faseId ?? "?"})`
+                );
+
+                // Guardar FaseCategorias (una por cada categoría detectada)
+                if (
+                    Array.isArray(fase.categorias) &&
+                    fase.categorias.length > 0
+                ) {
+                    const catOps = fase.categorias.map(async (categoriaId) => {
+                        console.log(
+                            `[FaseCategorias] POST /api/fases/categoria | fase_id=${faseId}, categoria_id=${categoriaId}`
+                        );
+                        const r = await fetch("/api/fases/categoria", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                fase_id: faseId,
+                                categoria_id: categoriaId,
+                            }),
+                        });
+
+                        const txt = await r.text();
+                        if (!r.ok) {
+                            throw new Error(
+                                `fase=${faseId} cat=${categoriaId} => ${txt}`
+                            );
+                        }
+                        console.log("[FaseCategorias] OK =>", txt);
+                        return txt;
+                    });
+
+                    const catResults = await Promise.allSettled(catOps);
+                    const erroresCat = catResults.filter(
+                        (x) => x.status === "rejected"
+                    );
+                    if (erroresCat.length) {
+                        console.warn(
+                            `[FaseCategorias] Errores en fase ${fase.numero_fase}:`,
+                            erroresCat
+                        );
+                        alert(
+                            `⚠️ Errores asociando categorías en fase ${fase.numero_fase}. Ver consola.`
+                        );
+                    } else {
+                        alert(
+                            `Categorías asociadas en fase ${
+                                fase.numero_fase
+                            }: ${fase.categorias.join(", ")}`
+                        );
+                    }
+                } else {
+                    console.log(
+                        `[FaseCategorias] Fase ${fase.numero_fase} sin categorías`
+                    );
+                }
+
+                return { ok: true, fase: fase.numero_fase, id: faseId };
+            } catch (e) {
+                console.error(`[Fase] Error fase ${fase.numero_fase}:`, e);
+                alert(
+                    `❌ Error guardando fase ${fase.numero_fase}. Revisa consola.`
+                );
+                return { ok: false, fase: fase.numero_fase, error: e?.message };
+            }
+        });
+
+        // Esperar a que terminen TODAS las fases (y sus categorías)
+        const resultadosFases = await Promise.allSettled(faseOps);
+        console.log("[Fases] Resultados:", resultadosFases);
+
+        const fallos = resultadosFases.filter(
+            (r) => r.status === "fulfilled" && r.value && r.value.ok === false
+        );
+        const rechazadas = resultadosFases.filter(
+            (r) => r.status === "rejected"
+        );
+
+        if (fallos.length || rechazadas.length) {
+            alert(
+                "Proceso finalizado con errores en algunas fases. Revisa consola para detalles."
+            );
+        } else {
+            alert("Proceso finalizado. Todas las fases procesadas.");
+        }
+
+        // ====== 6) UI (después de TODO)
+        if (typeof switchTab === "function") switchTab("history");
+        if (typeof cargarCotizaciones === "function") cargarCotizaciones();
+    }
+    */
+
+    function _extractIdFromLocationHeader(response) {
+        const loc =
+            response.headers.get("Location") ||
+            response.headers.get("location");
+        if (!loc) return null;
+        const m = loc.match(/\/(\d+)(?:\/)?$/);
+        return m ? Number(m[1]) : null;
+    }
+
+    async function guardarCotizacion(e) {
+        if (e && typeof e.preventDefault === "function") e.preventDefault();
+        alert("Inicio: guardarCotizacion()");
+
+        // ====== 1) PACIENTE ======
+        let pacienteId = document.querySelector("[name='paciente_id']")?.value;
+        const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
+
+        if (nuevoPacienteForm && nuevoPacienteForm.style.display !== "none") {
+            const nuevoPaciente = {
+                nombre: document.getElementById("nombrePaciente").value,
+                correo: document.getElementById("correoPaciente").value,
+                telefono: document.getElementById("telefonoPaciente").value,
+            };
+
+            if (!nuevoPaciente.nombre) {
+                alert("El nombre del paciente es obligatorio");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/pacientes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(nuevoPaciente),
+                });
+
+                if (!response.ok) throw new Error(await response.text());
+                const dataPaciente = await response.json();
+                pacienteId = dataPaciente.id;
+
+                // Asegura el hidden con el id del paciente
+                let hidden = document.getElementById("pacienteSelectIdHidden");
+                if (!hidden) {
+                    hidden = document.createElement("input");
+                    hidden.type = "hidden";
+                    hidden.id = "pacienteSelectIdHidden";
+                    hidden.name = "paciente_id";
+                    document
+                        .getElementById("pacienteSearchInput")
+                        .parentNode.appendChild(hidden);
+                }
+                hidden.value = pacienteId;
+
+                alert(`Paciente OK. ID=${pacienteId}`);
+            } catch (err) {
+                console.error("[Paciente] Error:", err);
+                alert("Error al guardar paciente");
+                return;
+            }
+        }
+
+        if (!pacienteId) {
+            alert("Debe seleccionar o crear un paciente");
+            return;
+        }
+
+        // ====== 2) TOTALES ======
+        const parseMoney = (txt) =>
+            parseFloat(
+                (txt || "")
+                    .replace(/\s/g, "")
+                    .replace("$", "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+            ) || 0;
+        const parsePercent = (txt) =>
+            parseFloat(
+                (txt || "")
+                    .replace("%", "")
+                    .replace(/\./g, "")
+                    .replace(",", ".")
+            ) || 0;
+
+        const descuento = parsePercent(
+            document.getElementById("descuento-cotizacion")?.textContent
+        );
+        const subtotal = parseMoney(
+            document.getElementById("subtotal-cotizacion")?.textContent
+        );
+        const totalConDescuento = subtotal - (subtotal * descuento) / 100;
+
+        const cotizacionSimplificada = {
+            paciente_id: pacienteId,
+            total: subtotal,
+            estado: "borrador",
+            descuento: descuento,
+            total_con_descuento: totalConDescuento,
+            // observaciones se define más abajo según haya o no fases
+        };
+
+        // ====== 3) FASES (recolección completa) ======
+        const fases = [];
+        document
+            .querySelectorAll("#phases-container .phase-container")
+            .forEach((faseEl, index) => {
+                const duracionInput = faseEl.querySelector(".phase-duration");
+                const duracion = duracionInput
+                    ? parseInt(duracionInput.value || "1")
+                    : 1;
+
+                // Observaciones de la fase: unir múltiples en una sola cadena (únicas)
+                const obsUnicas = Array.from(
+                    new Set(
+                        Array.from(
+                            faseEl.querySelectorAll(".observaciones-fases")
+                        )
+                            .map((i) => (i.value || "").trim())
+                            .filter((v) => v.length > 0)
+                    )
+                );
+                const observacion = obsUnicas.join(", ");
+
+                const categoriasSet = new Set();
+                const servicios = [];
+
+                faseEl.querySelectorAll(".service-item").forEach((item) => {
+                    const servicioId =
+                        item.querySelector(".servicio-select")?.value;
+                    if (!servicioId) return;
+
+                    const cantidad =
+                        parseInt(
+                            item.querySelector(".cantidad-servicio")?.value
+                        ) || 1;
+                    const precio =
+                        parseFloat(
+                            item.querySelector(".precio-unitario-servicio")
+                                ?.value
+                        ) || 0;
+                    const desc =
+                        parseFloat(
+                            item.querySelector(".descuento-servicio")?.value
+                        ) || 0;
+
+                    const subtotalServicio = precio * cantidad;
+                    const total =
+                        subtotalServicio - (subtotalServicio * desc) / 100;
+
+                    // Categoría (si existe select en el header de la categoría)
+                    const catSel =
+                        item
+                            .closest(".category-group")
+                            ?.querySelector(".categoria-fase-select") || null;
+                    const categoriaId = catSel?.value;
+                    if (categoriaId) {
+                        categoriasSet.add(Number(categoriaId));
+                    }
+
+                    servicios.push({
+                        servicio_id: Number(servicioId) || servicioId,
+                        cantidad,
+                        precio_unitario: precio,
+                        descuento: desc,
+                        total,
+                    });
+                });
+
+                if (servicios.length > 0) {
+                    fases.push({
+                        numero_fase: index + 1,
+                        duracion,
+                        observacion,
+                        servicios,
+                        categorias: Array.from(categoriasSet),
+                    });
+                }
+            });
+
+        // Debug antes de enviar
+        alert(`Fases detectadas: ${fases.length}`);
+        fases.forEach((f) =>
+            alert(
+                `Fase ${f.numero_fase} | dur=${
+                    f.duracion
+                } | cats=[${f.categorias.join(", ")}] | obs="${f.observacion}"`
+            )
+        );
+
+        // ====== 3.5) OBSERVACIONES según haya o no fases ======
+        if (Array.isArray(fases) && fases.length > 0) {
+            // Con fases
+            cotizacionSimplificada.observaciones = "hay fases";
+        } else {
+            // Sin fases: recolectar observaciones “no-fase” en un array y pegarlas
+            const observacionesArray = [];
+            document
+                .querySelectorAll("#no-phase-categories .observaciones-no-fase")
+                .forEach((obsEl) => {
+                    const texto = (obsEl.value || "").trim();
+                    if (texto) observacionesArray.push(texto);
+                });
+            cotizacionSimplificada.observaciones =
+                observacionesArray.join(" | ");
+        }
+
+        // ====== 4) GUARDAR COTIZACIÓN ======
+        try {
+            const url =
+                typeof currentQuoteId !== "undefined" && currentQuoteId
+                    ? `/api/cotizaciones/${currentQuoteId}`
+                    : "/api/cotizaciones";
+            const method =
+                typeof currentQuoteId !== "undefined" && currentQuoteId
+                    ? "PUT"
+                    : "POST";
+
+            console.log(
+                "[Cotización] %s %s",
+                method,
+                url,
+                cotizacionSimplificada
+            );
+            alert("Guardando cotización…");
+
+            const response = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cotizacionSimplificada),
+            });
+            if (!response.ok) throw new Error(await response.text());
+
+            const result = await response.json();
+            if (typeof currentQuoteId !== "undefined")
+                currentQuoteId = result.id || currentQuoteId;
+
+            alert(
+                `Cotización guardada. ID=${
+                    result.id || currentQuoteId || "(no retornado)"
+                }`
+            );
+        } catch (err) {
+            console.error("[Cotización] Error:", err);
+            alert("Error al guardar cotización");
+            return;
+        }
+
+        // ====== 5) GUARDAR FASES (secuencialmente) ======
+        const resultados = [];
+        for (const fase of fases) {
+            try {
+                console.log(
+                    "[Fase] POST /api/fases | cotizacion_id=%s, num=%s, dur=%s, obs=%s",
+                    currentQuoteId,
+                    fase.numero_fase,
+                    fase.duracion,
+                    fase.observacion
+                );
+
+                // Guardar Fase
+                const respFase = await fetch("/api/fases", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        cotizacion_id: currentQuoteId,
+                        numero_fase: fase.numero_fase,
+                        duracion_meses: fase.duracion,
+                        observaciones_fase: fase.observacion,
+                    }),
+                });
+                if (!respFase.ok) throw new Error(await respFase.text());
+
+                const savedFase = await respFase.json();
+                const faseId = savedFase?.id;
+                console.log(
+                    `[Fase] OK fase ${fase.numero_fase} => id=${faseId}`
+                );
+                alert(
+                    `Fase ${fase.numero_fase} guardada (id=${faseId ?? "?"})`
+                );
+
+                // Guardar FaseCategorias (una por cada categoría detectada)
+                if (
+                    Array.isArray(fase.categorias) &&
+                    fase.categorias.length > 0
+                ) {
+                    const catOps = fase.categorias.map(async (categoriaId) => {
+                        console.log(
+                            `[FaseCategorias] POST /api/fases/categoria | fase_id=${faseId}, categoria_id=${categoriaId}`
+                        );
+                        const r = await fetch("/api/fases/categoria", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                fase_id: faseId,
+                                categoria_id: categoriaId,
+                            }),
+                        });
+
+                        const txt = await r.text();
+                        if (!r.ok) {
+                            throw new Error(
+                                `fase=${faseId} cat=${categoriaId} => ${txt}`
+                            );
+                        }
+                        console.log("[FaseCategorias] OK =>", txt);
+                        return txt;
+                    });
+
+                    const settled = await Promise.allSettled(catOps);
+                    const rechazadas = settled.filter(
+                        (r) => r.status === "rejected"
+                    );
+                    if (rechazadas.length) {
+                        console.warn(
+                            `[FaseCategorias] Errores en ${rechazadas.length} categorías`
+                        );
+                    }
+                }
+
+                resultados.push({ fase: fase.numero_fase, ok: true });
+            } catch (err) {
+                console.error("[Fase] Error:", err);
+                resultados.push({ fase: fase.numero_fase, ok: false, err });
+            }
+        }
+
+        const fallos = resultados.filter((r) => !r.ok);
+        const rechazadas = []; // ya se contabilizan arriba, aquí mantenemos resumen
+
+        if (fallos.length || rechazadas.length) {
+            alert(
+                "Proceso finalizado con errores en algunas fases. Revisa consola para detalles."
+            );
+        } else {
+            alert("Proceso finalizado. Todas las fases procesadas.");
+        }
+
+        // ====== 6) UI (después de TODO)
+        if (typeof switchTab === "function") switchTab("history");
+        if (typeof cargarCotizaciones === "function") cargarCotizaciones();
+    }
 
     function nuevaCotizacion() {
         currentQuoteId = null;
@@ -2643,7 +3445,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 // Primero guardamos la cotización si no está guardada
                 if (!currentQuoteId) {
-                    await guardarCotizacion(new Event("submit"));
+                    await guardarCotizacion(e);
                     return; // El guardado recargará la página y podremos enviar después
                 }
 
@@ -2667,292 +3469,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     //
-    async function guardarCotizacion(e) {
-        e.preventDefault();
-
-        // Obtener ID del paciente desde input oculto
-        let pacienteId = document.querySelector("[name='paciente_id']")?.value;
-        const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
-
-        // Si es un nuevo paciente, guardarlo primero
-        if (nuevoPacienteForm.style.display !== "none") {
-            const nuevoPaciente = {
-                nombre: document.getElementById("nombrePaciente").value,
-                correo: document.getElementById("correoPaciente").value,
-                telefono: document.getElementById("telefonoPaciente").value,
-            };
-
-            if (!nuevoPaciente.nombre) {
-                alert("El nombre del paciente es obligatorio");
-                return;
-            }
-
-            try {
-                const response = await fetch("/api/pacientes", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(nuevoPaciente),
-                });
-
-                const result = await response.json();
-                pacienteId = result.id;
-
-                // Insertar input oculto si no existe
-                let hidden = document.getElementById("pacienteSelectIdHidden");
-                if (!hidden) {
-                    hidden = document.createElement("input");
-                    hidden.type = "hidden";
-                    hidden.id = "pacienteSelectIdHidden";
-                    hidden.name = "paciente_id";
-                    document
-                        .getElementById("pacienteSearchInput")
-                        .parentNode.appendChild(hidden);
-                }
-                hidden.value = pacienteId;
-            } catch (error) {
-                console.error("Error al guardar paciente:", error);
-                alert("Error al guardar paciente");
-                return;
-            }
-        }
-
-        if (!pacienteId) {
-            alert("Debe seleccionar o crear un paciente");
-            return;
-        }
-
-        // Totales
-        const total =
-            parseFloat(
-                document
-                    .getElementById("total-cotizacion")
-                    .textContent.replace("$", "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-            ) || 0;
-
-        const descuento =
-            parseFloat(
-                document
-                    .getElementById("descuento-cotizacion")
-                    .textContent.replace("%", "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-            ) || 0;
-
-        const subtotal =
-            parseFloat(
-                document
-                    .getElementById("subtotal-cotizacion")
-                    .textContent.replace("$", "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-            ) || 0;
-
-        const totalConDescuento = subtotal - (subtotal * descuento) / 100;
-
-        // Cotización que se enviará al backend
-        const cotizacionSimplificada = {
-            paciente_id: pacienteId,
-            total: subtotal,
-            estado: "borrador", // o "pendiente", si manejas estados
-            descuento: descuento,
-            total_con_descuento: totalConDescuento,
-        };
-
-        // Recolección adicional (no enviada aún)
-        const observaciones = [];
-        document.querySelectorAll(".observaciones-no-fase").forEach((el) => {
-            const valor = el.value.trim();
-            if (valor !== "") observaciones.push(valor);
-        });
-
-        const fases = [];
-        document
-            .querySelectorAll("#phases-container .phase-container")
-            .forEach((faseEl, index) => {
-                const fase = {
-                    numero_fase: index + 1,
-                    servicios: [],
-                };
-
-                faseEl.querySelectorAll(".service-item").forEach((item) => {
-                    const servicioId =
-                        item.querySelector(".servicio-select")?.value;
-                    if (!servicioId) return;
-
-                    const cantidad =
-                        parseInt(
-                            item.querySelector(".cantidad-servicio")?.value
-                        ) || 1;
-                    const precio =
-                        parseFloat(
-                            item.querySelector(".precio-unitario-servicio")
-                                ?.value
-                        ) || 0;
-                    const desc =
-                        parseFloat(
-                            item.querySelector(".descuento-servicio")?.value
-                        ) || 0;
-
-                    const subtotal = precio * cantidad;
-                    const total = subtotal - (subtotal * desc) / 100;
-
-                    fase.servicios.push({
-                        servicio_id: servicioId,
-                        cantidad,
-                        precio_unitario: precio,
-                        descuento: desc,
-                        total,
-                    });
-                });
-
-                if (fase.servicios.length > 0) fases.push(fase);
-            });
-
-        // Mostrar en consola info completa (no enviada aún)
-        console.log(
-            "📤 Cotización simplificada a enviar:",
-            cotizacionSimplificada
-        );
-        console.log("📝 Observaciones adicionales:", observaciones);
-        console.log("🧩 Fases con servicios:", fases);
-
-        // Enviar cotización básica al backend
-        try {
-            const url = currentQuoteId
-                ? `/api/cotizaciones/${currentQuoteId}`
-                : "/api/cotizaciones";
-            const method = currentQuoteId ? "PUT" : "POST";
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(cotizacionSimplificada),
-            });
-
-            if (!response.ok) throw new Error("Error al guardar cotización");
-
-            const result = await response.json();
-            alert("Cotización guardada exitosamente");
-            switchTab("history");
-            cargarCotizaciones();
-
-            // 👉 Si deseas guardar las fases/observaciones en endpoints adicionales, se puede hacer aquí.
-        } catch (error) {
-            console.error("Error al guardar cotización:", error);
-            alert(`Error: ${error.message}`);
-        }
-    }
-
-    // calculo de totales
-
-    function calcularTotalesFase(faseContainer) {
-        let subtotal = 0;
-        let totalDescuento = 0;
-
-        // Seleccionar todos los items de servicio dentro de la fase
-        const servicioItems = faseContainer.querySelectorAll(".service-item");
-
-        servicioItems.forEach((item) => {
-            const precioInput = item.querySelector(".precio-unitario-servicio");
-            const cantidadInput = item.querySelector(".cantidad-servicio");
-            const descuentoInput = item.querySelector(".descuento-servicio");
-
-            let precio = parseFloat(precioInput?.value || 0);
-            let cantidad = parseInt(cantidadInput?.value || 1);
-            let descuento = parseFloat(descuentoInput?.value || 0);
-
-            if (isNaN(precio)) precio = 0;
-            if (isNaN(cantidad) || cantidad < 1) cantidad = 1;
-            if (isNaN(descuento)) descuento = 0;
-
-            const subtotalServicio = precio * cantidad;
-            const descuentoValor = subtotalServicio * (descuento / 100);
-            const totalServicio = subtotalServicio - descuentoValor;
-
-            subtotal += subtotalServicio;
-            totalDescuento += descuentoValor;
-        });
-
-        const totalFase = subtotal - totalDescuento;
-
-        // Actualizar en el DOM los valores de la fase
-        const subtotalEl = faseContainer.querySelector(".fase-subtotal");
-        const descuentoEl = faseContainer.querySelector(".fase-descuento");
-        const totalEl = faseContainer.querySelector(".fase-total-amount");
-
-        if (subtotalEl)
-            subtotalEl.textContent = `$${subtotal.toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-            })}`;
-        if (descuentoEl)
-            descuentoEl.textContent = `$${totalDescuento.toLocaleString(
-                "es-CO",
-                {
-                    minimumFractionDigits: 2,
-                }
-            )}`;
-        if (totalEl)
-            totalEl.textContent = `$${totalFase.toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-            })}`;
-    }
-
-    function calcularTotalesGenerales() {
-        try {
-            let subtotal = 0;
-            let descuentoTotal = 0;
-
-            const fases = document.querySelectorAll(".fase-card");
-            if (!fases || fases.length === 0) return;
-
-            fases.forEach((faseCard) => {
-                try {
-                    const subtotalEl = faseCard.querySelector(".fase-subtotal");
-                    const descuentoEl =
-                        faseCard.querySelector(".fase-descuento");
-
-                    const faseSubtotal = subtotalEl
-                        ? parseFloat(subtotalEl.textContent.replace("$", "")) ||
-                          0
-                        : 0;
-                    const faseDescuento = descuentoEl
-                        ? parseFloat(
-                              descuentoEl.textContent.replace("$", "")
-                          ) || 0
-                        : 0;
-
-                    subtotal += faseSubtotal;
-                    descuentoTotal += faseDescuento;
-                } catch (error) {
-                    console.error("Error calculando fase:", error);
-                }
-            });
-
-            const total = subtotal - descuentoTotal;
-
-            // Actualizar totales generales con verificaciones
-            const subtotalGeneralEl = document.getElementById(
-                "subtotal-cotizacion"
-            );
-            const descuentoGeneralEl = document.getElementById(
-                "descuento-cotizacion"
-            );
-            const totalGeneralEl = document.getElementById("total-cotizacion");
-
-            if (subtotalGeneralEl)
-                subtotalGeneralEl.textContent = `$${subtotal.toFixed(2)}`;
-            if (descuentoGeneralEl)
-                descuentoGeneralEl.textContent = `$${descuentoTotal.toFixed(
-                    2
-                )}`;
-            if (totalGeneralEl)
-                totalGeneralEl.textContent = `$${total.toFixed(2)}`;
-        } catch (error) {
-            console.error("Error en calcularTotalesGenerales:", error);
-        }
-    }
 
     // historial de cotizaciones
     async function cargarCotizaciones() {
@@ -2988,14 +3504,21 @@ document.addEventListener("DOMContentLoaded", function () {
   </thead>
   <tbody>
     ${cotizaciones
-        .map(
-            (cotizacion) => `
+        .map((cotizacion) => {
+            const paciente = pacientes.find(
+                (p) => p.id === cotizacion.paciente_id
+            );
+            const nombrePaciente = paciente
+                ? paciente.nombre
+                : "Paciente no encontrado";
+
+            return `
       <tr>
         <td>${String(cotizacion.id).slice(-6)}</td>
-        <td>${cotizacion.nombre_paciente}</td>
-        <td>${new Date(cotizacion.fecha_creacion).toLocaleDateString()}</td>
+        <td>${nombrePaciente}</td>
+        <td>${new Date(cotizacion.fecha).toLocaleDateString()}</td>
         <td>$${
-            cotizacion.total_neto?.toLocaleString("es-CO", {
+            cotizacion.total_con_descuento?.toLocaleString("es-CO", {
                 minimumFractionDigits: 2,
             }) || "0.00"
         }</td>
@@ -3006,11 +3529,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </td>
         <td>
           <div class="action-buttons">
-            <button class="btn btn-sm btn-primary" title="Editar" onclick="editarCotizacion('${
-                cotizacion.id
-            }')">
-              <i class="fas fa-edit"></i>
-            </button>
+            
             <button class="btn btn-sm btn-success" title="Descargar PDF" onclick="descargarPDF('${
                 cotizacion.id
             }')">
@@ -3021,17 +3540,14 @@ document.addEventListener("DOMContentLoaded", function () {
             }')">
               <i class="fas fa-paper-plane"></i>
             </button>
-            <button class="btn btn-sm btn-secondary" title="Duplicar" onclick="duplicarCotizacion('${
-                cotizacion.id
-            }')">
-              <i class="fas fa-copy"></i>
-            </button>
+          
           </div>
         </td>
       </tr>
-    `
-        )
+    `;
+        })
         .join("")}
+
   </tbody>
 `;
             cotizacionesList.appendChild(table);
