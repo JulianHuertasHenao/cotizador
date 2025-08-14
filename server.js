@@ -215,6 +215,38 @@ app.post("/api/fases/categoria", async (req, res) => {
     }
 });
 
+// POST /api/cotizaciones/detalle
+app.post("/api/cotizaciones/detalle", async (req, res) => {
+    const { cotizacion_id, items } = req.body || {};
+    if (!cotizacion_id || !Array.isArray(items) || !items.length) {
+        return res.status(400).json({ error: "Payload inválido" });
+    }
+    try {
+        await db.run("BEGIN");
+        const stmt = await db.prepare(`
+      INSERT INTO DetallesCotizacion
+        (cotizacion_id, servicio_id, cantidad, precio_unitario, descuento, total)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+        for (const it of items) {
+            await stmt.run(
+                Number(cotizacion_id),
+                Number(it.servicio_id),
+                Number(it.cantidad) || 1,
+                Number(it.precio_unitario) || 0,
+                Number(it.descuento) || 0,
+                Number(it.total) || 0
+            );
+        }
+        await stmt.finalize();
+        await db.run("COMMIT");
+        res.json({ inserted: items.length });
+    } catch (e) {
+        await db.run("ROLLBACK");
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Obtener fases por cotización
 app.get("/api/cotizaciones/:id/fases", async (req, res) => {
     const { id } = req.params;
