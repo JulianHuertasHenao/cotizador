@@ -1,522 +1,851 @@
 // services/pdf.service_V2.js
-
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+// ===== Helpers comunes =====
+const THEME = {
+  primary: "#247B97",
+  secondary: "#E59CAF",
+  accent: "#D6C39F",
+  dark: "#1B1B1B",
+  light: "#FFFFFF",
+};
+const PAGE = {
+  size: "A4",
+  margins: { top: 40, bottom: 40, left: 40, right: 40 },
+};
+const MARGIN = 40;
+const FOOTER_H = 30;
+
+const money = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 function formatoFecha(fecha) {
   const opciones = { year: "numeric", month: "long", day: "numeric" };
   return new Date(fecha).toLocaleDateString("es-CO", opciones);
 }
+const imgSafe = (doc, p, x, y, opt) => {
+  try {
+    if (p) doc.image(p, x, y, opt);
+  } catch (_) {}
+};
+const exists = (p) => {
+  try {
+    return fs.existsSync(p);
+  } catch {
+    return false;
+  }
+};
+const setFont = (doc, name, size, color) =>
+  doc.font(name).fontSize(size).fillColor(color);
 
-const generarPDF = async (cotizacion) => {
-  return new Promise((resolve, reject) => {
+// ===== Registro de fuentes =====
+function registerFonts(doc) {
+  const f = (name, file) =>
+    doc.registerFont(name, path.join(__dirname, "fonts", file));
+  f("Poppins-Regular", "PoppinsRegular-B2Bw.otf");
+  f("Poppins-Bold", "PoppinsBold-GdJA.otf");
+  f("OpenSans-Regular", "OpenSans-B9K8.ttf");
+  f("OpenSans-Bold", "OpenSansBold-8wJJ.ttf");
+}
+
+// ===== Header / Footer =====
+function renderFooter(doc) {
+  doc
+    .rect(0, doc.page.height - FOOTER_H, doc.page.width, FOOTER_H)
+    .fill(THEME.secondary);
+}
+
+function renderHeader(doc, cotizacion, dims) {
+  const { contentWidth } = dims;
+  doc.y = doc.page.margins.top;
+
+  // Logo principal (opcional)
+  imgSafe(doc, cotizacion.logoPath, MARGIN, MARGIN, { width: 100 });
+
+  // Logo pequeño (si existe)
+  const smallLogo = path.join(
+    __dirname,
+    "..",
+    "..",
+    "public",
+    "logo-sandra.png"
+  );
+  let titleX = MARGIN,
+    titleY = MARGIN;
+  if (exists(smallLogo)) {
+    const w = 80,
+      estimatedH = 24;
+    imgSafe(doc, smallLogo, MARGIN, MARGIN, { width: w });
+    titleX += w + 10;
+    titleY += (estimatedH - 20) / 2;
+  }
+
+  // Título
+  setFont(doc, "Poppins-Bold", 20, THEME.dark).text(
+    "COTIZACIÓN DEL TRATAMIENTO",
+    titleX,
+    titleY,
+    {
+      width: contentWidth - (titleX - MARGIN),
+    }
+  );
+  const titleBottom = doc.y;
+
+  // Versión + línea
+  const versionText = `MV-F-001 VERSIÓN 01; ${formatoFecha(
+    cotizacion.fecha_creacion
+  ).toUpperCase()}`;
+  setFont(doc, "OpenSans-Regular", 10, THEME.dark);
+  const lineH = doc.currentLineHeight();
+  const textW = doc.widthOfString(versionText);
+  const versionX = MARGIN + contentWidth - textW;
+  const versionY = titleBottom + 10;
+  const lineY = versionY + lineH / 2;
+
+  doc
+    .save()
+    .lineWidth(2)
+    .strokeColor(THEME.secondary)
+    .moveTo(MARGIN, lineY)
+    .lineTo(versionX - 30, lineY)
+    .stroke()
+    .restore();
+
+  doc.text(versionText, versionX, versionY, { lineBreak: false });
+
+  // Datos de la clínica / número
+  const clinicY = versionY + lineH + 15;
+  setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+    "Av. C. 127 #19A-28,\nBogotá D.C. Colombia\nEmail: spaortodoncia@hotmail.com\nwww.drasandraalarcon.com.co",
+    MARGIN,
+    clinicY
+  );
+  setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
+    `COTIZACIÓN MV-${cotizacion.numero}`,
+    MARGIN,
+    clinicY,
+    {
+      align: "right",
+      width: contentWidth,
+    }
+  );
+  setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+    `Bogotá, ${formatoFecha(cotizacion.fecha_creacion)}`,
+    MARGIN,
+    doc.y + 4,
+    {
+      align: "right",
+      width: contentWidth,
+    }
+  );
+
+  // Doctora / Paciente / Documento
+  const infoY = doc.y + 30;
+  const labels = ["DOCTORA:", "PACIENTE:", "DOCUMENTO:"];
+  const values = [
+    cotizacion.doctora,
+    cotizacion.nombre_paciente,
+    cotizacion.documento,
+  ];
+  setFont(doc, "Poppins-Bold", 10, THEME.dark);
+  const rowH = doc.currentLineHeight();
+  labels.forEach((lbl, i) => {
+    const y = infoY + i * rowH;
+    doc.text(lbl, MARGIN, y);
+    setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+      values[i] ?? "",
+      MARGIN + 90,
+      y
+    );
+    setFont(doc, "Poppins-Bold", 10, THEME.dark);
+  });
+
+  return infoY + labels.length * rowH + 20; // headerBottomY
+}
+
+// ===== Tabla =====
+class TablaPDF {
+  constructor(doc, cfg) {
+    this.doc = doc;
+    this.cfg = cfg;
+    this.y = cfg.startY ?? doc.y;
+  }
+  topY() {
+    return this.cfg.getTopY
+      ? this.cfg.getTopY()
+      : this.cfg.headerBottomY || this.doc.y;
+  }
+  ensure(h) {
+    const bottom = this.doc.page.height - this.cfg.footerHeight - 20;
+    if (this.y + h > bottom) {
+      this.doc.addPage();
+      this.y = this.topY();
+    }
+  }
+  addGap(rows = 1) {
+    const h = rows * (this.cfg.rowMinH || 18);
+    this.ensure(h);
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addHeader(text, fill, color, _ignore, rightText = "") {
+    const { margin, contentWidth, fz } = this.cfg;
+    const h = this.cfg.headerH || 24;
+    this.ensure(h);
+    this.doc.rect(margin, this.y, contentWidth, h).fill(fill);
+    // Título
+    setFont(this.doc, "Poppins-Bold", fz.phase ?? 14, color);
+    const tH = this.doc.heightOfString(String(text), {
+      width: contentWidth,
+      align: "center",
+    });
+    this.doc.text(String(text), margin, this.y + (h - tH) / 2, {
+      width: contentWidth,
+      align: "center",
+    });
+    // Duración a la derecha
+    if (rightText) {
+      setFont(this.doc, "OpenSans-Bold", fz.duration ?? 11, color);
+      const rightW = contentWidth - 10;
+      const dH = this.doc.heightOfString(String(rightText), {
+        width: rightW,
+        align: "right",
+      });
+      this.doc.text(String(rightText), margin, this.y + (h - dH) / 2, {
+        width: rightW,
+        align: "right",
+      });
+    }
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addSectionTitle(text) {
+    const { margin, contentWidth, fz } = this.cfg;
+    const h = this.cfg.sectionH || 18;
+    this.ensure(h);
+    setFont(this.doc, "OpenSans-Bold", fz.section ?? 10, this.cfg.dark);
+    const t = String(text ?? "").toUpperCase();
+    const tH = this.doc.heightOfString(t, {
+      width: contentWidth,
+      align: "center",
+    });
+    this.doc.text(t, margin, this.y + (h - tH) / 2, {
+      width: contentWidth,
+      align: "center",
+    });
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addSubheader(text, fill = null, color = this.cfg.dark) {
+    const { margin, contentWidth, fz } = this.cfg;
+    const h = this.cfg.categoryH || 16;
+    this.ensure(h);
+    if (fill) this.doc.rect(margin, this.y, contentWidth, h).fill(fill);
+    setFont(this.doc, "OpenSans-Bold", fz.category ?? 10, color);
+    const t = String(text ?? "").toUpperCase();
+    const tH = this.doc.heightOfString(t, {
+      width: contentWidth,
+      align: "center",
+    });
+    this.doc.text(t, margin, this.y + (h - tH) / 2, {
+      width: contentWidth,
+      align: "center",
+    });
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addColumnsHeader() {
+    const { margin, contentWidth, columns, fz } = this.cfg;
+    const h = this.cfg.columnsH || 16;
+    this.ensure(h);
+    this.doc.rect(margin, this.y, contentWidth, h).fill("#000");
+    let x = margin;
+    columns.forEach((c) => {
+      setFont(this.doc, "OpenSans-Bold", fz.columns ?? 8.5, "#fff");
+      const tH = this.doc.heightOfString(c.name, {
+        width: c.width - 12,
+        align: c.align || "left",
+      });
+      this.doc.text(c.name, x + 6, this.y + (h - tH) / 2, {
+        width: c.width - 12,
+        align: c.align || "left",
+        lineBreak: false,
+      });
+      x += c.width;
+    });
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addBarRow(fill, left, right, color = "#fff") {
+    const { margin, contentWidth, fz } = this.cfg;
+    const h = this.cfg.headerH || 24;
+    this.ensure(h);
+    this.doc.rect(margin, this.y, contentWidth, h).fill(fill);
+    setFont(this.doc, "Poppins-Bold", fz.totalBar ?? 11.5, color);
+    const leftW = contentWidth / 2 - 20;
+    const lH = this.doc.heightOfString(String(left ?? ""), {
+      width: leftW,
+      align: "left",
+    });
+    this.doc.text(String(left ?? ""), margin + 10, this.y + (h - lH) / 2, {
+      width: leftW,
+      align: "left",
+    });
+    const rightW = contentWidth - 10;
+    const rH = this.doc.heightOfString(String(right ?? ""), {
+      width: rightW,
+      align: "right",
+    });
+    this.doc.text(String(right ?? ""), margin, this.y + (h - rH) / 2, {
+      width: rightW,
+      align: "right",
+    });
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+
+  addRow(cells, odd = false) {
+    const {
+      margin,
+      contentWidth,
+      columns,
+      accent,
+      dark,
+      rowMinH = 16,
+      rowPad = 4,
+      fz,
+    } = this.cfg;
+    const fs = fz.row ?? 8.5;
+    const heights = cells.map((cell, i) => {
+      const w = columns[i].width - rowPad * 2;
+      setFont(this.doc, "OpenSans-Regular", fs, dark);
+      const h = this.doc.heightOfString(String(cell.value ?? ""), {
+        width: w,
+        align: cell.align || columns[i].align || "left",
+      });
+      return Math.max(rowMinH, h + rowPad * 2);
+    });
+    const h = Math.max(...heights);
+    this.ensure(h);
+    if (odd)
+      this.doc.rect(margin, this.y, contentWidth, h).fill(accent || "#d6c39f");
+
+    let x = margin;
+    cells.forEach((cell, i) => {
+      const col = columns[i];
+      const w = col.width - rowPad * 2;
+      const tH = this.doc.heightOfString(String(cell.value ?? ""), {
+        width: w,
+        align: cell.align || col.align || "left",
+      });
+      setFont(this.doc, "OpenSans-Regular", fs, dark).text(
+        String(cell.value ?? ""),
+        x + rowPad,
+        this.y + (h - tH) / 2,
+        {
+          width: w,
+          align: cell.align || col.align || "left",
+        }
+      );
+      x += col.width;
+    });
+
+    // Bordes verticales
+    this.doc
+      .save()
+      .strokeColor(accent || "#d6c39f")
+      .lineWidth(0.5);
+    let vx = margin;
+    for (let i = 0; i <= columns.length; i++) {
+      this.doc
+        .moveTo(vx, this.y)
+        .lineTo(vx, this.y + h)
+        .stroke();
+      vx += i < columns.length ? columns[i].width : 0;
+    }
+    this.doc
+      .moveTo(margin + contentWidth, this.y)
+      .lineTo(margin + contentWidth, this.y + h)
+      .stroke()
+      .restore();
+
+    this.y += h;
+    this.doc.y = this.y;
+    return this;
+  }
+}
+
+// ===== Transformación de datos (procedimientos → fases/secciones/categorías) =====
+function buildPhases(procedimientos = []) {
+  const map = procedimientos.reduce((acc, p) => {
+    const fase = String(p.fase ?? "");
+    acc[fase] ||= {
+      duration: p.duracion,
+      unit: p.duracion_unidad,
+      sections: {},
+    };
+    const ph = acc[fase];
+
+    const secKey = `${p.especialidad_codigo}|${p.especialidad_nombre}`;
+    ph.sections[secKey] ||= {
+      title: `${p.especialidad_codigo} – ${p.especialidad_nombre}`,
+      categories: {},
+    };
+
+    const cat = p.subcategoria_nombre || "OTROS";
+    ph.sections[secKey].categories[cat] ||= [];
+    ph.sections[secKey].categories[cat].push({
+      code: p.codigo,
+      desc: p.nombre_servicio,
+      units: p.unidad ?? "",
+      price: Number(p.precio_unitario || 0),
+      discount: p.descuento ?? "N.A",
+      total: Number(p.total || 0),
+    });
+    return acc;
+  }, {});
+
+  return Object.entries(map).map(([key, ph]) => ({
+    key,
+    duration: ph.duration,
+    unit: ph.unit,
+    sections: Object.values(ph.sections).map((sec) => ({
+      title: sec.title,
+      categories: Object.entries(sec.categories).map(([name, services]) => ({
+        name,
+        services,
+      })),
+    })),
+  }));
+}
+
+// ===== Servicio principal =====
+const generarPDF = async (cotizacion) =>
+  new Promise((resolve, reject) => {
     try {
-      // 1) Preparar documento y stream
       const fileName = `cotizacion-${cotizacion.numero}.pdf`;
       const filePath = path.join(__dirname, fileName);
-      const doc = new PDFDocument({
-        size: "A4",
-        margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      });
+      const doc = new PDFDocument(PAGE);
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
-      // 2) Registrar fuentes desde services/fonts
-      doc.registerFont(
-        "Poppins-Regular",
-        path.join(__dirname, "fonts", "PoppinsRegular-B2Bw.otf")
-      );
-      doc.registerFont(
-        "Poppins-Bold",
-        path.join(__dirname, "fonts", "PoppinsBold-GdJA.otf")
-      );
-      doc.registerFont(
-        "OpenSans-Regular",
-        path.join(__dirname, "fonts", "OpenSans-B9K8.ttf")
-      );
-      doc.registerFont(
-        "OpenSans-Bold",
-        path.join(__dirname, "fonts", "OpenSansBold-8wJJ.ttf")
-      );
 
-      // 3) Paleta de colores
-      const primaryColor = "#247B97"; // Teal
-      const secondaryColor = "#E59CAF"; // Rosa coral
-      const accentColor = "#D6C39F"; // Beige
-      const darkText = "#1B1B1B";
-      const lightText = "#FFFFFF";
-      const margin = 40;
-      const contentWidth = doc.page.width - margin * 2;
-      const footerHeight = 30;
-      let headerBottomY = 0;
+      registerFonts(doc);
 
-      function renderHeader() {
-        doc.y = doc.page.margins.top;
-        // --- 4) Logo grande (opcional) ---
-        if (cotizacion.logoPath) {
-          doc.image(cotizacion.logoPath, margin, margin, { width: 100 });
-        }
+      const contentWidth = doc.page.width - MARGIN * 2;
+      let headerBottomY = renderHeader(doc, cotizacion, { contentWidth });
+      renderFooter(doc);
 
-        // --- 5) Logo pequeño + Título + Versión con línea rosa en la misma fila ---
-        const smallLogoPath = path.join(
-          __dirname,
-          "..",
-          "..",
-          "public",
-          "logo-sandra.png"
-        );
-        const hasSmallLogo = fs.existsSync(smallLogoPath);
-
-        // 5.1) Dibuja el logo pequeñito y ajusta offsets si existe
-        let titleX = margin;
-        let titleY = margin;
-        if (hasSmallLogo) {
-          const img = doc.openImage(smallLogoPath);
-          const logoW = 80;
-          const logoH = img.height * (logoW / img.width);
-          doc.image(img, margin, margin, { width: logoW });
-          titleX += logoW + 10; // separa 10px del logo
-          titleY += (logoH - 20) / 2; // centra el texto de 20pt en ese hueco
-        }
-
-        // 5.2) Título
-        doc
-          .font("Poppins-Bold")
-          .fontSize(20)
-          .fillColor(darkText)
-          .text("COTIZACIÓN DEL TRATAMIENTO", titleX, titleY, {
-            width: contentWidth - (titleX - margin),
-          });
-
-        const titleBottom = doc.y;
-        const versionText = `MV-F-001 VERSIÓN 01; ${formatoFecha(
-          cotizacion.fecha_creacion
-        ).toUpperCase()}`;
-
-        // 1) Configuramos fuente más pequeña
-        doc.font("OpenSans-Regular").fontSize(10);
-
-        // 2) Medimos altura y ancho de la línea de texto
-        const lineHeight = doc.currentLineHeight();
-        const textWidth = doc.widthOfString(versionText);
-
-        // 3) Posiciones
-        const versionX = margin + contentWidth - textWidth; // empieza aquí
-        const versionY = titleBottom + 10; // 10px bajo el título
-
-        // 4) Línea rosa fina, centrada verticalmente en el texto,
-        //    que termina 5px antes del comienzo del texto
-        const gap = 30;
-        const lineY = versionY + lineHeight / 2; // mitad de altura
-        const lineEndX = versionX - gap;
-
-        doc
-          .save()
-          .lineWidth(2)
-          .strokeColor(secondaryColor)
-          .moveTo(margin, lineY)
-          .lineTo(lineEndX, lineY)
-          .stroke()
-          .restore();
-
-        // 5) Dibujamos el texto de versión SIN permitir salto de línea
-        doc.fillColor(darkText).text(versionText, versionX, versionY, {
-          lineBreak: false,
-        });
-
-        // --- 6) Info clínica (izq) + cotización (der) ---
-        // Calculamos el Y de inicio 15px tras la línea de versión
-        const section6Y = versionY + lineHeight + 15;
-
-        doc
-          .font("OpenSans-Regular")
-          .fontSize(10)
-          .fillColor(darkText)
-          .text(
-            "Av. C. 127 #19A-28,\n" +
-              "Bogotá D.C. Colombia\n" +
-              "Email: spaortodoncia@hotmail.com\n" +
-              "www.drasandraalarcon.com.co",
-            margin,
-            section6Y
-          );
-
-        doc
-          .font("Poppins-Bold")
-          .fontSize(10)
-          .fillColor(darkText)
-          .text(`COTIZACIÓN MV-${cotizacion.numero}`, margin, section6Y, {
-            align: "right",
-            width: contentWidth,
-          });
-
-        // Para la fecha, aprovechamos doc.y que ya avanzó tras la dirección
-        doc
-          .font("OpenSans-Regular")
-          .fontSize(10)
-          .fillColor(darkText)
-          .text(
-            `Bogotá, ${formatoFecha(cotizacion.fecha_creacion)}`,
-            margin,
-            doc.y + 4, // un pelín abajo de la dirección
-            {
-              align: "right",
-              width: contentWidth,
-            }
-          );
-        headerBottomY = doc.y;
-
-        // --- 7) Datos doctora/paciente ---
-        // empezamos 15px tras donde quedó la fecha/dirección
-        const section7Y = doc.y + 40;
-        const labelX = margin; // 40px
-        const valueX = margin + 90; // 130px
-
-        const dpLabels = ["DOCTORA:", "PACIENTE:", "DOCUMENTO:"];
-        const dpValues = [
-          cotizacion.doctora,
-          cotizacion.nombre_paciente,
-          cotizacion.documento,
-        ];
-
-        // configuramos la fuente y medimos la altura de cada fila
-        doc.font("Poppins-Bold").fontSize(10);
-        const rowHeight = doc.currentLineHeight();
-
-        dpLabels.forEach((lbl, i) => {
-          const y = section7Y + i * rowHeight;
-          doc.fillColor(darkText).text(lbl, labelX, y);
-          doc.font("OpenSans-Regular").text(dpValues[i], valueX, y);
-          // volvemos a bold antes de la siguiente iteración
-          doc.font("Poppins-Bold");
-        });
-      }
-
-      function renderFooter() {
-        doc
-          .rect(0, doc.page.height - footerHeight, doc.page.width, footerHeight)
-          .fill(secondaryColor);
-      }
-
-      // Pintamos header+footer en la página 1:
-      renderHeader();
-      renderFooter();
-
-      // A.4) Cada vez que saltemos de página, vuelve a pintarlos
       doc.on("pageAdded", () => {
-        renderHeader();
-        renderFooter();
+        headerBottomY = renderHeader(doc, cotizacion, { contentWidth });
+        renderFooter(doc);
       });
 
-      function ensurePageSpace(heightNeeded) {
+      const ensure = (h) => {
         const minY = headerBottomY + 10;
-        if (doc.y < minY) {
-          doc.y = minY;
-        }
-
-        const bottomLimit = doc.page.height - footerHeight - 20;
-        if (doc.y + heightNeeded > bottomLimit) {
+        if (doc.y < minY) doc.y = minY;
+        const bottom = doc.page.height - FOOTER_H - 20;
+        if (doc.y + h > bottom) {
           doc.addPage();
-
           doc.y = headerBottomY + 10;
         }
-      }
+      };
 
-      /**
- *  // --- 8) Tabla por fases/secciones/categorías/servicios ---
-      doc.y = headerBottomY + 10; // Asegura que se comienza justo después del header
+      // ===== Tabla por fases =====
+      doc.y = headerBottomY;
       let totalGeneral = 0;
+      const phases = buildPhases(cotizacion.procedimientos);
 
-      // 1) Transformar cotizacion.procedimientos en la estructura deseada
-      const phaseMap = {};
-      cotizacion.procedimientos.forEach((p) => {
-        // 1.1) Fase
-        if (!phaseMap[p.fase]) {
-          phaseMap[p.fase] = {
-            duration: p.duracion,
-            unit: p.duracion_unidad,
-            sections: {},
-          };
-        }
-        const ph = phaseMap[p.fase];
+      const tabla = new TablaPDF(doc, {
+        margin: MARGIN,
+        startY: headerBottomY,
+        contentWidth,
+        footerHeight: FOOTER_H,
+        getTopY: () => headerBottomY + 10,
 
-        // 1.2) Sección (especialidad)
-        const secKey = `${p.especialidad_codigo}|${p.especialidad_nombre}`;
-        if (!ph.sections[secKey]) {
-          ph.sections[secKey] = {
-            title: `${p.especialidad_codigo} – ${p.especialidad_nombre}`,
-            categories: {},
-          };
-        }
-        const sec = ph.sections[secKey];
+        headerH: 22,
+        categoryH: 16,
+        sectionH: 16,
+        columnsH: 16,
+        rowMinH: 16,
+        rowPad: 4,
 
-        // 1.3) Categoría (subcategoría)
-        const catName = p.subcategoria_nombre || "OTROS";
-        if (!sec.categories[catName]) {
-          sec.categories[catName] = [];
-        }
+        fz: {
+          phase: 14,
+          duration: 11,
+          section: 10,
+          category: 10,
+          columns: 8.5,
+          row: 8.5,
+          totalBar: 11.5,
+        },
 
-        // 1.4) Servicio
-        sec.categories[catName].push({
-          code: p.codigo,
-          desc: p.nombre_servicio,
-          units: p.unidad,
-          price: p.precio_unitario,
-          discount: p.descuento || "N.A",
-          total: p.total,
-        });
+        columns: [
+          { name: "CÓDIGO", width: 55, align: "center" },
+          { name: "DESCRIPCIÓN", width: 190, align: "left" },
+          { name: "UNIDADES", width: 60, align: "center" },
+          { name: "PRECIO NETO", width: 70, align: "right" },
+          { name: "DESCUENTO", width: 80, align: "center" },
+          { name: "TOTAL", width: 60, align: "right" },
+        ],
+
+        primary: THEME.primary,
+        secondary: THEME.secondary,
+        accent: THEME.accent,
+        dark: THEME.dark,
+        light: THEME.light,
       });
 
-      // Convertimos mapas a arrays para iterar más cómodamente
-      const phases = Object.entries(phaseMap).map(([phaseKey, ph]) => ({
-        key: phaseKey,
-        duration: ph.duration,
-        unit: ph.unit,
-        sections: Object.values(ph.sections).map((sec) => ({
-          title: sec.title,
-          categories: Object.entries(sec.categories).map(
-            ([name, services]) => ({
-              name,
-              services,
-            })
-          ),
-        })),
-      }));
+      phases.forEach((phase, idxPhase) => {
+        tabla.addHeader(
+          `FASE ${phase.key}`,
+          THEME.primary,
+          THEME.light,
+          16,
+          `${phase.duration ?? ""} ${phase.unit ?? ""}`
+        );
 
-      // --- 8) Tabla por fases/secciones/categorías/servicios ---
-      phases.forEach((phase) => {
-        // 2.1) Cabecera de fase (≈32px)
-        ensurePageSpace(32); // Aseguramos espacio suficiente antes de la cabecera
-        doc.rect(margin, doc.y, contentWidth, 28).fill(primaryColor);
-        doc
-          .font("Poppins-Bold")
-          .fontSize(16)
-          .fillColor(lightText)
-          .text(`FASE ${phase.key}`, margin, doc.y + 6, {
-            width: contentWidth / 2,
-            align: "center",
-          });
-        doc
-          .font("OpenSans-Regular")
-          .text(
-            `${phase.duration} ${phase.unit}`,
-            margin + contentWidth / 2,
-            doc.y + 6,
-            {
-              width: contentWidth / 2,
-              align: "center",
-            }
-          );
-        doc.y += 32; // Avanzamos el y para la siguiente sección
-
-        // 2.2) Cada sección (especialidad)
         phase.sections.forEach((section) => {
-          // 2.2.1) Título de la sección (altura = linea + 4)
-          const hSec = doc.currentLineHeight() + 4;
-          ensurePageSpace(hSec); // Aseguramos espacio antes de la sección
-          doc
-            .font("OpenSans-Bold")
-            .fontSize(12)
-            .fillColor(darkText)
-            .text(section.title.toUpperCase(), margin, doc.y, {
-              width: contentWidth,
-              align: "center",
-            });
-          doc.y += hSec; // Actualizamos la posición para el contenido siguiente
+          tabla.addSectionTitle(section.title).addColumnsHeader();
 
-          // 2.2.2) Encabezado de tabla (≈32px)
-          ensurePageSpace(32); // Aseguramos espacio suficiente antes de la tabla
-          doc.rect(margin, doc.y, contentWidth, 28).fill(darkText);
-          const headerCols = [
-            { text: "CÓDIGO", x: margin, width: 60 },
-            { text: "DESCRIPCIÓN", x: margin + 60, width: 200 },
-            { text: "UNIDADES", x: margin + 260, width: 60 },
-            { text: "PRECIO NETO", x: margin + 320, width: 80 },
-            { text: "DESCUENTO", x: margin + 400, width: 60 },
-            { text: "TOTAL", x: margin + 460, width: 50 },
-          ];
-          headerCols.forEach((col) => {
-            doc
-              .font("Poppins-Bold")
-              .fontSize(11)
-              .fillColor(lightText)
-              .text(col.text, col.x, doc.y + 7, {
-                width: col.width,
-                align: "center",
-              });
-          });
-          doc.y += 32; // Actualizamos la posición para el contenido de la tabla
-
-          // 2.2.3) Cada categoría dentro de la sección
           section.categories.forEach((category) => {
-            // 2.2.3.1) Barra rosa de categoría (≈20px)
-            ensurePageSpace(20); // Aseguramos espacio antes de cada categoría
-            doc.rect(margin, doc.y, contentWidth, 20).fill(secondaryColor);
-            doc
-              .font("Poppins-Bold")
-              .fontSize(11)
-              .fillColor(lightText)
-              .text(category.name.toUpperCase(), margin, doc.y + 5, {
-                width: contentWidth,
-                align: "center",
-              });
-            doc.y += 24; // Actualizamos la posición para las filas de servicios
-
-            // 2.2.3.2) Filas de servicios (20px cada una, shading en impares)
-            category.services.forEach((svc, idx) => {
-              ensurePageSpace(20); // Aseguramos espacio antes de cada fila de servicio
-              if (idx % 2 === 1) {
-                doc.rect(margin, doc.y, contentWidth, 20).fill(accentColor);
-              }
-              const rowCols = [
-                { value: svc.code, x: margin, width: 60 },
-                { value: svc.desc, x: margin + 60, width: 200 },
-                { value: svc.units, x: margin + 260, width: 60 },
-                {
-                  value: `$${svc.price.toLocaleString("es-CO")}`,
-                  x: margin + 320,
-                  width: 80,
-                },
-                { value: svc.discount, x: margin + 400, width: 60 },
-                {
-                  value: `$${svc.total.toLocaleString("es-CO")}`,
-                  x: margin + 460,
-                  width: 50,
-                },
-              ];
-              rowCols.forEach((col) => {
-                doc
-                  .font("OpenSans-Regular")
-                  .fontSize(10)
-                  .fillColor(darkText)
-                  .text(col.value, col.x, doc.y + 5, {
-                    width: col.width,
-                    align: "center",
-                  });
-              });
-              doc.y += 20; // Actualizamos la posición para la siguiente fila
+            tabla.addSubheader(category.name, THEME.secondary, THEME.light);
+            category.services.forEach((svc, i) => {
+              tabla.addRow(
+                [
+                  { value: svc.code, align: "center" },
+                  { value: svc.desc, align: "left" },
+                  { value: svc.units, align: "center" },
+                  { value: money(svc.price), align: "right" },
+                  { value: svc.discount, align: "center" },
+                  { value: money(svc.total), align: "right" },
+                ],
+                i % 2 === 1
+              );
             });
           });
 
-          // 2.2.4) Total de la sección (≈32px)
-          ensurePageSpace(32); // Aseguramos espacio antes del total de la sección
           const totalSection = section.categories
             .flatMap((c) => c.services)
-            .reduce((sum, s) => sum + s.total, 0);
-          doc.rect(margin, doc.y, contentWidth, 28).fill(darkText);
-          doc
-            .font("Poppins-Bold")
-            .fontSize(12)
-            .fillColor(lightText)
-            .text("TOTAL", margin, doc.y + 7, {
-              width: contentWidth - 60,
-              align: "right",
-            });
-          doc.text(
-            `$ ${totalSection.toLocaleString("es-CO")}`,
-            margin,
-            doc.y + 7,
-            {
-              width: contentWidth,
-              align: "center",
-            }
-          );
-          doc.y += 32; // Actualizamos la posición para el siguiente contenido
+            .reduce((s, it) => s + Number(it.total || 0), 0);
+          tabla.addBarRow("#0f172a", "TOTAL", money(totalSection));
           totalGeneral += totalSection;
         });
+        // Asegura que el cursor global esté al final real de la tabla de la fase
+        doc.y = Math.max(doc.y, tabla.y);
+
+        // ===== Observaciones por fase (debajo del total de la fase) =====
+        (() => {
+          // 1) Asegura que partimos donde terminó realmente la tabla de la fase
+          doc.y = Math.max(doc.y, tabla.y);
+
+          const obsMap = cotizacion.observaciones_fases || {};
+          const key = String(phase.key);
+          const obsFase =
+            (Array.isArray(obsMap) ? obsMap[Number(key)] : obsMap[key]) ??
+            obsMap[phase.key] ??
+            null;
+
+          if (!obsFase) return;
+
+          const PAD = 8;
+          const GAP_AFTER_BOX = 4; // ↓ menos espacio tras la caja
+          const title = `Observaciones Fase ${phase.key}`;
+
+          // 2) Calcula alturas con las mismas fuentes y el mismo ancho que vas a usar al renderizar
+          const hTitle = setFont(
+            doc,
+            "Poppins-Bold",
+            10,
+            THEME.dark
+          ).heightOfString(title, { width: contentWidth - PAD * 2 });
+          const hText = setFont(
+            doc,
+            "OpenSans-Regular",
+            10,
+            THEME.dark
+          ).heightOfString(obsFase, { width: contentWidth - PAD * 2 });
+          const boxH = PAD + hTitle + 4 + hText + PAD; // = top PAD + título + gap + texto + bottom PAD
+
+          // 3) Reserva espacio (puede saltar de página y reposicionar doc.y)
+          ensure(boxH);
+
+          // *** CLAVE: congela el Y de la caja antes de escribir nada ***
+          const y0 = doc.y;
+
+          // 4) Marco
+          doc
+            .save()
+            .lineWidth(1)
+            .strokeColor(THEME.dark)
+            .rect(MARGIN, y0, contentWidth, boxH)
+            .stroke()
+            .restore();
+
+          // 5) Título (no usamos doc.y posterior; siempre referenciado a y0)
+          setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
+            title,
+            MARGIN + PAD,
+            y0 + PAD,
+            { width: contentWidth - PAD * 2, lineBreak: true }
+          );
+
+          // 6) Texto (alineado dentro de la caja)
+          setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+            obsFase,
+            MARGIN + PAD,
+            y0 + PAD + hTitle + 4,
+            { width: contentWidth - PAD * 2, lineBreak: true }
+          );
+
+          // 7) Cierra caja y deja un gap pequeño
+          doc.y = y0 + boxH + GAP_AFTER_BOX;
+
+          // Mantén tabla y doc sincronizados
+          tabla.y = doc.y;
+        })();
+
+        if (idxPhase !== phases.length - 1) tabla.addGap(0.25);
       });
 
-      // --- 9) Total General al final (≈48px) ---
-      ensurePageSpace(48); // Aseguramos espacio suficiente antes del total general
-      doc.rect(margin, doc.y, contentWidth, 32).fill(primaryColor);
-      doc
-        .font("Poppins-Bold")
-        .fontSize(16)
-        .fillColor(lightText)
-        .text("TOTAL GENERAL", margin, doc.y + 8, {
-          width: contentWidth / 2,
-          align: "center",
-        })
-        .text(`$ ${totalGeneral.toLocaleString("es-CO")}`, margin, doc.y + 8, {
-          width: contentWidth,
-          align: "center",
+      // TOTAL GENERAL
+      tabla.addBarRow(THEME.primary, "TOTAL GENERAL", money(totalGeneral));
+      tabla.addGap(1);
+
+      // ===== Método de pago =====
+      (() => {
+        const BOX = 12;
+        const TITLE_GAP = 10;
+        const LINE_H = 14;
+        const CHECK_GAP = 8;
+
+        // 1) Los datos vienen del test en cotizacion.pago (sin hardcode).
+        //    Si el test no envía algo, simplemente no se imprime esa línea.
+        const pago = cotizacion.pago || {};
+
+        const metodo =
+          pago.metodo ?? (pago.numero_cuotas > 0 ? "aplazado" : "unico");
+        const fmt = (v) => `$ ${Number(v || 0).toLocaleString("es-CO")}`;
+
+        // Construimos dinámicamente las líneas a imprimir (omitimos las vacías)
+        const lines = [
+          {
+            type: "checkbox",
+            text: " Pago único",
+            checked: metodo === "unico",
+          },
+          {
+            type: "checkbox",
+            text:
+              pago.numero_cuotas != null
+                ? ` Pago aplazado en ${pago.numero_cuotas} cuotas`
+                : null,
+            checked: metodo === "aplazado",
+          },
+          pago.cuota_inicial != null
+            ? {
+                type: "text",
+                text: `Cuota inicial: ${fmt(pago.cuota_inicial)}`,
+              }
+            : null,
+          pago.numero_cuotas != null && pago.valor_cuota != null
+            ? {
+                type: "text",
+                text: `Cuotas mensuales: ${pago.numero_cuotas} x ${fmt(
+                  pago.valor_cuota
+                )}`,
+              }
+            : null,
+          pago.valor_pagado_a_la_fecha != null
+            ? {
+                type: "text",
+                text: `Pagado a la fecha: ${fmt(pago.valor_pagado_a_la_fecha)}`,
+              }
+            : null,
+          { type: "fh" }, // Fase higiénica incluida (una sola línea)
+        ].filter(Boolean);
+
+        // 2) Medimos y reservamos altura aproximada (título + N líneas)
+        const hTitle = setFont(
+          doc,
+          "Poppins-Bold",
+          14,
+          THEME.dark
+        ).heightOfString("MÉTODO DE PAGO", { width: contentWidth });
+        const blockH = hTitle + TITLE_GAP + lines.length * LINE_H + 8;
+        ensure(blockH);
+
+        // 3) Render título
+        setFont(doc, "Poppins-Bold", 14, THEME.dark).text(
+          "MÉTODO DE PAGO",
+          MARGIN,
+          doc.y,
+          { width: contentWidth, align: "left" }
+        );
+        doc.y += TITLE_GAP;
+
+        // Helper para dibujar un checkbox + texto en una línea
+        const drawCheck = (x, y, checked) => {
+          doc.rect(x, y, BOX, BOX).stroke(THEME.dark);
+          if (checked) {
+            doc
+              .moveTo(x + 2, y + BOX / 2)
+              .lineTo(x + BOX / 2, y + BOX - 2)
+              .lineTo(x + BOX - 2, y + 2)
+              .stroke(THEME.dark);
+          }
+        };
+
+        // 4) Render de cada línea
+        lines.forEach((row) => {
+          const y0 = doc.y;
+
+          if (row.type === "checkbox" && row.text) {
+            // Caja + texto a la derecha (sin saltos)
+            drawCheck(MARGIN, y0, row.checked);
+            setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
+              row.text,
+              MARGIN + BOX + CHECK_GAP,
+              y0 - 1,
+              { lineBreak: false, width: contentWidth - (BOX + CHECK_GAP) }
+            );
+            doc.y = y0 + LINE_H;
+          } else if (row.type === "text" && row.text) {
+            // Texto en una sola línea, si no hay valor no se imprime
+            setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
+              row.text,
+              MARGIN,
+              y0,
+              { lineBreak: false, width: contentWidth }
+            );
+            doc.y = y0 + LINE_H;
+          } else if (row.type === "fh") {
+            // ---- Fase higiénica incluida: todo en UNA línea (alineado) ----
+            const baseY = y0;
+            const labelFont = () =>
+              setFont(doc, "OpenSans-Regular", 12, THEME.dark);
+
+            // 1) Etiqueta
+            labelFont().text("Fase higiénica incluida:", MARGIN, baseY, {
+              lineBreak: false,
+            });
+            const labelW = doc.widthOfString("Fase higiénica incluida:");
+
+            // 2) Geometría consistente
+            const boxY = baseY + (LINE_H - BOX) / 2; // centra el checkbox en la línea
+            const SP = CHECK_GAP * 2; // separación entre "Sí" y "No" grupos
+
+            // 3) Grupo "Sí"
+            const yesX = MARGIN + labelW + CHECK_GAP; // después de la etiqueta
+            drawCheck(yesX, boxY, pago.fase_higienica_incluida === true);
+            labelFont().text("Sí", yesX + BOX + CHECK_GAP, baseY, {
+              lineBreak: false,
+            });
+            const siW = doc.widthOfString("Sí");
+
+            // 4) Grupo "No"
+            const noX = yesX + BOX + CHECK_GAP + siW + SP; // caja "No" después del texto "Sí"
+            drawCheck(noX, boxY, pago.fase_higienica_incluida === false);
+            labelFont().text("No", noX + BOX + CHECK_GAP, baseY, {
+              lineBreak: false,
+            });
+
+            // 5) Avanza exactamente una línea
+            doc.y = baseY + LINE_H;
+          }
         });
-      doc.y += 48; // Actualizamos la posición para el siguiente contenido
 
- */
-      // --- 11) Método de pago ---
-      ensurePageSpace(60); // suficiente para título + dos opciones
-      doc
-        .font("Poppins-Bold")
-        .fontSize(14)
-        .fillColor(darkText)
-        .text("MÉTODO DE PAGO", margin, doc.y, {
-          width: contentWidth,
-          align: "left",
-        });
-      doc.y += 24;
+        doc.moveDown(0.5);
 
-      // Opción 1
-      doc.rect(margin, doc.y, 12, 12).stroke(darkText);
-      doc
-        .font("OpenSans-Regular")
-        .fontSize(12)
-        .text(" Pago único", margin + 20, doc.y - 1);
-      doc.y += 20;
+        tabla.y = doc.y;
+      })();
 
-      // Opción 2
-      ensurePageSpace(24);
-      doc.rect(margin, doc.y, 12, 12).stroke(darkText);
-      doc.text(" Pago aplazado en _____ cuotas", margin + 20, doc.y - 1);
-      doc.y += 36;
+      // ===== Firmas (bloque atómico, tamaño fijo, autosalto) =====
+      (() => {
+        const GAP_BEFORE = 24; // espacio fijo encima del bloque de firmas
+        const SIGN_H = 90; // altura fija del bloque de firmas
 
-      // --- 12) Firmas ---
-      ensurePageSpace(60); // para ambas firmas y pies de firma
-      const sigY = doc.y;
+        // Siempre parte desde el final real del contenido previo
+        doc.y = Math.max(doc.y, tabla.y);
 
-      doc
-        .font("Poppins-Bold")
-        .fontSize(12)
-        .fillColor(darkText)
-        .text("SANDRA P. ALARCON G.", margin, sigY, {
-          width: 200,
-          align: "center",
-        });
-      // Línea de firma
-      doc
-        .moveTo(margin, sigY + 30)
-        .lineTo(margin + 200, sigY + 30)
-        .stroke(darkText);
-      doc
-        .font("OpenSans-Regular")
-        .fontSize(10)
-        .text("Ortodoncista – Ortopedia Maxilar", margin, sigY + 34, {
-          width: 200,
-          align: "center",
-        });
+        // Si no caben GAP + firmas completas, pasa a la siguiente página
+        ensure(GAP_BEFORE + SIGN_H);
 
-      // Firma paciente
-      doc
-        .font("Poppins-Bold")
-        .fontSize(12)
-        .text("RECIBÍ Y APROBÉ:", margin + 315, sigY, {
-          width: 200,
-          align: "center",
-        });
-      doc
-        .moveTo(margin + 315, sigY + 30)
-        .lineTo(margin + 515, sigY + 30)
-        .stroke(darkText);
-      doc
-        .font("OpenSans-Regular")
-        .fontSize(10)
-        .text("Firma Paciente", margin + 315, sigY + 34, {
-          width: 200,
-          align: "center",
-        });
+        // Aplica el espacio fijo arriba del bloque
+        doc.y += GAP_BEFORE;
 
-      doc.y = sigY + 60;
+        const startY = doc.y; // ancla del bloque
 
+        // === Firma doctora (izquierda) ===
+        setFont(doc, "Poppins-Bold", 12, THEME.dark).text(
+          "SANDRA P. ALARCON G.",
+          MARGIN,
+          startY,
+          { width: 200, align: "center" }
+        );
+        doc
+          .moveTo(MARGIN, startY + 30)
+          .lineTo(MARGIN + 200, startY + 30)
+          .stroke(THEME.dark);
+        setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+          "Ortodoncista – Ortopedia Maxilar",
+          MARGIN,
+          startY + 34,
+          { width: 200, align: "center" }
+        );
+
+        // === Firma paciente (derecha) ===
+        const rightW = 200;
+        const rightX = MARGIN + (doc.page.width - MARGIN * 2) - rightW; // alinear al borde derecho del contenido
+        setFont(doc, "Poppins-Bold", 12, THEME.dark).text(
+          "RECIBÍ Y APROBÉ:",
+          rightX,
+          startY,
+          { width: rightW, align: "center" }
+        );
+        doc
+          .moveTo(rightX, startY + 30)
+          .lineTo(rightX + rightW, startY + 30)
+          .stroke(THEME.dark);
+        setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+          "Firma Paciente",
+          rightX,
+          startY + 34,
+          { width: rightW, align: "center" }
+        );
+
+        // === Fecha bajo la firma del paciente (opcional) ===
+        const fechaAprob = cotizacion.firma_paciente_fecha
+          ? new Date(cotizacion.firma_paciente_fecha)
+          : null;
+        const fechaStr = fechaAprob
+          ? `${String(fechaAprob.getDate()).padStart(2, "0")}/${String(
+              fechaAprob.getMonth() + 1
+            ).padStart(2, "0")}/${fechaAprob.getFullYear()}`
+          : "____/____/_____";
+        setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+          `Fecha: ${fechaStr}`,
+          rightX,
+          startY + 48,
+          { width: rightW, align: "center" }
+        );
+
+        // Cierra el bloque: fija la altura y sincroniza cursores
+        doc.y = startY + SIGN_H;
+        tabla.y = doc.y;
+      })();
+
+      // ===== Cierre =====
       doc.end();
       stream.on("finish", () => resolve(filePath));
       stream.on("error", reject);
@@ -524,6 +853,5 @@ const generarPDF = async (cotizacion) => {
       reject(err);
     }
   });
-};
 
 module.exports = { generarPDF };
