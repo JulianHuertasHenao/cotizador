@@ -141,11 +141,15 @@ function renderHeader(doc, cotizacion, dims) {
 
   // Doctora / Paciente / Documento
   const infoY = doc.y + 30;
-  const labels = ["DOCTORA:", "PACIENTE:", "DOCUMENTO:"];
+  const labels = ["DOCTORA:", "PACIENTE:", "CORREO:"];
   const values = [
     cotizacion.doctora,
     cotizacion.nombre_paciente,
-    cotizacion.documento,
+    cotizacion.correo ||
+      cotizacion.correo_paciente ||
+      cotizacion.correo ||
+      cotizacion.email ||
+      "",
   ];
   setFont(doc, "Poppins-Bold", 10, THEME.dark);
   const rowH = doc.currentLineHeight();
@@ -430,6 +434,37 @@ function buildPhases(procedimientos = []) {
   }));
 }
 
+// ===== Secciones sin fases (por especialidad -> categoría) =====
+function buildSectionsNoPhase(procedimientos = []) {
+  const map = procedimientos.reduce((acc, p) => {
+    const secKey = `${p.especialidad_codigo}|${p.especialidad_nombre}`;
+    acc[secKey] ||= {
+      title: `${p.especialidad_codigo} – ${p.especialidad_nombre}`,
+      categories: {},
+    };
+    const cat = p.subcategoria_nombre || "OTROS";
+    acc[secKey].categories[cat] ||= [];
+    acc[secKey].categories[cat].push({
+      code: p.codigo,
+      desc: p.nombre_servicio,
+      units: p.unidad ?? "",
+      price: Number(p.precio_unitario || 0),
+      discount: p.descuento ?? "N.A",
+      total: Number(p.total || 0),
+    });
+    return acc;
+  }, {});
+
+  // → [{ title, categories:[{ name, services:[] }, ...] }, ...]
+  return Object.values(map).map((sec) => ({
+    title: sec.title,
+    categories: Object.entries(sec.categories).map(([name, services]) => ({
+      name,
+      services,
+    })),
+  }));
+}
+
 // ===== Servicio principal =====
 const generarPDF = async (cotizacion) =>
   new Promise((resolve, reject) => {
@@ -461,10 +496,9 @@ const generarPDF = async (cotizacion) =>
         }
       };
 
-      // ===== Tabla por fases =====
+      // ===== Tabla adaptable (con o sin fases) =====
       doc.y = headerBottomY;
       let totalGeneral = 0;
-      const phases = buildPhases(cotizacion.procedimientos);
 
       const tabla = new TablaPDF(doc, {
         margin: MARGIN,
@@ -506,20 +540,125 @@ const generarPDF = async (cotizacion) =>
         light: THEME.light,
       });
 
-      phases.forEach((phase, idxPhase) => {
-        tabla.addHeader(
-          `FASE ${phase.key}`,
-          THEME.primary,
-          THEME.light,
-          16,
-          `${phase.duration ?? ""} ${phase.unit ?? ""}`
-        );
+      // Si el toggle no viene, por defecto = true (se agrupa por fases)
+      const agruparPorFase =
+        (cotizacion.agrupar_por_fase ?? cotizacion.group_by_phase) !== false;
 
-        phase.sections.forEach((section) => {
+      // ---- MODO 1: AGRUPADO POR FASES (comportamiento actual) ----
+      if (agruparPorFase) {
+        const phases = buildPhases(cotizacion.procedimientos);
+
+        phases.forEach((phase, idxPhase) => {
+          tabla.addHeader(
+            `FASE ${phase.key}`,
+            THEME.primary,
+            THEME.light,
+            16,
+            `${phase.duration ?? ""} ${phase.unit ?? ""}`
+          );
+
+          phase.sections.forEach((section) => {
+            tabla.addSectionTitle(section.title).addColumnsHeader();
+
+            section.categories.forEach((category) => {
+              tabla.addSubheader(category.name, THEME.secondary, THEME.light);
+              category.services.forEach((svc, i) => {
+                tabla.addRow(
+                  [
+                    { value: svc.code, align: "center" },
+                    { value: svc.desc, align: "left" },
+                    { value: svc.units, align: "center" },
+                    { value: money(svc.price), align: "right" },
+                    { value: svc.discount, align: "center" },
+                    { value: money(svc.total), align: "right" },
+                  ],
+                  i % 2 === 1
+                );
+              });
+            });
+
+            const totalSection = phase.sections
+              .flatMap((s) => s.categories)
+              .flatMap((c) => c.services)
+              .reduce((s, it) => s + Number(it.total || 0), 0);
+
+            tabla.addBarRow("#0f172a", "TOTAL", money(totalSection));
+            totalGeneral += totalSection;
+
+            // ===== Observaciones por fase (debajo del total de la fase) =====
+            doc.y = Math.max(doc.y, tabla.y);
+            const obsMap = cotizacion.observaciones_fases || {};
+            const key = String(phase.key);
+            const obsFase =
+              (Array.isArray(obsMap) ? obsMap[Number(key)] : obsMap[key]) ??
+              obsMap[phase.key] ??
+              null;
+
+            if (obsFase) {
+              const PAD = 8;
+              const GAP_AFTER_BOX = 4;
+              const title = `Observaciones Fase ${phase.key}`;
+
+              const hTitle = setFont(
+                doc,
+                "Poppins-Bold",
+                10,
+                THEME.dark
+              ).heightOfString(title, { width: contentWidth - PAD * 2 });
+              const hText = setFont(
+                doc,
+                "OpenSans-Regular",
+                10,
+                THEME.dark
+              ).heightOfString(obsFase, { width: contentWidth - PAD * 2 });
+              const boxH = PAD + hTitle + 4 + hText + PAD;
+
+              ensure(boxH);
+              const y0 = doc.y;
+
+              doc
+                .save()
+                .lineWidth(1)
+                .strokeColor(THEME.dark)
+                .rect(MARGIN, y0, contentWidth, boxH)
+                .stroke()
+                .restore();
+
+              setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
+                title,
+                MARGIN + PAD,
+                y0 + PAD,
+                { width: contentWidth - PAD * 2 }
+              );
+
+              setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+                obsFase,
+                MARGIN + PAD,
+                y0 + PAD + hTitle + 4,
+                { width: contentWidth - PAD * 2 }
+              );
+
+              doc.y = y0 + boxH + GAP_AFTER_BOX;
+              tabla.y = doc.y;
+            }
+
+            if (idxPhase !== phases.length - 1) tabla.addGap(0.25);
+          });
+        });
+
+        // ---- MODO 2: SIN FASES (plano por especialidad/categoría) ----
+      } else {
+        const sections = buildSectionsNoPhase(cotizacion.procedimientos);
+
+        // Un header general para toda la tabla
+        tabla.addHeader("TRATAMIENTOS", THEME.primary, THEME.light);
+
+        sections.forEach((section, idx) => {
           tabla.addSectionTitle(section.title).addColumnsHeader();
 
           section.categories.forEach((category) => {
             tabla.addSubheader(category.name, THEME.secondary, THEME.light);
+
             category.services.forEach((svc, i) => {
               tabla.addRow(
                 [
@@ -532,37 +671,36 @@ const generarPDF = async (cotizacion) =>
                 ],
                 i % 2 === 1
               );
+              totalGeneral += Number(svc.total || 0);
             });
           });
 
+          // Total por sección (opcional, queda bonito)
           const totalSection = section.categories
             .flatMap((c) => c.services)
             .reduce((s, it) => s + Number(it.total || 0), 0);
-          tabla.addBarRow("#0f172a", "TOTAL", money(totalSection));
-          totalGeneral += totalSection;
+          tabla.addBarRow("#0f172a", "TOTAL SECCIÓN", money(totalSection));
+
+          if (idx !== sections.length - 1) tabla.addGap(0.25);
         });
-        // Asegura que el cursor global esté al final real de la tabla de la fase
+
+        // Observaciones globales (si las envías)
         doc.y = Math.max(doc.y, tabla.y);
+        const obsGlobal =
+          cotizacion.observaciones_generales ??
+          (() => {
+            const src = cotizacion.observaciones_fases;
+            if (!src) return null;
+            const vals = Array.isArray(src) ? src : Object.values(src);
+            const joined = vals.filter(Boolean).join("\n");
+            return joined || null;
+          })();
 
-        // ===== Observaciones por fase (debajo del total de la fase) =====
-        (() => {
-          // 1) Asegura que partimos donde terminó realmente la tabla de la fase
-          doc.y = Math.max(doc.y, tabla.y);
-
-          const obsMap = cotizacion.observaciones_fases || {};
-          const key = String(phase.key);
-          const obsFase =
-            (Array.isArray(obsMap) ? obsMap[Number(key)] : obsMap[key]) ??
-            obsMap[phase.key] ??
-            null;
-
-          if (!obsFase) return;
-
+        if (obsGlobal) {
           const PAD = 8;
-          const GAP_AFTER_BOX = 4; // ↓ menos espacio tras la caja
-          const title = `Observaciones Fase ${phase.key}`;
+          const GAP_AFTER_BOX = 4;
+          const title = "Observaciones";
 
-          // 2) Calcula alturas con las mismas fuentes y el mismo ancho que vas a usar al renderizar
           const hTitle = setFont(
             doc,
             "Poppins-Bold",
@@ -574,16 +712,12 @@ const generarPDF = async (cotizacion) =>
             "OpenSans-Regular",
             10,
             THEME.dark
-          ).heightOfString(obsFase, { width: contentWidth - PAD * 2 });
-          const boxH = PAD + hTitle + 4 + hText + PAD; // = top PAD + título + gap + texto + bottom PAD
+          ).heightOfString(obsGlobal, { width: contentWidth - PAD * 2 });
+          const boxH = PAD + hTitle + 4 + hText + PAD;
 
-          // 3) Reserva espacio (puede saltar de página y reposicionar doc.y)
           ensure(boxH);
-
-          // *** CLAVE: congela el Y de la caja antes de escribir nada ***
           const y0 = doc.y;
 
-          // 4) Marco
           doc
             .save()
             .lineWidth(1)
@@ -592,31 +726,24 @@ const generarPDF = async (cotizacion) =>
             .stroke()
             .restore();
 
-          // 5) Título (no usamos doc.y posterior; siempre referenciado a y0)
           setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
             title,
             MARGIN + PAD,
             y0 + PAD,
-            { width: contentWidth - PAD * 2, lineBreak: true }
+            { width: contentWidth - PAD * 2 }
           );
 
-          // 6) Texto (alineado dentro de la caja)
           setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
-            obsFase,
+            obsGlobal,
             MARGIN + PAD,
             y0 + PAD + hTitle + 4,
-            { width: contentWidth - PAD * 2, lineBreak: true }
+            { width: contentWidth - PAD * 2 }
           );
 
-          // 7) Cierra caja y deja un gap pequeño
           doc.y = y0 + boxH + GAP_AFTER_BOX;
-
-          // Mantén tabla y doc sincronizados
           tabla.y = doc.y;
-        })();
-
-        if (idxPhase !== phases.length - 1) tabla.addGap(0.25);
-      });
+        }
+      }
 
       // TOTAL GENERAL
       tabla.addBarRow(THEME.primary, "TOTAL GENERAL", money(totalGeneral));

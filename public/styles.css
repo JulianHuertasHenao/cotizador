@@ -515,6 +515,10 @@ input:checked + .toggle-slider:before {
     justify-content: space-between;
 }
 
+.action-buttons.left {
+    justify-content: flex-start;
+}
+
 /* Discount Options */
 .discount-options {
     display: flex;
