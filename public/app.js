@@ -1395,7 +1395,21 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    /*
     addListener("generatePdfBtn", "click", generarPDFDesdeFormulario);
+    */
+
+    // dentro de setupEventListeners() en app.js
+    addListener("generatePdfBtn", "click", () => {
+      if (!window.PDFActions?.generarPDFDesdeFormulario) {
+        console.error(
+          "PDFActions no está cargado. Revisa el <script> de pdf-actions.js"
+        );
+        return;
+      }
+      PDFActions.generarPDFDesdeFormulario();
+    });
+
     addListener("sendEmailBtn", "click", enviarDesdeFormulario);
 
     // Configuración de la barra de búsqueda (solo si existe)
@@ -2532,354 +2546,6 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
-  /*
-    async function guardarCotizacion(e) {
-        if (e && typeof e.preventDefault === "function") e.preventDefault();
-        //alert("Inicio: guardarCotizacion()");
-
-        // ====== 1) PACIENTE ======
-        let pacienteId = document.querySelector("[name='paciente_id']")?.value;
-        const nuevoPacienteForm = document.getElementById("nuevoPacienteForm");
-
-        if (nuevoPacienteForm && nuevoPacienteForm.style.display !== "none") {
-            const nuevoPaciente = {
-                nombre: document.getElementById("nombrePaciente").value,
-                correo: document.getElementById("correoPaciente").value,
-                telefono: document.getElementById("telefonoPaciente").value,
-            };
-
-            if (!nuevoPaciente.nombre) {
-                alert("El nombre del paciente es obligatorio");
-                return;
-            }
-
-            try {
-                const response = await fetch("/api/pacientes", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(nuevoPaciente),
-                });
-
-                if (!response.ok) throw new Error(await response.text());
-                const dataPaciente = await response.json();
-                pacienteId = dataPaciente.id;
-
-                // Asegura el hidden con el id del paciente
-                let hidden = document.getElementById("pacienteSelectIdHidden");
-                if (!hidden) {
-                    hidden = document.createElement("input");
-                    hidden.type = "hidden";
-                    hidden.id = "pacienteSelectIdHidden";
-                    hidden.name = "paciente_id";
-                    document
-                        .getElementById("pacienteSearchInput")
-                        .parentNode.appendChild(hidden);
-                }
-                hidden.value = pacienteId;
-
-                alert(`Paciente OK. ID=${pacienteId}`);
-            } catch (err) {
-                console.error("[Paciente] Error:", err);
-                alert("Error al guardar paciente");
-                return;
-            }
-        }
-
-        if (!pacienteId) {
-            alert("Debe seleccionar o crear un paciente");
-            return;
-        }
-
-        // ====== 2) TOTALES ======
-        const parseMoney = (txt) =>
-            parseFloat(
-                (txt || "")
-                    .replace(/\s/g, "")
-                    .replace("$", "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-            ) || 0;
-        const parsePercent = (txt) =>
-            parseFloat(
-                (txt || "")
-                    .replace("%", "")
-                    .replace(/\./g, "")
-                    .replace(",", ".")
-            ) || 0;
-
-        const descuento = parsePercent(
-            document.getElementById("descuento-cotizacion")?.textContent
-        );
-        const subtotal = parseMoney(
-            document.getElementById("subtotal-cotizacion")?.textContent
-        );
-        const totalConDescuento = subtotal - (subtotal * descuento) / 100;
-
-        const cotizacionSimplificada = {
-            paciente_id: pacienteId,
-            total: subtotal,
-            estado: "borrador",
-            descuento: descuento,
-            total_con_descuento: totalConDescuento,
-            // observaciones se define más abajo según haya o no fases
-        };
-
-        // ====== 3) FASES (recolección completa) ======
-        const fases = [];
-        document
-            .querySelectorAll("#phases-container .phase-container")
-            .forEach((faseEl, index) => {
-                const duracionInput = faseEl.querySelector(".phase-duration");
-                const duracion = duracionInput
-                    ? parseInt(duracionInput.value || "1")
-                    : 1;
-
-                // Observaciones de la fase: unir múltiples en una sola cadena (únicas)
-                const obsUnicas = Array.from(
-                    new Set(
-                        Array.from(
-                            faseEl.querySelectorAll(".observaciones-fases")
-                        )
-                            .map((i) => (i.value || "").trim())
-                            .filter((v) => v.length > 0)
-                    )
-                );
-                const observacion = obsUnicas.join(", ");
-
-                const categoriasSet = new Set();
-                const servicios = [];
-
-                faseEl.querySelectorAll(".service-item").forEach((item) => {
-                    const servicioId =
-                        item.querySelector(".servicio-select")?.value;
-                    if (!servicioId) return;
-
-                    const cantidad =
-                        parseInt(
-                            item.querySelector(".cantidad-servicio")?.value
-                        ) || 1;
-                    const precio =
-                        parseFloat(
-                            item.querySelector(".precio-unitario-servicio")
-                                ?.value
-                        ) || 0;
-                    const desc =
-                        parseFloat(
-                            item.querySelector(".descuento-servicio")?.value
-                        ) || 0;
-
-                    const subtotalServicio = precio * cantidad;
-                    const total =
-                        subtotalServicio - (subtotalServicio * desc) / 100;
-
-                    // Categoría (si existe select en el header de la categoría)
-                    const catSel =
-                        item
-                            .closest(".category-group")
-                            ?.querySelector(".categoria-fase-select") || null;
-                    const categoriaId = catSel?.value;
-                    if (categoriaId) {
-                        categoriasSet.add(Number(categoriaId));
-                    }
-
-                    servicios.push({
-                        servicio_id: Number(servicioId) || servicioId,
-                        cantidad,
-                        precio_unitario: precio,
-                        descuento: desc,
-                        total,
-                    });
-                });
-
-                if (servicios.length > 0) {
-                    fases.push({
-                        numero_fase: index + 1,
-                        duracion,
-                        observacion,
-                        servicios,
-                        categorias: Array.from(categoriasSet),
-                    });
-                }
-            });
-
-        // Debug antes de enviar
-        alert(`Fases detectadas: ${fases.length}`);
-        fases.forEach((f) =>
-            alert(
-                `Fase ${f.numero_fase} | dur=${
-                    f.duracion
-                } | cats=[${f.categorias.join(", ")}] | obs="${f.observacion}"`
-            )
-        );
-
-        // ====== 3.5) OBSERVACIONES según haya o no fases ======
-        if (Array.isArray(fases) && fases.length > 0) {
-            // Con fases
-            cotizacionSimplificada.observaciones = "hay fases";
-        } else {
-            // Sin fases: recolectar observaciones “no-fase” en un array y pegarlas
-            const observacionesArray = [];
-            document
-                .querySelectorAll("#no-phase-categories .observaciones-no-fase")
-                .forEach((obsEl) => {
-                    const texto = (obsEl.value || "").trim();
-                    if (texto) observacionesArray.push(texto);
-                });
-            cotizacionSimplificada.observaciones =
-                observacionesArray.join(" | ");
-        }
-
-        // ====== CAPTURA ESTRUCTURA CATEGORÍAS/SERVICIOS (GLOBAL) ======
-        const estructuraCS = collectCotizacionEstructura();
-        window.COTIZACION_DEBUG = estructuraCS; // ← variable global para inspección
-        console.log("COTIZACION_DEBUG:", estructuraCS);
-        console.log(
-            "COTIZACION_DEBUG (JSON):",
-            JSON.stringify(estructuraCS, null, 2)
-        );
-
-        // (opcional) si quieres enviar al backend dentro del payload de la cotización:
-        // payloadCotizacion.estructura = estructuraCS;
-        // body: JSON.stringify(payloadCotizacion)
-
-        // ====== 4) GUARDAR COTIZACIÓN ======
-        try {
-            const url =
-                typeof currentQuoteId !== "undefined" && currentQuoteId
-                    ? `/api/cotizaciones/${currentQuoteId}`
-                    : "/api/cotizaciones";
-            const method =
-                typeof currentQuoteId !== "undefined" && currentQuoteId
-                    ? "PUT"
-                    : "POST";
-
-            console.log(
-                "[Cotización] %s %s",
-                method,
-                url,
-                cotizacionSimplificada
-            );
-            alert("Guardando cotización…");
-
-            const response = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(cotizacionSimplificada),
-            });
-            if (!response.ok) throw new Error(await response.text());
-
-            const result = await response.json();
-            if (typeof currentQuoteId !== "undefined")
-                currentQuoteId = result.id || currentQuoteId;
-
-            alert(
-                `Cotización guardada. ID=${
-                    result.id || currentQuoteId || "(no retornado)"
-                }`
-            );
-        } catch (err) {
-            console.error("[Cotización] Error:", err);
-            alert("Error al guardar cotización");
-            return;
-        }
-
-        // ====== 5) GUARDAR FASES (secuencialmente) ======
-        const resultados = [];
-        for (const fase of fases) {
-            try {
-                console.log(
-                    "[Fase] POST /api/fases | cotizacion_id=%s, num=%s, dur=%s, obs=%s",
-                    currentQuoteId,
-                    fase.numero_fase,
-                    fase.duracion,
-                    fase.observacion
-                );
-
-                // Guardar Fase
-                const respFase = await fetch("/api/fases", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        cotizacion_id: currentQuoteId,
-                        numero_fase: fase.numero_fase,
-                        duracion_meses: fase.duracion,
-                        observaciones_fase: fase.observacion,
-                    }),
-                });
-                if (!respFase.ok) throw new Error(await respFase.text());
-
-                const savedFase = await respFase.json();
-                const faseId = savedFase?.id;
-                console.log(
-                    `[Fase] OK fase ${fase.numero_fase} => id=${faseId}`
-                );
-                alert(
-                    `Fase ${fase.numero_fase} guardada (id=${faseId ?? "?"})`
-                );
-
-                // Guardar FaseCategorias (una por cada categoría detectada)
-                if (
-                    Array.isArray(fase.categorias) &&
-                    fase.categorias.length > 0
-                ) {
-                    const catOps = fase.categorias.map(async (categoriaId) => {
-                        console.log(
-                            `[FaseCategorias] POST /api/fases/categoria | fase_id=${faseId}, categoria_id=${categoriaId}`
-                        );
-                        const r = await fetch("/api/fases/categoria", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                fase_id: faseId,
-                                categoria_id: categoriaId,
-                            }),
-                        });
-
-                        const txt = await r.text();
-                        if (!r.ok) {
-                            throw new Error(
-                                `fase=${faseId} cat=${categoriaId} => ${txt}`
-                            );
-                        }
-                        console.log("[FaseCategorias] OK =>", txt);
-                        return txt;
-                    });
-
-                    const settled = await Promise.allSettled(catOps);
-                    const rechazadas = settled.filter(
-                        (r) => r.status === "rejected"
-                    );
-                    if (rechazadas.length) {
-                        console.warn(
-                            `[FaseCategorias] Errores en ${rechazadas.length} categorías`
-                        );
-                    }
-                }
-
-                resultados.push({ fase: fase.numero_fase, ok: true });
-            } catch (err) {
-                console.error("[Fase] Error:", err);
-                resultados.push({ fase: fase.numero_fase, ok: false, err });
-            }
-        }
-
-        const fallos = resultados.filter((r) => !r.ok);
-        const rechazadas = []; // ya se contabilizan arriba, aquí mantenemos resumen
-
-        if (fallos.length || rechazadas.length) {
-            alert(
-                "Proceso finalizado con errores en algunas fases. Revisa consola para detalles."
-            );
-        } else {
-            alert("Proceso finalizado. Todas las fases procesadas.");
-        }
-
-        // ====== 6) UI (después de TODO)
-        if (typeof switchTab === "function")
-            switchTab("history", { reset: true });
-        if (typeof cargarCotizaciones === "function") cargarCotizaciones();
-    }
-*/
   // ========================== GUARDAR COTIZACIÓN ==========================
   // ========================== GUARDAR COTIZACIÓN (actualizado) ==========================
   // ========================== GUARDAR COTIZACIÓN (orden final) ==========================
@@ -3158,12 +2824,15 @@ document.addEventListener("DOMContentLoaded", function () {
         cotizacionSimplificada.observaciones = "hay fases";
       } else {
         const observacionesArray = [];
-        document
-          .querySelectorAll("#no-phase-categories .observaciones-no-fase")
-          .forEach((obsEl) => {
-            const texto = (obsEl.value || "").trim();
-            if (texto) observacionesArray.push(texto);
-          });
+        const observacionesElements = document.querySelectorAll(
+          "#no-phase-categories .observaciones-no-fase"
+        );
+
+        observacionesElements.forEach((obsEl) => {
+          const texto = (obsEl.value || "").trim();
+          observacionesArray.push(texto || " ");
+        });
+
         cotizacionSimplificada.observaciones = observacionesArray.join(" | ");
       }
 
@@ -3485,99 +3154,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Inicio Botones de accion final --- Cotizaciones / quote tab ---
-  async function generarPDFDesdeFormulario() {
-    // Validar que haya al menos una fase con servicios
-    const fases = document.querySelectorAll(".fase-card");
-    if (fases.length === 0) {
-      alert("Debe agregar al menos una fase con servicios para generar el PDF");
-      return;
-    }
-
-    // Recolectar datos del formulario para el PDF
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    let paciente = pacientes.find((p) => p.id == pacienteId);
-
-    if (
-      !paciente &&
-      document.getElementById("nuevoPacienteForm").style.display !== "none"
-    ) {
-      paciente = {
-        nombre: document.getElementById("nombrePaciente").value,
-        correo: document.getElementById("correoPaciente").value,
-        telefono: document.getElementById("telefonoPaciente").value,
-        direccion: document.getElementById("direccionPaciente").value,
-      };
-    }
-
-    if (!paciente) {
-      alert("Debe seleccionar o crear un paciente");
-      return;
-    }
-
-    const datosCotizacion = {
-      paciente: paciente,
-      observaciones: document.getElementById("observaciones").value,
-      total: document.getElementById("total-cotizacion").textContent,
-      fases: [],
-    };
-
-    fases.forEach((faseCard) => {
-      const fase = {
-        numero: faseCard.querySelector(".fase-numero").textContent,
-        subtotal: faseCard.querySelector(".fase-subtotal").textContent,
-        descuento: faseCard.querySelector(".fase-descuento").textContent,
-        total: faseCard.querySelector(".fase-total-amount").textContent,
-        servicios: [],
-      };
-
-      faseCard.querySelectorAll(".servicio-item").forEach((servicioItem) => {
-        const servicioSelect = servicioItem.querySelector(".servicio-select");
-        if (servicioSelect.value) {
-          const servicio = servicios.find((s) => s.id == servicioSelect.value);
-          fase.servicios.push({
-            nombre: servicio.descripcion,
-            cantidad: servicioItem.querySelector(".cantidad").value,
-            precio: servicioItem.querySelector(".precio-unitario").value,
-            descuento: servicioItem.querySelector(".descuento").value + "%",
-            total: servicioItem.querySelector(".total-servicio").value,
-          });
-        }
-      });
-
-      datosCotizacion.fases.push(fase);
-    });
-
-    try {
-      const res = await fetch("/api/generar-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cotizacion: datosCotizacion }),
-      });
-
-      if (!res.ok) throw new Error("Error al generar PDF");
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `cotizacion_${paciente.nombre.replace(/\s+/g, "_")}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error al generar PDF:", error);
-      alert(`Error: ${error.message}`);
-    }
-  }
   async function enviarDesdeFormulario() {
     // Validar que haya al menos una fase con servicios
     const fases = document.querySelectorAll(".fase-card");
-    if (fases.length === 0) {
-      alert("Debe agregar al menos una fase con servicios para enviar");
-      return;
-    }
 
     const pacienteId = document.getElementById("pacienteSelect").value;
     let paciente = pacientes.find((p) => p.id == pacienteId);
@@ -3654,9 +3233,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      cotizaciones.sort(
-        (a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
-      );
+      cotizaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
       const table = document.createElement("table");
       table.className = "table";
@@ -3925,6 +3502,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
+  /*
   window.descargarPDF = async function (id) {
     try {
       const response = await fetch(`/api/cotizaciones/${id}`);
@@ -3954,6 +3532,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert(`Error: ${error.message}`);
     }
   };
+  */
 
   window.enviarCotizacion = async function (id) {
     try {

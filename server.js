@@ -6,7 +6,192 @@ const app = express();
 const db = require("./src/utils/db"); // Importamos la base de datos
 const fs = require("fs");
 const { generarPDF } = require("./src/services/pdf.service_V2");
-const pad2 = (n) => String(n ?? "").padStart(2, "0");
+
+function qGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
+function qAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+}
+
+app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    // 1) Cabecera + paciente
+    const cab = await qGet(
+      `
+      SELECT c.id, c.observaciones, 
+             COALESCE(c.fecha, c.fecha_creacion, datetime('now')) AS fecha_creacion,
+             p.nombre        AS nombre_paciente,
+             p.correo        AS correo_paciente
+      FROM Cotizaciones c
+      LEFT JOIN Pacientes p ON p.id = c.paciente_id
+      WHERE c.id = ?`,
+      [id]
+    );
+    if (!cab) return res.status(404).send("Cotización no encontrada");
+
+    // 2) Detalle + servicio + categoría
+    const det = await qAll(
+      `
+      SELECT 
+        dc.cantidad,
+        dc.precio_unitario,
+        dc.descuento,         -- % numérico
+        dc.total,
+        s.codigo,
+        s.descripcion,
+        s.subtitulo,
+        s.categoria_id,
+        cat.nombre_categoria,
+        cat.id AS cat_id
+      FROM DetallesCotizacion dc
+      JOIN Servicios s    ON s.id = dc.servicio_id
+      JOIN Categorias cat ON cat.id = s.categoria_id
+      WHERE dc.cotizacion_id = ?
+      ORDER BY cat.id, s.id
+      `,
+      [id]
+    );
+
+    if (!det?.length)
+      return res.status(400).send("La cotización no tiene ítems de detalle");
+
+    // 3) Fases y categorías por fase (si existen)
+    const fases = await qAll(
+      `SELECT id, numero_fase, duracion_meses, observaciones_fase
+       FROM Fases
+       WHERE cotizacion_id = ?
+       ORDER BY numero_fase`,
+      [id]
+    );
+
+    const faseCats = await qAll(
+      `SELECT fc.fase_id, fc.categoria_id, f.numero_fase, f.duracion_meses, f.observaciones_fase
+         FROM FaseCategorias fc
+         JOIN Fases f ON f.id = fc.fase_id
+        WHERE f.cotizacion_id = ?`,
+      [id]
+    );
+
+    // 4) ¿Agrupar por fases?
+    // Regla: si NO hay fases o solo hay una "placeholder" (observaciones_fase='auto: sin_fases'), NO agrupar.
+    const hayFasesReales =
+      Array.isArray(fases) &&
+      fases.some(
+        (f) =>
+          (f.observaciones_fase || "").trim().toLowerCase() !==
+          "auto: sin_fases"
+      );
+    const agrupar_por_fase = !!hayFasesReales;
+
+    // 5) Mapeo categoria -> fase (si hay fases reales)
+    const catToFase = {};
+    const faseInfo = {}; // fase_id -> {numero_fase, duracion_meses, observaciones_fase}
+    for (const f of fases) {
+      faseInfo[f.id] = {
+        numero_fase: f.numero_fase,
+        duracion_meses: f.duracion_meses,
+        observaciones_fase: f.observaciones_fase || "",
+      };
+    }
+    for (const fc of faseCats) {
+      // si una misma categoría aparece en varias fases, elige la de menor numero_fase
+      const prev = catToFase[fc.categoria_id];
+      if (!prev || fc.numero_fase < prev.numero_fase) {
+        catToFase[fc.categoria_id] = {
+          numero_fase: fc.numero_fase,
+          duracion_meses: fc.duracion_meses,
+          observaciones_fase: fc.observaciones_fase || "",
+        };
+      }
+    }
+
+    // 6) Armado de procedimientos que entiende pdf.service_V2.js
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const procedimientos = det.map((row) => {
+      const desc = Number(row.descuento || 0);
+      const labelDesc = desc > 0 ? `${desc}%` : "N.A";
+
+      if (agrupar_por_fase) {
+        const f = catToFase[row.cat_id]; // podría ser undefined si no registraron esa categoría en FaseCategorias
+        return {
+          fase: String(f?.numero_fase ?? ""), // si no hay match, quedará sin fase
+          duracion: f?.duracion_meses ?? null,
+          duracion_unidad: f ? "meses" : null,
+          especialidad_codigo: pad2(row.cat_id),
+          especialidad_nombre: row.nombre_categoria,
+          subcategoria_nombre: row.subtitulo || "OTROS",
+          codigo: row.codigo || "",
+          nombre_servicio: row.descripcion || "Servicio",
+          unidad: String(row.cantidad || 1),
+          precio_unitario: Number(row.precio_unitario || 0),
+          descuento: labelDesc,
+          total: Number(row.total || 0),
+        };
+      } else {
+        return {
+          fase: "",
+          duracion: null,
+          duracion_unidad: null,
+          especialidad_codigo: pad2(row.cat_id),
+          especialidad_nombre: row.nombre_categoria,
+          subcategoria_nombre: row.subtitulo || "OTROS",
+          codigo: row.codigo || "",
+          nombre_servicio: row.descripcion || "Servicio",
+          unidad: String(row.cantidad || 1),
+          precio_unitario: Number(row.precio_unitario || 0),
+          descuento: labelDesc,
+          total: Number(row.total || 0),
+        };
+      }
+    });
+
+    // 7) Observaciones
+    const observaciones_fases = {};
+    if (agrupar_por_fase) {
+      for (const f of fases) {
+        const obs = (f.observaciones_fase || "").trim();
+        if (obs && obs.toLowerCase() !== "auto: sin_fases") {
+          observaciones_fases[String(f.numero_fase)] = obs;
+        }
+      }
+    }
+
+    // 8) Payload final para pdf.service_V2.js
+    const payload = {
+      numero: String(cab.id).padStart(6, "0"),
+      fecha_creacion: cab.fecha_creacion,
+      doctora: "Dra. Sandra P. Alarcón G.",
+      nombre_paciente: cab.nombre_paciente || "(sin nombre)",
+      correo_paciente: cab.correo_paciente || "",
+      agrupar_por_fase,
+      procedimientos,
+      ...(agrupar_por_fase
+        ? { observaciones_fases }
+        : { observaciones_generales: cab.observaciones || undefined }),
+    };
+
+    // 9) Generar y stream
+    const filePath = await generarPDF(payload);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${path.basename(filePath)}"`
+    );
+    const read = fs.createReadStream(filePath);
+    read.pipe(res);
+    read.on("close", () => fs.unlink(filePath, () => {}));
+  } catch (err) {
+    console.error("Error generando PDF (historial):", err);
+    res.status(500).send(err?.message || "Error generando PDF");
+  }
+});
 
 // Configuración básica
 app.use(cors());
@@ -858,24 +1043,23 @@ app.post("/api/cotizaciones/duplicar/:id", (req, res) => {
 
 app.post("/api/generar-pdf", async (req, res) => {
   try {
-    const payload =
-      typeof req.body.cotizacion === "string"
-        ? JSON.parse(req.body.cotizacion)
-        : req.body.cotizacion;
+    const payload = req.body?.cotizacion || req.body;
+    if (!payload) return res.status(400).send("Falta 'cotizacion' en el body");
 
-    const pdfBuffer = await generarPDF(payload);
+    const filePath = await generarPDF(payload);
 
-    res
-      .status(200)
-      .set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=cotizacion_${payload.id}.pdf`,
-        "Content-Length": pdfBuffer.length,
-      })
-      .end(pdfBuffer);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${path.basename(filePath)}"`
+    );
+
+    const read = fs.createReadStream(filePath);
+    read.pipe(res);
+    read.on("close", () => fs.unlink(filePath, () => {}));
   } catch (err) {
     console.error("Error generando PDF:", err);
-    res.status(500).json({ error: "Error generando PDF" });
+    res.status(500).send(err?.message || "Error generando PDF");
   }
 });
 
