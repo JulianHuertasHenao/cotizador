@@ -92,9 +92,13 @@ function renderHeader(doc, cotizacion, dims) {
   const titleBottom = doc.y;
 
   // Versión + línea
+  const FECHA_DOC =
+    cotizacion.fecha_creacion || cotizacion.fecha || new Date().toISOString();
+
   const versionText = `MV-F-001 VERSIÓN 01; ${formatoFecha(
-    cotizacion.fecha_creacion
+    FECHA_DOC
   ).toUpperCase()}`;
+
   setFont(doc, "OpenSans-Regular", 10, THEME.dark);
   const lineH = doc.currentLineHeight();
   const textW = doc.widthOfString(versionText);
@@ -130,7 +134,7 @@ function renderHeader(doc, cotizacion, dims) {
     }
   );
   setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
-    `Bogotá, ${formatoFecha(cotizacion.fecha_creacion)}`,
+    `Bogotá, ${formatoFecha(FECHA_DOC)}`,
     MARGIN,
     doc.y + 4,
     {
@@ -547,6 +551,7 @@ const generarPDF = async (cotizacion) =>
       // ---- MODO 1: AGRUPADO POR FASES (comportamiento actual) ----
       if (agruparPorFase) {
         const phases = buildPhases(cotizacion.procedimientos);
+        const obsMap = cotizacion.observaciones_fases || {};
 
         phases.forEach((phase, idxPhase) => {
           tabla.addHeader(
@@ -557,8 +562,20 @@ const generarPDF = async (cotizacion) =>
             `${phase.duration ?? ""} ${phase.unit ?? ""}`
           );
 
-          phase.sections.forEach((section) => {
+          let totalPhase = 0;
+
+          // Tokens de observaciones de esta fase, por posición de sección
+          const obsStr = Array.isArray(obsMap)
+            ? obsMap[Number(phase.key)]
+            : obsMap[String(phase.key)];
+          const obsTokens = String(obsStr || "")
+            .split("|")
+            .map((s) => s.trim());
+
+          phase.sections.forEach((section, idxSection) => {
             tabla.addSectionTitle(section.title).addColumnsHeader();
+
+            let totalSection = 0;
 
             section.categories.forEach((category) => {
               tabla.addSubheader(category.name, THEME.secondary, THEME.light);
@@ -574,31 +591,18 @@ const generarPDF = async (cotizacion) =>
                   ],
                   i % 2 === 1
                 );
+                totalSection += Number(svc.total || 0);
               });
             });
 
-            const totalSection = phase.sections
-              .flatMap((s) => s.categories)
-              .flatMap((c) => c.services)
-              .reduce((s, it) => s + Number(it.total || 0), 0);
+            //tabla.addBarRow("#0f172a", "TOTAL SECCIÓN", money(totalSection));
+            totalPhase += totalSection;
 
-            tabla.addBarRow("#0f172a", "TOTAL", money(totalSection));
-            totalGeneral += totalSection;
-
-            // ===== Observaciones por fase (debajo del total de la fase) =====
-            doc.y = Math.max(doc.y, tabla.y);
-            const obsMap = cotizacion.observaciones_fases || {};
-            const key = String(phase.key);
-            const obsFase =
-              (Array.isArray(obsMap) ? obsMap[Number(key)] : obsMap[key]) ??
-              obsMap[phase.key] ??
-              null;
-
-            if (obsFase) {
+            // ---- Observación de ESTA SECCIÓN (por índice en obsTokens) ----
+            const obsDeSeccion = obsTokens[idxSection];
+            if (obsDeSeccion) {
               const PAD = 8;
-              const GAP_AFTER_BOX = 4;
-              const title = `Observaciones Fase ${phase.key}`;
-
+              const title = `Observaciones Fase ${phase.key} — ${section.title}`;
               const hTitle = setFont(
                 doc,
                 "Poppins-Bold",
@@ -610,7 +614,7 @@ const generarPDF = async (cotizacion) =>
                 "OpenSans-Regular",
                 10,
                 THEME.dark
-              ).heightOfString(obsFase, { width: contentWidth - PAD * 2 });
+              ).heightOfString(obsDeSeccion, { width: contentWidth - PAD * 2 });
               const boxH = PAD + hTitle + 4 + hText + PAD;
 
               ensure(boxH);
@@ -630,24 +634,48 @@ const generarPDF = async (cotizacion) =>
                 y0 + PAD,
                 { width: contentWidth - PAD * 2 }
               );
-
               setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
-                obsFase,
+                obsDeSeccion,
                 MARGIN + PAD,
                 y0 + PAD + hTitle + 4,
-                { width: contentWidth - PAD * 2 }
+                {
+                  width: contentWidth - PAD * 2,
+                }
               );
 
-              doc.y = y0 + boxH + GAP_AFTER_BOX;
+              doc.y = y0 + boxH + 4;
               tabla.y = doc.y;
             }
 
-            if (idxPhase !== phases.length - 1) tabla.addGap(0.25);
+            if (idxSection !== phase.sections.length - 1) tabla.addGap(0.25);
           });
+
+          // total de la fase (una sola vez)
+          tabla.addBarRow("#0f172a", "TOTAL", money(totalPhase));
+          totalGeneral += totalPhase;
+
+          if (idxPhase !== phases.length - 1) tabla.addGap(0.25);
         });
 
         // ---- MODO 2: SIN FASES (plano por especialidad/categoría) ----
       } else {
+        let printedAnySectionObs = false;
+        // helper para sacar el código "01", "07" del título "01 – ODONTOLOGIA..."
+        const getCodeFromSectionTitle = (t) => {
+          const m = String(t).match(/^\s*0?(\d+)/);
+          return m ? m[1].padStart(2, "0") : null;
+        };
+
+        const obsArray = Array.isArray(cotizacion.observaciones_por_categoria)
+          ? cotizacion.observaciones_por_categoria
+          : null;
+
+        // Fallback: si viene solo un string desde BD (ej: "1 |  | 3"), lo partimos por posición
+        const obsTokensNoFase =
+          !obsArray && typeof cotizacion.observaciones_generales === "string"
+            ? cotizacion.observaciones_generales.split("|").map((s) => s.trim())
+            : [];
+
         const sections = buildSectionsNoPhase(cotizacion.procedimientos);
 
         // Un header general para toda la tabla
@@ -682,66 +710,132 @@ const generarPDF = async (cotizacion) =>
           tabla.addBarRow("#0f172a", "TOTAL SECCIÓN", money(totalSection));
 
           if (idx !== sections.length - 1) tabla.addGap(0.25);
+
+          // --- Observación POR SECCIÓN (array del payload O fallback por índice) ---
+          let obsDeEstaSeccion = null;
+
+          if (obsArray) {
+            const secCode = getCodeFromSectionTitle(section.title);
+            obsDeEstaSeccion = obsArray.find(
+              (o) => String(o?.especialidad_codigo).padStart(2, "0") === secCode
+            )?.observacion;
+          } else {
+            // Fallback BD: mismo índice que la sección
+            obsDeEstaSeccion = obsTokensNoFase[idx];
+          }
+
+          if (obsDeEstaSeccion && obsDeEstaSeccion.trim()) {
+            printedAnySectionObs = true;
+
+            const PAD = 8;
+            const title = `Observaciones — ${section.title}`;
+            const hTitle = setFont(
+              doc,
+              "Poppins-Bold",
+              10,
+              THEME.dark
+            ).heightOfString(title, { width: contentWidth - PAD * 2 });
+            const hText = setFont(
+              doc,
+              "OpenSans-Regular",
+              10,
+              THEME.dark
+            ).heightOfString(obsDeEstaSeccion, {
+              width: contentWidth - PAD * 2,
+            });
+            const boxH = PAD + hTitle + 4 + hText + PAD;
+
+            ensure(boxH);
+            const y0 = doc.y;
+
+            doc
+              .save()
+              .lineWidth(1)
+              .strokeColor(THEME.dark)
+              .rect(MARGIN, y0, contentWidth, boxH)
+              .stroke()
+              .restore();
+
+            setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
+              title,
+              MARGIN + PAD,
+              y0 + PAD,
+              { width: contentWidth - PAD * 2 }
+            );
+            setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+              obsDeEstaSeccion,
+              MARGIN + PAD,
+              y0 + PAD + hTitle + 4,
+              {
+                width: contentWidth - PAD * 2,
+              }
+            );
+
+            doc.y = y0 + boxH + 4;
+            tabla.y = doc.y;
+          }
         });
 
-        // Observaciones globales (si las envías)
-        doc.y = Math.max(doc.y, tabla.y);
-        const obsGlobal =
-          cotizacion.observaciones_generales ??
-          (() => {
-            const src = cotizacion.observaciones_fases;
-            if (!src) return null;
-            const vals = Array.isArray(src) ? src : Object.values(src);
-            const joined = vals.filter(Boolean).join("\n");
-            return joined || null;
-          })();
+        // Observaciones globales solo si NO hubo por sección
+        if (!printedAnySectionObs) {
+          doc.y = Math.max(doc.y, tabla.y);
+          const obsGlobal =
+            cotizacion.observaciones_generales ??
+            (() => {
+              const src = cotizacion.observaciones_fases;
+              if (!src) return null;
+              const vals = Array.isArray(src) ? src : Object.values(src);
+              const joined = vals.filter(Boolean).join("\n");
+              return joined || null;
+            })();
 
-        if (obsGlobal) {
-          const PAD = 8;
-          const GAP_AFTER_BOX = 4;
-          const title = "Observaciones";
+          if (obsGlobal) {
+            const PAD = 8;
+            const GAP_AFTER_BOX = 4;
+            const title = "Observaciones";
 
-          const hTitle = setFont(
-            doc,
-            "Poppins-Bold",
-            10,
-            THEME.dark
-          ).heightOfString(title, { width: contentWidth - PAD * 2 });
-          const hText = setFont(
-            doc,
-            "OpenSans-Regular",
-            10,
-            THEME.dark
-          ).heightOfString(obsGlobal, { width: contentWidth - PAD * 2 });
-          const boxH = PAD + hTitle + 4 + hText + PAD;
+            const hTitle = setFont(
+              doc,
+              "Poppins-Bold",
+              10,
+              THEME.dark
+            ).heightOfString(title, { width: contentWidth - PAD * 2 });
+            const hText = setFont(
+              doc,
+              "OpenSans-Regular",
+              10,
+              THEME.dark
+            ).heightOfString(obsGlobal, { width: contentWidth - PAD * 2 });
+            const boxH = PAD + hTitle + 4 + hText + PAD;
 
-          ensure(boxH);
-          const y0 = doc.y;
+            ensure(boxH);
+            const y0 = doc.y;
 
-          doc
-            .save()
-            .lineWidth(1)
-            .strokeColor(THEME.dark)
-            .rect(MARGIN, y0, contentWidth, boxH)
-            .stroke()
-            .restore();
+            doc
+              .save()
+              .lineWidth(1)
+              .strokeColor(THEME.dark)
+              .rect(MARGIN, y0, contentWidth, boxH)
+              .stroke()
+              .restore();
 
-          setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
-            title,
-            MARGIN + PAD,
-            y0 + PAD,
-            { width: contentWidth - PAD * 2 }
-          );
+            setFont(doc, "Poppins-Bold", 10, THEME.dark).text(
+              title,
+              MARGIN + PAD,
+              y0 + PAD,
+              { width: contentWidth - PAD * 2 }
+            );
 
-          setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
-            obsGlobal,
-            MARGIN + PAD,
-            y0 + PAD + hTitle + 4,
-            { width: contentWidth - PAD * 2 }
-          );
+            setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
+              obsGlobal,
+              MARGIN + PAD,
+              y0 + PAD + hTitle + 4,
+              { width: contentWidth - PAD * 2 }
+            );
 
-          doc.y = y0 + boxH + GAP_AFTER_BOX;
-          tabla.y = doc.y;
+            doc.y = y0 + boxH + GAP_AFTER_BOX;
+            tabla.y = doc.y;
+          }
         }
       }
 

@@ -2770,7 +2770,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 .filter((v) => v.length > 0)
             )
           );
-          const observacion = obsUnicas.join(", ");
+          const observacion = obsUnicas.join(" | ");
 
           const categoriasSet = new Set();
           const servicios = [];
@@ -3017,12 +3017,23 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      // ====== 6) UI (limpiar y redirigir) ======
-      if (typeof switchTab === "function")
-        switchTab("history", { reset: true });
-      if (typeof cargarCotizaciones === "function") cargarCotizaciones();
-      if (typeof showToast === "function")
-        showToast("Cotización guardada correctamente");
+      // ====== 6) UI — mostrar mensaje y luego ir a Historial ======
+      const goToHistory = () => {
+        if (typeof switchTab === "function")
+          switchTab("history", { reset: true });
+        if (typeof cargarCotizaciones === "function") cargarCotizaciones();
+      };
+
+      if (typeof window.showToast === "function") {
+        // Mostrar primero el toast…
+        window.showToast("Cotización guardada correctamente");
+        // …y luego cambiar a Historial con un pequeño delay para que se alcance a ver
+        setTimeout(goToHistory, 1000); // 1s
+      } else {
+        // Fallback si no hay toast
+        alert("Cotización guardada correctamente");
+        goToHistory();
+      }
     } catch (error) {
       console.error(error);
       alert("Error al guardar la cotización: " + error.message);
@@ -3042,17 +3053,61 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function getBadgeClass(estado) {
-    switch (estado) {
+    switch (String(estado || "").toLowerCase()) {
+      case "generada":
+        return "badge-primary";
       case "enviada":
         return "badge-success";
       case "aceptada":
         return "badge-primary";
       case "rechazada":
         return "badge-danger";
+      case "borrador":
       default:
         return "badge-warning";
     }
   }
+
+  function updateEstadoEnTabla(id, nuevoEstado) {
+    const row = document.querySelector(
+      `#cotizacionesList tr[data-cotizacion-id="${id}"]`
+    );
+    if (!row) return;
+    const estadoCell = row.querySelector("td:nth-child(5)"); // tu tabla tiene Estado en la 5ª col
+    if (!estadoCell) return;
+    estadoCell.innerHTML = `<span class="badge ${getBadgeClass(
+      nuevoEstado
+    )}">${nuevoEstado}</span>`;
+  }
+
+  // Actualiza el estado de una cotización intentando un endpoint específico
+  // y con fallback a un PATCH genérico si tu API no lo tiene.
+  // /public/estado.js
+  window.updateEstadoCotizacion = async function (id, nuevoEstado, opts = {}) {
+    const { refreshRow = true, refreshTable = true } = opts;
+    if (!id || !nuevoEstado) return;
+
+    try {
+      const r = await fetch(`/api/cotizaciones/${id}/estado`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: String(nuevoEstado) }),
+      });
+      if (!r.ok)
+        throw new Error(
+          await r.text().catch(() => "No se pudo actualizar estado")
+        );
+
+      // ✅ Refresca la UI
+      if (refreshRow) window.updateEstadoEnTabla?.(id, nuevoEstado);
+      if (refreshTable) window.cargarCotizaciones?.();
+
+      // Devuelve el nuevo estado por si quieres encadenar
+      return { id, estado: nuevoEstado };
+    } catch (err) {
+      console.warn(`[updateEstadoCotizacion] error para id=${id}:`, err);
+    }
+  };
 
   function agregarCategoriaDeTratamiento() {
     // Agrega una nueva fila dinámica de categoría (no la estática)
@@ -3154,22 +3209,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  async function enviarDesdeFormulario() {
-    // Validar que haya al menos una fase con servicios
-    const fases = document.querySelectorAll(".fase-card");
+  window.cargarCotizaciones = cargarCotizaciones;
 
-    const pacienteId = document.getElementById("pacienteSelect").value;
-    let paciente = pacientes.find((p) => p.id == pacienteId);
+  // /public/enviar.js (o el archivo donde ya tengas esta función)
+  window.enviarDesdeFormulario = async function () {
+    // 1) Construye/valida paciente como ya lo hacías:
+    const pacienteId = document.getElementById("pacienteSelect")?.value;
+    let paciente = (window.pacientes || []).find(
+      (p) => String(p.id) === String(pacienteId)
+    );
 
-    if (
-      !paciente &&
-      document.getElementById("nuevoPacienteForm").style.display !== "none"
-    ) {
+    const npForm = document.getElementById("nuevoPacienteForm");
+    if (!paciente && npForm && npForm.style.display !== "none") {
       paciente = {
-        nombre: document.getElementById("nombrePaciente").value,
-        correo: document.getElementById("correoPaciente").value,
-        telefono: document.getElementById("telefonoPaciente").value,
-        direccion: document.getElementById("direccionPaciente").value,
+        nombre: document.getElementById("nombrePaciente")?.value,
+        correo: document.getElementById("correoPaciente")?.value,
+        telefono: document.getElementById("telefonoPaciente")?.value,
+        direccion: document.getElementById("direccionPaciente")?.value,
       };
     }
 
@@ -3177,7 +3233,6 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Debe seleccionar o crear un paciente");
       return;
     }
-
     if (!paciente.correo) {
       alert(
         "El paciente debe tener un correo electrónico para enviar la cotización"
@@ -3185,38 +3240,41 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    const confirmacion = confirm(
+    const ok = confirm(
       `¿Enviar cotización a ${paciente.correo}?\n\n` +
         `Paciente: ${paciente.nombre}\n` +
-        `Total: ${document.getElementById("total-cotizacion").textContent}`
+        `Total: ${
+          document.getElementById("total-cotizacion")?.textContent || "-"
+        }`
     );
+    if (!ok) return;
 
-    if (confirmacion) {
-      try {
-        // Primero guardamos la cotización si no está guardada
-        if (!currentQuoteId) {
-          await guardarCotizacion(e);
-          return; // El guardado recargará la página y podremos enviar después
-        }
-
-        // Si ya está guardada, procedemos a enviar
-        const response = await fetch(
-          `/api/cotizaciones/${currentQuoteId}/enviar`,
-          {
-            method: "POST",
-          }
-        );
-
-        if (!response.ok) throw new Error("Error al enviar");
-
-        alert(`Cotización enviada a ${paciente.correo}`);
-        cargarCotizaciones();
-      } catch (error) {
-        console.error("Error al enviar:", error);
-        alert(`Error: ${error.message}`);
+    try {
+      // Si no existe aún la cotización en BD, guárdala antes
+      if (!window.currentQuoteId) {
+        await window.guardarCotizacion?.(); // tu función existente
+        return; // el guardado suele recargar/repintar; luego vuelves a intentar enviar
       }
+
+      // Enviar en backend (este endpoint YA marca "enviada")
+      const response = await fetch(
+        `/api/cotizaciones/${window.currentQuoteId}/enviar`,
+        {
+          method: "POST",
+        }
+      );
+      if (!response.ok) throw new Error("Error al enviar");
+
+      // Optimista: refresca celda y listado
+      window.updateEstadoEnTabla?.(window.currentQuoteId, "enviada");
+      window.cargarCotizaciones?.();
+
+      alert(`Cotización enviada a ${paciente.correo}`);
+    } catch (error) {
+      console.error("Error al enviar:", error);
+      alert(`Error: ${error.message}`);
     }
-  }
+  };
 
   //
 
@@ -3257,7 +3315,7 @@ document.addEventListener("DOMContentLoaded", function () {
           : "Paciente no encontrado";
 
         return `
-      <tr>
+      <tr data-cotizacion-id="${cotizacion.id}">
         <td>${String(cotizacion.id).slice(-6)}</td>
         <td>${nombrePaciente}</td>
         <td>${new Date(cotizacion.fecha).toLocaleDateString()}</td>
@@ -3502,38 +3560,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  /*
-  window.descargarPDF = async function (id) {
-    try {
-      const response = await fetch(`/api/cotizaciones/${id}`);
-      const cotizacion = await response.json();
-
-      if (!cotizacion) throw new Error("Cotización no encontrada");
-
-      const res = await fetch("/api/generar-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cotizacion }),
-      });
-
-      if (!res.ok) throw new Error("Error al generar PDF");
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `cotizacion_${cotizacion.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error al descargar PDF:", error);
-      alert(`Error: ${error.message}`);
-    }
-  };
-  */
-
   window.enviarCotizacion = async function (id) {
     try {
       const response = await fetch(`/api/cotizaciones/${id}`);
@@ -3555,6 +3581,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!updateResponse.ok) throw new Error("Error al enviar");
 
         alert(`Cotización enviada a ${cotizacion.correo_paciente}`);
+        // ⚑ Cambiar estado a "enviada" tras enviar email
+        try {
+          await window.updateEstadoCotizacion?.(id, "enviada");
+        } catch (e) {
+          console.warn("No se pudo actualizar el estado a 'enviada':", e);
+        }
+
         cargarCotizaciones();
       }
     } catch (error) {
@@ -3564,6 +3597,30 @@ document.addEventListener("DOMContentLoaded", function () {
   };
   // Fin Botones de accion final --- Cotizaciones / quote tab
 });
+
+// app.js o /public/historial.js (donde cargue en la vista del historial)
+window.enviarCotizacion = async function (id) {
+  if (!id) return;
+  try {
+    // UI optimista
+    window.updateEstadoEnTabla?.(id, "enviada");
+
+    const res = await fetch(`/api/cotizaciones/${id}/enviar`, {
+      method: "POST",
+    });
+    if (!res.ok)
+      throw new Error(await res.text().catch(() => "Error al enviar"));
+
+    // Backend dejó estado = 'enviada'
+    window.cargarCotizaciones?.();
+    alert("Cotización enviada.");
+  } catch (e) {
+    console.error("Error al enviar:", e);
+    alert("No se pudo enviar la cotización.");
+    // Recupera la tabla para no dejar estado falso
+    window.cargarCotizaciones?.();
+  }
+};
 
 // === FUNCIONES DE CÁLCULO DE FASES ===
 

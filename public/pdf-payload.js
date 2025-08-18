@@ -74,17 +74,7 @@
           );
           const durUnidad = duracion === 1 ? "mes" : "meses";
 
-          // Observaciones (deduplicadas)
-          const obsSet = new Set();
-          faseEl.querySelectorAll(".observaciones-fases").forEach((t) => {
-            const v = (t.value || "").trim();
-            if (v) obsSet.add(v);
-          });
-          if (obsSet.size) {
-            const joined = Array.from(obsSet).join("|");
-            observacionesFases[String(numeroFase)] = normalizeObs(joined);
-          }
-
+          const obsTokens = [];
           // Categorías dentro de la fase
           faseEl.querySelectorAll(".category-group").forEach((catEl) => {
             const catSel = catEl.querySelector(
@@ -106,6 +96,13 @@
             }
             const espCod = catData ? pad2(catData.id) : "00";
             const espNom = catData ? catData.nombre_categoria : "SIN CATEGORÍA";
+
+            // Observación de ESTA categoría (en fase)
+            const obsCatRaw =
+              catEl.querySelector(
+                ".observaciones-fases, .observaciones-no-fase"
+              )?.value ?? "";
+            obsTokens.push(obsCatRaw.trim()); // incluimos vacíos para mantener posiciones
 
             // Servicios
             catEl
@@ -160,6 +157,8 @@
                 });
               });
           });
+
+          observacionesFases[String(numeroFase)] = obsTokens.join("|");
         });
 
       // En modo con fases no se envían observaciones_por_categoria

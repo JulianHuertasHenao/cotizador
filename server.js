@@ -18,6 +18,15 @@ function qAll(sql, params = []) {
   });
 }
 
+function qRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
 app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -25,13 +34,14 @@ app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
     // 1) Cabecera + paciente
     const cab = await qGet(
       `
-      SELECT c.id, c.observaciones, 
-             COALESCE(c.fecha, c.fecha_creacion, datetime('now')) AS fecha_creacion,
-             p.nombre        AS nombre_paciente,
-             p.correo        AS correo_paciente
-      FROM Cotizaciones c
-      LEFT JOIN Pacientes p ON p.id = c.paciente_id
-      WHERE c.id = ?`,
+      SELECT c.id, c.observaciones, c.estado,
+       COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+       p.nombre AS nombre_paciente,
+       p.correo AS correo_paciente
+FROM Cotizaciones c
+LEFT JOIN Pacientes p ON p.id = c.paciente_id
+WHERE c.id = ?
+`,
       [id]
     );
     if (!cab) return res.status(404).send("Cotización no encontrada");
@@ -161,6 +171,15 @@ app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
           observaciones_fases[String(f.numero_fase)] = obs;
         }
       }
+    }
+
+    // Si estaba en borrador, márquela como "generada"
+    if (!cab.estado || String(cab.estado).toLowerCase() === "borrador") {
+      await qRun("UPDATE Cotizaciones SET estado = ? WHERE id = ?", [
+        "generada",
+        id,
+      ]);
+      cab.estado = "generada";
     }
 
     // 8) Payload final para pdf.service_V2.js
@@ -1060,6 +1079,43 @@ app.post("/api/generar-pdf", async (req, res) => {
   } catch (err) {
     console.error("Error generando PDF:", err);
     res.status(500).send(err?.message || "Error generando PDF");
+  }
+});
+
+app.put("/api/cotizaciones/:id/estado", async (req, res) => {
+  const { id } = req.params;
+  const { estado } = req.body || {};
+
+  if (!estado)
+    return res.status(400).json({ error: "Falta 'estado' en el body" });
+
+  try {
+    await qRun("UPDATE Cotizaciones SET estado = ? WHERE id = ?", [
+      String(estado),
+      id,
+    ]);
+    res.json({ id: Number(id), estado: String(estado) });
+  } catch (err) {
+    console.error("Error al actualizar estado:", err.message);
+    res.status(500).json({ error: "Error interno al actualizar estado" });
+  }
+});
+
+app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
+  const { id } = req.params;
+  try {
+    // TODO: aquí va tu lógica real de envío por correo
+    // await enviarCotizacionPorEmail(id);
+
+    // Marca como enviada
+    await qRun("UPDATE Cotizaciones SET estado = ? WHERE id = ?", [
+      "enviada",
+      id,
+    ]);
+    res.json({ id: Number(id), estado: "enviada" });
+  } catch (err) {
+    console.error("Error al enviar cotización:", err.message);
+    res.status(500).json({ error: "Error interno al enviar cotización" });
   }
 });
 
