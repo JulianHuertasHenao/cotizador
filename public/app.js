@@ -2196,63 +2196,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Error al eliminar categoría: " + error.message);
     }
   }
-  /*
-    async function guardarServicio(
-        categoriaId,
-        codigo,
-        descripcion,
-        subtitulo,
-        precioNeto
-    ) {
-        if (
-            !categoriaId ||
-            !codigo ||
-            !descripcion ||
-            !precioNeto ||
-            !subtitulo
-        ) {
-            alert("Todos los campos son obligatorios");
-            return;
-        }
-        try {
-            const response = await fetch(`/api/servicios`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    codigo: codigo,
-                    descripcion: descripcion,
-                    subtitulo: subtitulo,
-                    precio_neto: precioNeto,
-                    categoria_id: categoriaId,
-                }),
-            });
-            if (!response.ok)
-                throw new Error("Error en la respuesta del servidor");
-            const nuevoServicio = await response.json();
-            servicios.push(nuevoServicio);
-            lastAddedService =
-                nuevoServicio.nombre_servicio ||
-                nuevoServicio.descripcion ||
-                nuevoServicio.codigo ||
-                nuevoServicio.subtitulo;
-            updateServiceStats();
-            showToast(
-                `Servicio "${
-                    nuevoServicio.nombre_servicio ||
-                    nuevoServicio.descripcion ||
-                    nuevoServicio.codigo ||
-                    nuevoServicio.subtitulo
-                }" guardado correctamente`
-            );
-            // Renderizar tabla y dropdowns para reflejar el cambio
-            if (typeof renderServiceTable === "function") renderServiceTable();
-            if (typeof populateServiceDropdowns === "function")
-                populateServiceDropdowns();
-        } catch (error) {
-            alert("Error al guardar servicio: " + error.message);
-        }
-    }
-*/
+
   async function guardarServicio(
     categoriaId,
     codigo,
