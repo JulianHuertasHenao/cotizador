@@ -709,4 +709,60 @@
     <script src="pdf-actions.js"></script>
     <script src="app.js"></script>
   </body>
+
+  <script>
+    (function () {
+      function initPaymentUI() {
+        const $ = (id) => document.getElementById(id);
+        const rdUnico = $("pago-metodo-unico");
+        const rdAplaz = $("pago-metodo-aplazado");
+        const boxAplaz = $("pago-aplazado-fields");
+        const inpCuotaInicial = $("pago-cuota-inicial");
+        const inpNumCuotas = $("pago-numero-cuotas");
+        const inpValorCuota = $("pago-valor-cuota");
+
+        if (!rdUnico || !rdAplaz || !boxAplaz) return;
+
+        const toggleAplazado = () => {
+          boxAplaz.classList.toggle("hidden", !rdAplaz.checked);
+        };
+        rdUnico.addEventListener("change", toggleAplazado);
+        rdAplaz.addEventListener("change", toggleAplazado);
+        toggleAplazado();
+
+        const parseMoney = (s) => {
+          const v = String(s || "")
+            .replace(/\s/g, "")
+            .replace(/\$/g, "")
+            .replace(/\./g, "")
+            .replace(",", ".");
+          const n = parseFloat(v);
+          return isNaN(n) ? 0 : n;
+        };
+
+        const btnCalc = document.getElementById("btn-calcular-cuota");
+        btnCalc?.addEventListener("click", () => {
+          const totalTxt =
+            document.getElementById("total-cotizacion")?.textContent || "0";
+          const total = parseMoney(totalTxt);
+          const inicial = parseMoney(inpCuotaInicial.value);
+          const n = parseInt(inpNumCuotas.value, 10);
+          if (!n || n <= 0) return alert("Ingresa el número de cuotas.");
+          const restante = Math.max(0, total - inicial);
+          const cuota = Math.floor(restante / n);
+          inpValorCuota.value = cuota.toLocaleString("es-CO");
+        });
+      }
+
+      // Llama una vez cuando el DOM esté listo
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initPaymentUI);
+      } else {
+        initPaymentUI();
+      }
+
+      // expórtalo si reutilizas:
+      window.initPaymentUI = initPaymentUI;
+    })();
+  </script>
 </html>

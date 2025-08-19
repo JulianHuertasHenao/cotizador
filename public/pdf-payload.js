@@ -314,6 +314,50 @@
       payload.observaciones_por_categoria = obsPorCat;
     }
 
+    // ===== Método de pago (solo lo necesario para el PDF) =====
+    const metodoSel =
+      document.querySelector('input[name="pago-metodo"]:checked')?.value ||
+      null;
+
+    const pago = {};
+    if (metodoSel) pago.metodo = metodoSel; // "unico" | "aplazado"
+
+    if (metodoSel === "aplazado") {
+      const cuotaInicial = num(
+        document.getElementById("pago-cuota-inicial")?.value,
+        null
+      );
+      if (cuotaInicial != null) pago.cuota_inicial = cuotaInicial;
+
+      const numeroCuotas = parseInt(
+        document.getElementById("pago-numero-cuotas")?.value,
+        10
+      );
+      if (!Number.isNaN(numeroCuotas)) pago.numero_cuotas = numeroCuotas;
+
+      const valorCuota = num(
+        document.getElementById("pago-valor-cuota")?.value,
+        null
+      );
+      if (valorCuota != null) pago.valor_cuota = valorCuota;
+    }
+
+    const pagadoFecha = num(
+      document.getElementById("pago-pagado-a-fecha")?.value,
+      null
+    );
+    if (pagadoFecha != null) pago.valor_pagado_a_la_fecha = pagadoFecha;
+
+    const fhSel = document.querySelector(
+      'input[name="fase-higienica"]:checked'
+    )?.value;
+    if (fhSel === "si") pago.fase_higienica_incluida = true;
+    if (fhSel === "no") pago.fase_higienica_incluida = false;
+
+    if (Object.keys(pago).length) {
+      payload.pago = pago;
+    }
+
     return payload;
   }
 

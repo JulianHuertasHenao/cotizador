@@ -156,7 +156,6 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
     servicioItem._servicioSeleccionadoAnterior = null;
 
     servicioSelect.addEventListener("change", () => {
-      // Autollenar descripción y precio al seleccionar servicio
       const selectedId = servicioSelect.value;
       const servicio = servicios.find(
         (s) => String(s.id) === String(selectedId)
@@ -181,22 +180,20 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
         }
 
         servicioItem._servicioSeleccionadoAnterior = servicio.id;
-
-        // ✅ calcular precio inicial al momento de seleccionar
-        actualizarPrecioServicio(servicioItem);
       } else {
-        if (descInput) descInput.value = "";
-        if (precioInput) precioInput.value = "";
-        if (subtitleInput) subtitleInput.value = "";
-        servicioItem._servicioSeleccionadoAnterior = null;
+        // ✅ si selecciona "Seleccionar servicio..." limpiamos todo
+        actualizarPrecioServicio(servicioItem);
+        return; // 👈 paramos aquí para que no siga el cálculo con datos viejos
       }
+
+      // ✅ calcular precio inicial al momento de seleccionar
+      actualizarPrecioServicio(servicioItem);
 
       // Actualizar el total de fase
       const faseContainer = servicioItem.closest(".phase-container");
       if (faseContainer) {
         calcularTotalesFase(faseContainer); // Recalcular total de fase
       }
-
       actualizarTotalCategorias(); // Actualizar total global
     });
   }
@@ -308,6 +305,25 @@ function actualizarPrecioServicio(servicioItem) {
   const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
   const descuentoInput = servicioItem.querySelector(".descuento-servicio");
   const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
+  const descInput = servicioItem.querySelector(".service-description");
+  const subtitleInput = servicioItem.querySelector(".service-subtitle");
+
+  // ✅ Si el usuario vuelve a "Seleccionar servicio..."
+  if (!servicioSelect || !servicioSelect.value) {
+    if (precioUnitarioInput) precioUnitarioInput.value = 0;
+    if (cantidadInput) cantidadInput.value = ""; // 👈 lo dejamos vacío en UI
+    if (descuentoInput) descuentoInput.value = 0;
+    if (precioTotalSpan) precioTotalSpan.textContent = "$0";
+    if (descInput) descInput.value = "";
+    if (subtitleInput) subtitleInput.value = "";
+
+    // recalcular totales globales
+    const faseContainer = servicioItem.closest(".phase-container");
+    if (faseContainer) calcularTotalesFase(faseContainer);
+    actualizarTotalCategorias();
+
+    return;
+  }
 
   let precio = parseFloat(precioUnitarioInput?.value || 0);
   let cantidad = parseInt(cantidadInput?.value || 0);
@@ -330,10 +346,12 @@ function actualizarPrecioServicio(servicioItem) {
     )}`;
     precioTotalSpan.style.display = "inline-block";
   }
+
   const faseContainer = servicioItem.closest(".phase-container");
   if (faseContainer) {
     calcularTotalesFase(faseContainer);
   }
+  actualizarTotalCategorias();
 }
 
 async function actualizarServicio(id) {
@@ -1769,6 +1787,10 @@ document.addEventListener("DOMContentLoaded", function () {
           if (descInput) descInput.value = servicio.descripcion;
           if (precioInput) precioInput.value = servicio.precio_neto;
           if (subtitleInput) subtitleInput.value = servicio.subtitulo || "";
+        } else {
+          // ✅ si selecciona "Seleccionar servicio..." limpiamos todo
+          actualizarPrecioServicio(servicioItem);
+          return;
         }
 
         actualizarPrecioServicio(servicioItem);

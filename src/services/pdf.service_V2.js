@@ -844,35 +844,34 @@ const generarPDF = async (cotizacion) =>
       tabla.addGap(1);
 
       // ===== Método de pago =====
+
       (() => {
         const BOX = 12;
         const TITLE_GAP = 10;
         const LINE_H = 14;
         const CHECK_GAP = 8;
 
-        // 1) Los datos vienen del test en cotizacion.pago (sin hardcode).
-        //    Si el test no envía algo, simplemente no se imprime esa línea.
         const pago = cotizacion.pago || {};
-
         const metodo =
           pago.metodo ?? (pago.numero_cuotas > 0 ? "aplazado" : "unico");
         const fmt = (v) => `$ ${Number(v || 0).toLocaleString("es-CO")}`;
 
-        // Construimos dinámicamente las líneas a imprimir (omitimos las vacías)
+        // <-- NUEVO: solo mostramos FH si es booleano (true/false)
+        const showFH = typeof pago.fase_higienica_incluida === "boolean";
+
         const lines = [
           {
             type: "checkbox",
             text: " Pago único",
             checked: metodo === "unico",
           },
-          {
-            type: "checkbox",
-            text:
-              pago.numero_cuotas != null
-                ? ` Pago aplazado en ${pago.numero_cuotas} cuotas`
-                : null,
-            checked: metodo === "aplazado",
-          },
+          pago.numero_cuotas != null
+            ? {
+                type: "checkbox",
+                text: ` Pago aplazado en ${pago.numero_cuotas} cuotas:`,
+                checked: metodo === "aplazado",
+              }
+            : null,
           pago.cuota_inicial != null
             ? {
                 type: "text",
@@ -893,10 +892,10 @@ const generarPDF = async (cotizacion) =>
                 text: `Pagado a la fecha: ${fmt(pago.valor_pagado_a_la_fecha)}`,
               }
             : null,
-          { type: "fh" }, // Fase higiénica incluida (una sola línea)
+          // <-- NUEVO: se agrega solo si hay selección (sí/no)
+          showFH ? { type: "fh" } : null,
         ].filter(Boolean);
 
-        // 2) Medimos y reservamos altura aproximada (título + N líneas)
         const hTitle = setFont(
           doc,
           "Poppins-Bold",
@@ -906,7 +905,6 @@ const generarPDF = async (cotizacion) =>
         const blockH = hTitle + TITLE_GAP + lines.length * LINE_H + 8;
         ensure(blockH);
 
-        // 3) Render título
         setFont(doc, "Poppins-Bold", 14, THEME.dark).text(
           "MÉTODO DE PAGO",
           MARGIN,
@@ -915,7 +913,6 @@ const generarPDF = async (cotizacion) =>
         );
         doc.y += TITLE_GAP;
 
-        // Helper para dibujar un checkbox + texto en una línea
         const drawCheck = (x, y, checked) => {
           doc.rect(x, y, BOX, BOX).stroke(THEME.dark);
           if (checked) {
@@ -927,22 +924,21 @@ const generarPDF = async (cotizacion) =>
           }
         };
 
-        // 4) Render de cada línea
         lines.forEach((row) => {
           const y0 = doc.y;
-
           if (row.type === "checkbox" && row.text) {
-            // Caja + texto a la derecha (sin saltos)
             drawCheck(MARGIN, y0, row.checked);
             setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
               row.text,
               MARGIN + BOX + CHECK_GAP,
               y0 - 1,
-              { lineBreak: false, width: contentWidth - (BOX + CHECK_GAP) }
+              {
+                lineBreak: false,
+                width: contentWidth - (BOX + CHECK_GAP),
+              }
             );
             doc.y = y0 + LINE_H;
           } else if (row.type === "text" && row.text) {
-            // Texto en una sola línea, si no hay valor no se imprime
             setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
               row.text,
               MARGIN,
@@ -951,43 +947,43 @@ const generarPDF = async (cotizacion) =>
             );
             doc.y = y0 + LINE_H;
           } else if (row.type === "fh") {
-            // ---- Fase higiénica incluida: todo en UNA línea (alineado) ----
             const baseY = y0;
-            const labelFont = () =>
-              setFont(doc, "OpenSans-Regular", 12, THEME.dark);
+            const label = "Fase higiénica incluida:";
+            setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
+              label,
+              MARGIN,
+              baseY,
+              { lineBreak: false }
+            );
+            const labelW = doc.widthOfString(label);
 
-            // 1) Etiqueta
-            labelFont().text("Fase higiénica incluida:", MARGIN, baseY, {
-              lineBreak: false,
-            });
-            const labelW = doc.widthOfString("Fase higiénica incluida:");
+            const boxY = baseY + (LINE_H - BOX) / 2;
+            const SP = CHECK_GAP * 2;
 
-            // 2) Geometría consistente
-            const boxY = baseY + (LINE_H - BOX) / 2; // centra el checkbox en la línea
-            const SP = CHECK_GAP * 2; // separación entre "Sí" y "No" grupos
-
-            // 3) Grupo "Sí"
-            const yesX = MARGIN + labelW + CHECK_GAP; // después de la etiqueta
+            const yesX = MARGIN + labelW + CHECK_GAP;
             drawCheck(yesX, boxY, pago.fase_higienica_incluida === true);
-            labelFont().text("Sí", yesX + BOX + CHECK_GAP, baseY, {
-              lineBreak: false,
-            });
+            setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
+              "Sí",
+              yesX + BOX + CHECK_GAP,
+              baseY,
+              { lineBreak: false }
+            );
             const siW = doc.widthOfString("Sí");
 
-            // 4) Grupo "No"
-            const noX = yesX + BOX + CHECK_GAP + siW + SP; // caja "No" después del texto "Sí"
+            const noX = yesX + BOX + CHECK_GAP + siW + SP;
             drawCheck(noX, boxY, pago.fase_higienica_incluida === false);
-            labelFont().text("No", noX + BOX + CHECK_GAP, baseY, {
-              lineBreak: false,
-            });
+            setFont(doc, "OpenSans-Regular", 12, THEME.dark).text(
+              "No",
+              noX + BOX + CHECK_GAP,
+              baseY,
+              { lineBreak: false }
+            );
 
-            // 5) Avanza exactamente una línea
             doc.y = baseY + LINE_H;
           }
         });
 
         doc.moveDown(0.5);
-
         tabla.y = doc.y;
       })();
 

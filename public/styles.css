@@ -1328,10 +1328,12 @@ input:checked + .toggle-slider:before {
 
 /* Filas y grupos más cerrados */
 .payment-compact .form-row {
-  margin-top: .2rem;
-  margin-bottom: .2rem;
-  row-gap: .4rem; /* si usas wrap */
+  display: flex;       /* Asegura que se comporten como flexbox */
+  flex-wrap: wrap;     /* Permite que bajen si no caben */
+  column-gap: 1rem;    /* Espacio horizontal entre columnas */
+  row-gap: .4rem;      /* Ya lo tienes para espacio vertical */
 }
+
 
 .payment-compact .form-group {
   margin-bottom: .5rem; /* global es 1.2rem */
