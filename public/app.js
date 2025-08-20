@@ -2696,26 +2696,48 @@ document.addEventListener("DOMContentLoaded", function () {
             .replace(/\./g, "")
             .replace(",", ".")
         ) || 0;
-      const parsePercent = (txt) =>
-        parseFloat(
-          (txt || "").replace("%", "").replace(/\./g, "").replace(",", ".")
-        ) || 0;
 
-      const descuento = parsePercent(
-        document.getElementById("descuento-cotizacion")?.textContent
-      );
       const subtotal = parseMoney(
         document.getElementById("subtotal-cotizacion")?.textContent
       );
-      const totalConDescuento = subtotal - (subtotal * descuento) / 100;
+      const descuentoDinero = parseMoney(
+        document.getElementById("descuento-cotizacion")?.textContent
+      );
+      const totalConDescuento = parseMoney(
+        document.getElementById("total-cotizacion")?.textContent
+      );
+
+      // Si quieres seguir guardando “descuento” como % en la tabla:
+      const descuento = subtotal > 0 ? (descuentoDinero / subtotal) * 100 : 0;
+
+      // === NUEVO: tomar "pago" del mismo builder del PDF (ya lo tienes)
+      let pago = null;
+      try {
+        const payloadUI = window.PDFPayload.armarPayloadPDFDesdeUI();
+        pago = payloadUI?.pago || null;
+      } catch (_) {}
 
       const cotizacionSimplificada = {
         paciente_id: Number(pacienteId),
         total: subtotal,
         estado: "borrador",
-        descuento: descuento,
+        descuento: descuento, // hoy lo manejas como %
         total_con_descuento: totalConDescuento,
-        // observaciones se define más abajo según haya o no fases
+        // observaciones se setea más abajo
+
+        // === NUEVO: totales fuertes y método de pago ===
+        subtotal: subtotal,
+        pago_metodo: pago?.metodo || null, // "unico" | "aplazado"
+        pago_cuota_inicial: pago?.cuota_inicial ?? null,
+        pago_numero_cuotas: pago?.numero_cuotas ?? null,
+        pago_valor_cuota: pago?.valor_cuota ?? null,
+        pago_valor_pagado: pago?.valor_pagado_a_la_fecha ?? null,
+        pago_fase_higienica_incluida:
+          typeof pago?.fase_higienica_incluida === "boolean"
+            ? pago.fase_higienica_incluida
+              ? 1
+              : 0
+            : null,
       };
 
       // ====== 3) FASES (recolección completa) ======

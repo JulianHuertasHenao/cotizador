@@ -38,14 +38,19 @@ async function buildPdfPayloadFromDb(id) {
   // 1) Cabecera + paciente
   const cab = await qGet(
     `SELECT c.id, c.observaciones, c.estado,
-            COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
-            p.nombre AS nombre_paciente,
-            p.correo AS correo_paciente
+          COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+          p.nombre AS nombre_paciente,
+          p.correo AS correo_paciente,
+          -- NUEVO
+          c.subtotal, c.total, c.total_con_descuento, c.descuento,
+          c.pago_metodo, c.pago_cuota_inicial, c.pago_numero_cuotas,
+          c.pago_valor_cuota, c.pago_valor_pagado, c.pago_fase_higienica_incluida
      FROM Cotizaciones c
-     LEFT JOIN Pacientes p ON p.id = c.paciente_id
-     WHERE c.id = ?`,
+LEFT JOIN Pacientes p ON p.id = c.paciente_id
+    WHERE c.id = ?`,
     [id]
   );
+
   if (!cab) throw new Error("Cotización no encontrada");
 
   // 2) Detalle + servicio + categoría
@@ -156,6 +161,7 @@ async function buildPdfPayloadFromDb(id) {
   const descuento_dinero = subtotal - total_neto;
 
   // 9) Payload final
+  // 9) Payload final
   const payload = {
     numero: String(cab.id).padStart(6, "0"),
     fecha_creacion: cab.fecha_creacion,
@@ -167,10 +173,15 @@ async function buildPdfPayloadFromDb(id) {
     ...(agrupar_por_fase
       ? { observaciones_fases }
       : { observaciones_generales: cab.observaciones || undefined }),
-    _totales: {
-      subtotal,
-      descuento_dinero,
-      total_neto,
+    _totales: { subtotal, descuento_dinero, total_neto }, // <- YA LO TENÍAS
+    // NUEVO:
+    pago: {
+      metodo: cab.pago_metodo || null,
+      cuota_inicial: cab.pago_cuota_inicial ?? null,
+      numero_cuotas: cab.pago_numero_cuotas ?? null,
+      valor_cuota: cab.pago_valor_cuota ?? null,
+      valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
+      fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
     },
   };
 
@@ -229,14 +240,18 @@ app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
     // 1) Cabecera + paciente
     const cab = await qGet(
       `
-      SELECT c.id, c.observaciones, c.estado,
-       COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
-       p.nombre AS nombre_paciente,
-       p.correo AS correo_paciente
-FROM Cotizaciones c
+  SELECT c.id, c.observaciones, c.estado,
+         COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+         p.nombre AS nombre_paciente,
+         p.correo AS correo_paciente,
+         -- NUEVO
+         c.subtotal, c.total, c.total_con_descuento, c.descuento,
+         c.pago_metodo, c.pago_cuota_inicial, c.pago_numero_cuotas,
+         c.pago_valor_cuota, c.pago_valor_pagado, c.pago_fase_higienica_incluida
+    FROM Cotizaciones c
 LEFT JOIN Pacientes p ON p.id = c.paciente_id
-WHERE c.id = ?
-`,
+   WHERE c.id = ?
+  `,
       [id]
     );
     if (!cab) return res.status(404).send("Cotización no encontrada");
@@ -266,6 +281,14 @@ WHERE c.id = ?
 
     if (!det?.length)
       return res.status(400).send("La cotización no tiene ítems de detalle");
+
+    const subtotal = det.reduce(
+      (acc, r) =>
+        acc + Number(r.precio_unitario || 0) * Number(r.cantidad || 0),
+      0
+    );
+    const total_neto = det.reduce((acc, r) => acc + Number(r.total || 0), 0);
+    const descuento_dinero = subtotal - total_neto;
 
     // 3) Fases y categorías por fase (si existen)
     const fases = await qAll(
@@ -390,6 +413,16 @@ WHERE c.id = ?
         ? { observaciones_fases }
         : { observaciones_generales: cab.observaciones || undefined }),
     };
+    payload._totales = { subtotal, descuento_dinero, total_neto };
+
+    payload.pago = {
+      metodo: cab.pago_metodo || null,
+      cuota_inicial: cab.pago_cuota_inicial ?? null,
+      numero_cuotas: cab.pago_numero_cuotas ?? null,
+      valor_cuota: cab.pago_valor_cuota ?? null,
+      valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
+      fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
+    };
 
     // 9) Generar y stream
     const filePath = await generarPDF(payload);
@@ -415,12 +448,17 @@ app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
     const cab = await qGet(
       `
       SELECT c.id, c.observaciones, c.estado,
-             COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
-             p.nombre AS nombre_paciente,
-             p.correo AS correo_paciente
-        FROM Cotizaciones c
-   LEFT JOIN Pacientes p ON p.id = c.paciente_id
-       WHERE c.id = ?
+       COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+       p.nombre AS nombre_paciente,
+       p.correo AS correo_paciente,
+       -- NUEVO:
+       c.subtotal, c.total, c.total_con_descuento, c.descuento,
+       c.pago_metodo, c.pago_cuota_inicial, c.pago_numero_cuotas,
+       c.pago_valor_cuota, c.pago_valor_pagado, c.pago_fase_higienica_incluida
+FROM Cotizaciones c
+LEFT JOIN Pacientes p ON p.id = c.paciente_id
+WHERE c.id = ?
+
       `,
       [id]
     );
@@ -451,6 +489,15 @@ app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
     );
     if (!det?.length)
       return res.status(400).send("La cotización no tiene ítems de detalle");
+
+    // === NUEVO: totales sólidos para la plantilla de email ===
+    const subtotal = det.reduce(
+      (acc, r) =>
+        acc + Number(r.precio_unitario || 0) * Number(r.cantidad || 0),
+      0
+    );
+    const total_neto = det.reduce((acc, r) => acc + Number(r.total || 0), 0);
+    const descuento_dinero = subtotal - total_neto;
 
     // 3) Fases (para decidir si agrupar por fase)
     const fases = await qAll(
@@ -539,6 +586,16 @@ app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
       }
     }
 
+    // === NUEVO: bloque de método de pago desde BD ===
+    const pago = {
+      metodo: cab.pago_metodo || null, // "unico" | "aplazado"
+      cuota_inicial: cab.pago_cuota_inicial ?? null,
+      numero_cuotas: cab.pago_numero_cuotas ?? null,
+      valor_cuota: cab.pago_valor_cuota ?? null,
+      valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
+      fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
+    };
+
     const payload = {
       numero: String(cab.id).padStart(6, "0"),
       fecha_creacion: cab.fecha_creacion,
@@ -550,6 +607,10 @@ app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
       ...(agrupar_por_fase
         ? { observaciones_fases }
         : { observaciones_generales: cab.observaciones || undefined }),
+
+      // === NUEVO: lo que necesita la plantilla de email y el PDF ===
+      _totales: { subtotal, descuento_dinero, total_neto },
+      pago,
     };
 
     // 5) Generar PDF y enviar correo (con saludo/firma)
@@ -1337,12 +1398,28 @@ app.post("/api/cotizaciones", (req, res) => {
     observaciones,
   } = req.body;
   db.run(
-    "INSERT INTO Cotizaciones (paciente_id, total, estado, descuento, total_con_descuento, observaciones) VALUES (?, ?, ?, ?, ?, ?)",
-    [paciente_id, total, estado, descuento, total_con_descuento, observaciones],
+    `INSERT INTO Cotizaciones (
+     paciente_id, total, estado, descuento, total_con_descuento, observaciones,
+     subtotal,
+     pago_metodo, pago_cuota_inicial, pago_numero_cuotas, pago_valor_cuota, pago_valor_pagado, pago_fase_higienica_incluida
+   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      paciente_id,
+      total,
+      estado,
+      descuento,
+      total_con_descuento,
+      observaciones || null,
+      req.body.subtotal ?? null,
+      req.body.pago_metodo || null,
+      req.body.pago_cuota_inicial ?? null,
+      req.body.pago_numero_cuotas ?? null,
+      req.body.pago_valor_cuota ?? null,
+      req.body.pago_valor_pagado ?? null,
+      req.body.pago_fase_higienica_incluida ? 1 : 0,
+    ],
     function (err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
+      if (err) return res.status(500).json({ error: err.message });
       res.status(201).json({
         id: this.lastID,
         paciente_id,
@@ -1351,6 +1428,9 @@ app.post("/api/cotizaciones", (req, res) => {
         descuento,
         total_con_descuento,
         observaciones,
+        subtotal: req.body.subtotal ?? null,
+        pago_metodo: req.body.pago_metodo || null,
+        // ...si quieres devolver el resto también, agrégalos
       });
     }
   );
@@ -1397,12 +1477,41 @@ app.put("/api/cotizaciones/:id", (req, res) => {
 
   // Actualizar la cotización en la base de datos
   db.run(
-    "UPDATE Cotizaciones SET paciente_id = ?, total = ?, estado = ?, descuento = ?, total_con_descuento = ? WHERE id = ?",
-    [paciente_id, total, estado, descuento, total_con_descuento, id],
+    `UPDATE Cotizaciones SET 
+     paciente_id = COALESCE(?, paciente_id),
+     total = COALESCE(?, total),
+     estado = COALESCE(?, estado),
+     descuento = COALESCE(?, descuento),
+     total_con_descuento = COALESCE(?, total_con_descuento),
+     subtotal = COALESCE(?, subtotal),
+     pago_metodo = COALESCE(?, pago_metodo),
+     pago_cuota_inicial = COALESCE(?, pago_cuota_inicial),
+     pago_numero_cuotas = COALESCE(?, pago_numero_cuotas),
+     pago_valor_cuota = COALESCE(?, pago_valor_cuota),
+     pago_valor_pagado = COALESCE(?, pago_valor_pagado),
+     pago_fase_higienica_incluida = COALESCE(?, pago_fase_higienica_incluida)
+   WHERE id = ?`,
+    [
+      paciente_id,
+      total,
+      estado,
+      descuento,
+      total_con_descuento,
+      req.body.subtotal ?? null,
+      req.body.pago_metodo || null,
+      req.body.pago_cuota_inicial ?? null,
+      req.body.pago_numero_cuotas ?? null,
+      req.body.pago_valor_cuota ?? null,
+      req.body.pago_valor_pagado ?? null,
+      typeof req.body.pago_fase_higienica_incluida === "number"
+        ? req.body.pago_fase_higienica_incluida
+        : req.body.pago_fase_higienica_incluida
+        ? 1
+        : null,
+      id,
+    ],
     function (err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
+      if (err) return res.status(500).json({ error: err.message });
       res.json({ message: "Cotización actualizada correctamente" });
     }
   );
