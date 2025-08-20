@@ -3006,20 +3006,61 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       // ====== 6) UI — mostrar mensaje y luego ir a Historial ======
+      // ====== 6) UI — mostrar mensaje y luego ir a Historial ======
       const goToHistory = () => {
-        if (typeof switchTab === "function")
-          switchTab("history", { reset: true });
-        if (typeof cargarCotizaciones === "function") cargarCotizaciones();
+        try {
+          // Cerrar sólo backdrops de toasts/modales si quedaron abiertos.
+          // (Nada de [data-overlay] o [data-backdrop] para no llevarnos partes del form)
+          document
+            .querySelectorAll(
+              ".modal-backdrop, .toast-backdrop, .swal2-container"
+            )
+            .forEach((el) => {
+              try {
+                el.remove();
+              } catch {}
+            });
+          document.querySelectorAll("dialog[open]").forEach((d) => {
+            try {
+              d.close();
+            } catch {}
+          });
+
+          // Cambiar de pestaña a Historial sin tocar clases .hidden de tus paneles
+          const hasHistoryTab =
+            document.querySelector('[data-tab="history"]') ||
+            document.getElementById("tab-history") ||
+            document.querySelector('[href="#history"]');
+
+          const tabKey = hasHistoryTab ? "history" : "historial";
+
+          if (typeof switchTab === "function") {
+            switchTab(tabKey, { reset: false }); // <- no dispares nuevaCotizacion() aquí
+          } else {
+            document
+              .querySelector(
+                `[data-tab="${tabKey}"], #tab-${tabKey}, [href="#${tabKey}"]`
+              )
+              ?.click();
+          }
+
+          // Recargar la tabla del historial si existe
+          if (typeof cargarCotizaciones === "function") cargarCotizaciones();
+        } catch (err) {
+          console.error("[goToHistory] fallo:", err);
+        }
       };
 
-      if (typeof window.showToast === "function") {
-        // Mostrar primero el toast…
-        window.showToast("Cotización guardada correctamente");
-        // …y luego cambiar a Historial con un pequeño delay para que se alcance a ver
-        setTimeout(goToHistory, 1000); // 1s
-      } else {
-        // Fallback si no hay toast
-        alert("Cotización guardada correctamente");
+      try {
+        if (typeof window.showToast === "function") {
+          // No agregamos/quitamos clases al body; solo mostramos el toast
+          window.showToast("Cotización guardada correctamente");
+          setTimeout(goToHistory, 300);
+        } else {
+          alert("Cotización guardada correctamente");
+          goToHistory();
+        }
+      } catch {
         goToHistory();
       }
     } catch (error) {
