@@ -1,11 +1,181 @@
 // server.js
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const app = express();
+const path = require("path");
 const db = require("./src/utils/db"); // Importamos la base de datos
 const fs = require("fs");
 const { generarPDF } = require("./src/services/pdf.service_V2");
+const { enviarEmail } = require("./src/services/email.service");
+const { construirAsuntoYMensaje } = require("./src/services/email.templates");
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.urlencoded({ extended: true }));
+// Configuración básica
+app.use(cors());
+app.use(express.json());
+
+async function generarPdfBufferFlexible(payload) {
+  // 1) Intenta usar un generarPDFBuffer si algún día lo agregas
+  try {
+    const { generarPDFBuffer } = require("./src/services/pdf.service_V2");
+    if (typeof generarPDFBuffer === "function") {
+      return await generarPDFBuffer(payload);
+    }
+  } catch (_) {
+    // no pasa nada: caemos al plan B (archivo temporal)
+  }
+
+  // 2) Plan B: usa tu generarPDF( ) que devuelve path, léelo y borra
+  const filePath = await generarPDF(payload);
+  const buf = await fs.promises.readFile(filePath);
+  // borra el archivo en background
+  fs.unlink(filePath, () => {});
+  return buf;
+}
+
+async function buildPdfPayloadFromDb(id) {
+  // 1) Cabecera + paciente
+  const cab = await qGet(
+    `SELECT c.id, c.observaciones, c.estado,
+            COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+            p.nombre AS nombre_paciente,
+            p.correo AS correo_paciente
+     FROM Cotizaciones c
+     LEFT JOIN Pacientes p ON p.id = c.paciente_id
+     WHERE c.id = ?`,
+    [id]
+  );
+  if (!cab) throw new Error("Cotización no encontrada");
+
+  // 2) Detalle + servicio + categoría
+  const det = await qAll(
+    `SELECT dc.cantidad, dc.precio_unitario, dc.descuento, dc.total,
+            s.codigo, s.descripcion, s.subtitulo,
+            s.categoria_id AS cat_id, cat.nombre_categoria
+     FROM DetallesCotizacion dc
+     JOIN Servicios s    ON s.id = dc.servicio_id
+     JOIN Categorias cat ON cat.id = s.categoria_id
+     WHERE dc.cotizacion_id = ?
+     ORDER BY cat.id, s.id`,
+    [id]
+  );
+  if (!det?.length) throw new Error("La cotización no tiene ítems de detalle");
+
+  // 3) Fases + categorías por fase
+  const fases = await qAll(
+    `SELECT id, numero_fase, duracion_meses, observaciones_fase
+     FROM Fases WHERE cotizacion_id = ? ORDER BY numero_fase`,
+    [id]
+  );
+  const faseCats = await qAll(
+    `SELECT fc.fase_id, fc.categoria_id, f.numero_fase, f.duracion_meses, f.observaciones_fase
+       FROM FaseCategorias fc
+       JOIN Fases f ON f.id = fc.fase_id
+      WHERE f.cotizacion_id = ?`,
+    [id]
+  );
+
+  // 4) ¿Agrupar por fases?
+  const hayFasesReales =
+    Array.isArray(fases) &&
+    fases.some(
+      (f) =>
+        (f.observaciones_fase || "").trim().toLowerCase() !== "auto: sin_fases"
+    );
+  const agrupar_por_fase = !!hayFasesReales;
+
+  // 5) Mapeos de apoyo
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const catToFase = {};
+  for (const fc of faseCats) {
+    const prev = catToFase[fc.categoria_id];
+    if (!prev || fc.numero_fase < prev.numero_fase) {
+      catToFase[fc.categoria_id] = {
+        numero_fase: fc.numero_fase,
+        duracion_meses: fc.duracion_meses,
+        observaciones_fase: fc.observaciones_fase || "",
+      };
+    }
+  }
+
+  // 6) Procedimientos
+  const procedimientos = det.map((row) => {
+    const descPct = Number(row.descuento || 0);
+    const labelDesc = descPct > 0 ? `${descPct}%` : "N.A";
+    if (agrupar_por_fase) {
+      const f = catToFase[row.cat_id];
+      return {
+        fase: String(f?.numero_fase ?? ""),
+        duracion: f?.duracion_meses ?? null,
+        duracion_unidad: f ? "meses" : null,
+        especialidad_codigo: pad2(row.cat_id),
+        especialidad_nombre: row.nombre_categoria,
+        subcategoria_nombre: row.subtitulo || "OTROS",
+        codigo: row.codigo || "",
+        nombre_servicio: row.descripcion || "Servicio",
+        unidad: String(row.cantidad || 1),
+        precio_unitario: Number(row.precio_unitario || 0),
+        descuento: labelDesc,
+        total: Number(row.total || 0),
+      };
+    }
+    return {
+      fase: "",
+      duracion: null,
+      duracion_unidad: null,
+      especialidad_codigo: pad2(row.cat_id),
+      especialidad_nombre: row.nombre_categoria,
+      subcategoria_nombre: row.subtitulo || "OTROS",
+      codigo: row.codigo || "",
+      nombre_servicio: row.descripcion || "Servicio",
+      unidad: String(row.cantidad || 1),
+      precio_unitario: Number(row.precio_unitario || 0),
+      descuento: labelDesc,
+      total: Number(row.total || 0),
+    };
+  });
+
+  // 7) Observaciones por fase (si aplica)
+  const observaciones_fases = {};
+  if (agrupar_por_fase) {
+    for (const f of fases) {
+      const obs = (f.observaciones_fase || "").trim();
+      if (obs && obs.toLowerCase() !== "auto: sin_fases") {
+        observaciones_fases[String(f.numero_fase)] = obs;
+      }
+    }
+  }
+
+  // 8) Totales para la plantilla de email
+  const subtotal = det.reduce(
+    (acc, r) => acc + Number(r.precio_unitario || 0) * Number(r.cantidad || 0),
+    0
+  );
+  const total_neto = det.reduce((acc, r) => acc + Number(r.total || 0), 0);
+  const descuento_dinero = subtotal - total_neto;
+
+  // 9) Payload final
+  const payload = {
+    numero: String(cab.id).padStart(6, "0"),
+    fecha_creacion: cab.fecha_creacion,
+    doctora: "Dra. Sandra P. Alarcón G.",
+    nombre_paciente: cab.nombre_paciente || "(sin nombre)",
+    correo_paciente: cab.correo_paciente || "",
+    agrupar_por_fase,
+    procedimientos,
+    ...(agrupar_por_fase
+      ? { observaciones_fases }
+      : { observaciones_generales: cab.observaciones || undefined }),
+    _totales: {
+      subtotal,
+      descuento_dinero,
+      total_neto,
+    },
+  };
+
+  return payload;
+}
 
 function qGet(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -26,6 +196,31 @@ function qRun(sql, params = []) {
     });
   });
 }
+
+app.get("/api/cotizaciones/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const row = await qGet(
+      `
+      SELECT 
+        c.id, c.paciente_id, c.fecha, c.estado, c.observaciones,
+        c.total, c.descuento, c.total_con_descuento,
+        p.nombre AS nombre_paciente,
+        p.correo AS correo_paciente
+      FROM Cotizaciones c
+      LEFT JOIN Pacientes p ON p.id = c.paciente_id
+      WHERE c.id = ?
+      `,
+      [id]
+    );
+
+    if (!row) return res.status(404).send("Cotización no encontrada");
+    res.json(row);
+  } catch (e) {
+    console.error("[GET /api/cotizaciones/:id] error:", e);
+    res.status(500).send("Error interno");
+  }
+});
 
 app.get("/api/cotizaciones/:id/pdf", async (req, res) => {
   try {
@@ -212,13 +407,262 @@ WHERE c.id = ?
   }
 });
 
-// Configuración básica
-app.use(cors());
-app.use(express.json());
-app.post("/api/prueba", (req, res) => res.json({ ok: true }));
+app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
 
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.urlencoded({ extended: true }));
+    // 1) Cabecera + paciente
+    const cab = await qGet(
+      `
+      SELECT c.id, c.observaciones, c.estado,
+             COALESCE(c.fecha, datetime('now')) AS fecha_creacion,
+             p.nombre AS nombre_paciente,
+             p.correo AS correo_paciente
+        FROM Cotizaciones c
+   LEFT JOIN Pacientes p ON p.id = c.paciente_id
+       WHERE c.id = ?
+      `,
+      [id]
+    );
+    if (!cab) return res.status(404).send("Cotización no encontrada");
+    if (!cab.correo_paciente)
+      return res
+        .status(400)
+        .send("El paciente no tiene correo registrado en la BD.");
+
+    // 2) Detalle + servicio + categoría
+    const det = await qAll(
+      `
+      SELECT 
+        dc.cantidad,
+        dc.precio_unitario,
+        dc.descuento,
+        dc.total,
+        s.codigo, s.descripcion, s.subtitulo,
+        s.categoria_id AS cat_id,
+        cat.nombre_categoria
+      FROM DetallesCotizacion dc
+      JOIN Servicios s    ON s.id = dc.servicio_id
+      JOIN Categorias cat ON cat.id = s.categoria_id
+      WHERE dc.cotizacion_id = ?
+      ORDER BY cat.id, s.id
+      `,
+      [id]
+    );
+    if (!det?.length)
+      return res.status(400).send("La cotización no tiene ítems de detalle");
+
+    // 3) Fases (para decidir si agrupar por fase)
+    const fases = await qAll(
+      `SELECT id, numero_fase, duracion_meses, observaciones_fase
+         FROM Fases
+        WHERE cotizacion_id = ?
+        ORDER BY numero_fase`,
+      [id]
+    );
+    const faseCats = await qAll(
+      `SELECT fc.fase_id, fc.categoria_id, f.numero_fase, f.duracion_meses, f.observaciones_fase
+         FROM FaseCategorias fc
+         JOIN Fases f ON f.id = fc.fase_id
+        WHERE f.cotizacion_id = ?`,
+      [id]
+    );
+
+    const hayFasesReales =
+      Array.isArray(fases) &&
+      fases.some(
+        (f) =>
+          (f.observaciones_fase || "").trim().toLowerCase() !==
+          "auto: sin_fases"
+      );
+    const agrupar_por_fase = !!hayFasesReales;
+
+    // 4) Mapeo categoria -> fase (si aplica)
+    const catToFase = {};
+    for (const fc of faseCats) {
+      const prev = catToFase[fc.categoria_id];
+      if (!prev || fc.numero_fase < prev.numero_fase) {
+        catToFase[fc.categoria_id] = {
+          numero_fase: fc.numero_fase,
+          duracion_meses: fc.duracion_meses,
+          observaciones_fase: fc.observaciones_fase || "",
+        };
+      }
+    }
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const procedimientos = det.map((row) => {
+      const desc = Number(row.descuento || 0);
+      const labelDesc = desc > 0 ? `${desc}%` : "N.A";
+
+      if (agrupar_por_fase) {
+        const f = catToFase[row.cat_id];
+        return {
+          fase: String(f?.numero_fase ?? ""),
+          duracion: f?.duracion_meses ?? null,
+          duracion_unidad: f ? "meses" : null,
+          especialidad_codigo: pad2(row.cat_id),
+          especialidad_nombre: row.nombre_categoria,
+          subcategoria_nombre: row.subtitulo || "OTROS",
+          codigo: row.codigo || "",
+          nombre_servicio: row.descripcion || "Servicio",
+          unidad: String(row.cantidad || 1),
+          precio_unitario: Number(row.precio_unitario || 0),
+          descuento: labelDesc,
+          total: Number(row.total || 0),
+        };
+      } else {
+        return {
+          fase: "",
+          duracion: null,
+          duracion_unidad: null,
+          especialidad_codigo: pad2(row.cat_id),
+          especialidad_nombre: row.nombre_categoria,
+          subcategoria_nombre: row.subtitulo || "OTROS",
+          codigo: row.codigo || "",
+          nombre_servicio: row.descripcion || "Servicio",
+          unidad: String(row.cantidad || 1),
+          precio_unitario: Number(row.precio_unitario || 0),
+          descuento: labelDesc,
+          total: Number(row.total || 0),
+        };
+      }
+    });
+
+    const observaciones_fases = {};
+    if (agrupar_por_fase) {
+      for (const f of fases) {
+        const obs = (f.observaciones_fase || "").trim();
+        if (obs && obs.toLowerCase() !== "auto: sin_fases") {
+          observaciones_fases[String(f.numero_fase)] = obs;
+        }
+      }
+    }
+
+    const payload = {
+      numero: String(cab.id).padStart(6, "0"),
+      fecha_creacion: cab.fecha_creacion,
+      doctora: "Dra. Sandra P. Alarcón G.",
+      nombre_paciente: cab.nombre_paciente || "(sin nombre)",
+      correo_paciente: cab.correo_paciente || "",
+      agrupar_por_fase,
+      procedimientos,
+      ...(agrupar_por_fase
+        ? { observaciones_fases }
+        : { observaciones_generales: cab.observaciones || undefined }),
+    };
+
+    // 5) Generar PDF y enviar correo (con saludo/firma)
+    const { asunto, cuerpoPlano, cuerpoHTML, logoCid } =
+      construirAsuntoYMensaje({
+        payload, // <- tu payload armado desde BD
+        numeroTexto: payload.numero,
+      });
+
+    const pdfPath = await generarPDF(payload);
+    const pdfBuffer = await fs.promises.readFile(pdfPath).catch(() => null);
+
+    const logoFile = process.env.MAIL_LOGO_FILE;
+    const inlineImages =
+      logoCid && logoFile && fs.existsSync(logoFile)
+        ? [
+            {
+              path: logoFile,
+              cid: logoCid,
+              filename: require("path").basename(logoFile),
+            },
+          ]
+        : [];
+
+    await enviarEmail({
+      to: cab.correo_paciente,
+      subject: asunto,
+      text: cuerpoPlano,
+      html: cuerpoHTML,
+      pdfBuffer,
+      filename: `cotizacion_${payload.numero}.pdf`,
+      inlineImages,
+    });
+
+    if (pdfPath) fs.unlink(pdfPath, () => {});
+
+    // 6) Actualiza estado a 'enviada'
+    await qRun("UPDATE Cotizaciones SET estado = ? WHERE id = ?", [
+      "enviada",
+      id,
+    ]);
+
+    res.json({
+      ok: true,
+      message: "Cotización enviada y marcada como 'enviada'.",
+    });
+  } catch (e) {
+    console.error("[POST /api/cotizaciones/:id/enviar] error:", e);
+    res.status(500).send(e?.message || "Error enviando la cotización");
+  }
+});
+
+app.post("/api/cotizaciones/enviar-borrador", async (req, res) => {
+  try {
+    // Logs de depuración
+    console.log("[enviar-borrador] content-type:", req.headers["content-type"]);
+    console.log("[enviar-borrador] body keys:", Object.keys(req.body || {}));
+
+    const { cotizacion } = req.body || {};
+    if (!cotizacion)
+      return res.status(400).send("Falta 'cotizacion' en el body.");
+
+    const to = (cotizacion.correo_paciente || "").trim();
+    if (!to)
+      return res
+        .status(400)
+        .send("Falta correo del paciente en la cotizacion.");
+
+    const numeroTexto = String(cotizacion.numero || "Borrador");
+    const { asunto, cuerpoPlano, cuerpoHTML, logoCid } =
+      construirAsuntoYMensaje({
+        payload: cotizacion,
+        numeroTexto: String(cotizacion.numero || "Borrador"),
+      });
+
+    // Genera PDF temporal y léelo
+    const pdfPath = await generarPDF(cotizacion);
+    const pdfBuffer = await fs.promises.readFile(pdfPath).catch(() => null);
+
+    // Logo inline (CID)
+    const logoFile = process.env.MAIL_LOGO_FILE;
+    const inlineImages =
+      logoCid && logoFile && fs.existsSync(logoFile)
+        ? [
+            {
+              path: logoFile,
+              cid: logoCid,
+              filename: require("path").basename(logoFile),
+            },
+          ]
+        : [];
+
+    await enviarEmail({
+      to,
+      subject: asunto,
+      text: cuerpoPlano,
+      html: cuerpoHTML,
+      pdfBuffer,
+      filename: `cotizacion_${(
+        cotizacion.nombre_paciente || "paciente"
+      ).replace(/\s+/g, "_")}.pdf`,
+      inlineImages,
+    });
+
+    if (pdfPath) fs.unlink(pdfPath, () => {});
+    res.json({ ok: true, message: "Correo enviado correctamente" });
+  } catch (e) {
+    console.error("[enviar-borrador] error:", e);
+    res.status(500).send(e?.message || "Error enviando el correo");
+  }
+});
+
+app.post("/api/prueba", (req, res) => res.json({ ok: true }));
 
 // Interfaz web
 app.get("/", (req, res) => {
@@ -708,22 +1152,6 @@ app.get("/api/servicios/search", (req, res) => {
   });
 });
 
-// GET /api/categorias
-// En tu server.js
-app.get("/api/categorias", (req, res) => {
-  const query = `SELECT id, nombre_categoria, descripcion FROM Categorias ORDER BY id`;
-
-  db.all(query, [], (err, rows) => {
-    if (err) {
-      console.error("Error al obtener categorías:", err.message);
-      return res
-        .status(500)
-        .json({ error: "Error interno al obtener categorías" });
-    }
-    res.json(rows);
-  });
-});
-
 // GET /api/servicios?categoria_id=#
 app.get("/api/servicios", (req, res) => {
   const { categoria_id } = req.query;
@@ -794,23 +1222,6 @@ app.get("/api/servicios/search", (req, res) => {
     res.json(rows);
   });
 });
-/*
-app.post("/api/fases", (req, res) => {
-    const { cotizacion_id, numero_fase } = req.body;
-
-    db.run(
-        `INSERT INTO Fases (cotizacion_id, numero_fase) VALUES (?, ?)`,
-        [cotizacion_id, numero_fase],
-        function (err) {
-            if (err) {
-                console.error("Error al guardar fase:", err.message);
-                return res.status(500).json({ error: "Error al guardar fase" });
-            }
-            res.status(201).json({ id: this.lastID });
-        }
-    );
-});
-*/
 
 // Ruta para obtener todos los pacientes
 app.get("/api/pacientes", (req, res) => {
@@ -1098,24 +1509,6 @@ app.put("/api/cotizaciones/:id/estado", async (req, res) => {
   } catch (err) {
     console.error("Error al actualizar estado:", err.message);
     res.status(500).json({ error: "Error interno al actualizar estado" });
-  }
-});
-
-app.post("/api/cotizaciones/:id/enviar", async (req, res) => {
-  const { id } = req.params;
-  try {
-    // TODO: aquí va tu lógica real de envío por correo
-    // await enviarCotizacionPorEmail(id);
-
-    // Marca como enviada
-    await qRun("UPDATE Cotizaciones SET estado = ? WHERE id = ?", [
-      "enviada",
-      id,
-    ]);
-    res.json({ id: Number(id), estado: "enviada" });
-  } catch (err) {
-    console.error("Error al enviar cotización:", err.message);
-    res.status(500).json({ error: "Error interno al enviar cotización" });
   }
 });
 

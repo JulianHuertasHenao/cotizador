@@ -3177,6 +3177,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   window.cargarCotizaciones = cargarCotizaciones;
 
+  /*
   // /public/enviar.js (o el archivo donde ya tengas esta función)
   window.enviarDesdeFormulario = async function () {
     // 1) Construye/valida paciente como ya lo hacías:
@@ -3241,6 +3242,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert(`Error: ${error.message}`);
     }
   };
+  */
 
   //
 
@@ -3527,40 +3529,50 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.enviarCotizacion = async function (id) {
+    if (!id) return;
     try {
-      const response = await fetch(`/api/cotizaciones/${id}`);
-      const cotizacion = await response.json();
+      const resp = await fetch(`/api/cotizaciones/${id}`);
+      if (!resp.ok)
+        throw new Error(
+          await resp.text().catch(() => "Cotización no encontrada")
+        );
+      const c = await resp.json();
 
-      if (!cotizacion) throw new Error("Cotización no encontrada");
-
-      const confirmacion = confirm(
-        `¿Enviar cotización a ${cotizacion.correo_paciente}?\n\n` +
-          `Paciente: ${cotizacion.nombre_paciente}\n` +
-          `Total: $${cotizacion.total_neto.toLocaleString("es-CO")}`
-      );
-
-      if (confirmacion) {
-        const updateResponse = await fetch(`/api/cotizaciones/${id}/enviar`, {
-          method: "POST",
-        });
-
-        if (!updateResponse.ok) throw new Error("Error al enviar");
-
-        alert(`Cotización enviada a ${cotizacion.correo_paciente}`);
-        // ⚑ Cambiar estado a "enviada" tras enviar email
-        try {
-          await window.updateEstadoCotizacion?.(id, "enviada");
-        } catch (e) {
-          console.warn("No se pudo actualizar el estado a 'enviada':", e);
-        }
-
-        cargarCotizaciones();
+      if (!c.correo_paciente) {
+        alert(
+          "El paciente de esta cotización no tiene correo en la base de datos."
+        );
+        return;
       }
-    } catch (error) {
-      console.error("Error al enviar:", error);
-      alert(`Error: ${error.message}`);
+
+      const total = Number(c.total_con_descuento ?? c.total ?? 0);
+      const totalFmt = total.toLocaleString("es-CO", {
+        minimumFractionDigits: 2,
+      });
+
+      const ok = confirm(
+        `¿Enviar cotización a ${c.correo_paciente}?\n\n` +
+          `Paciente: ${c.nombre_paciente || "(sin nombre)"}\n` +
+          `Total: $${totalFmt}`
+      );
+      if (!ok) return;
+
+      const res = await fetch(`/api/cotizaciones/${id}/enviar`, {
+        method: "POST",
+      });
+      if (!res.ok)
+        throw new Error(await res.text().catch(() => "Error al enviar"));
+
+      window.updateEstadoEnTabla?.(id, "enviada");
+      window.cargarCotizaciones?.();
+      alert(`Cotización enviada a ${c.correo_paciente}`);
+    } catch (e) {
+      console.error("Error al enviar:", e);
+      alert(`Error al enviar: ${e.message}`);
+      window.cargarCotizaciones?.();
     }
   };
+
   // Fin Botones de accion final --- Cotizaciones / quote tab
 });
 
