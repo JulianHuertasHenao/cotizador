@@ -527,14 +527,17 @@ function filterServiceTable() {
   for (let i = 1; i < serviceRows.length; i++) {
     const cells = serviceRows[i].getElementsByTagName("td");
     const codeCell = cells[1]; // Código
+    const categoryCell = cells[2];    // Categoría
     const descriptionCell = cells[4]; // Descripción
 
-    if (codeCell && descriptionCell) {
+    if (codeCell && descriptionCell && categoryCell) {
       const codeText = codeCell.textContent || codeCell.innerText;
       const descText = descriptionCell.textContent || descriptionCell.innerText;
+      const categoryText = categoryCell.textContent || categoryCell.innerText;
       if (
         codeText.toLowerCase().includes(filter) ||
-        descText.toLowerCase().includes(filter)
+        descText.toLowerCase().includes(filter)  ||
+        categoryText.toLowerCase().includes(filter)
       ) {
         serviceRows[i].style.display = "";
       } else {
