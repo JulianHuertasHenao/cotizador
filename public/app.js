@@ -1742,7 +1742,6 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           window.hayOrtodoncia = false
         }
-        //console.log("HAY ORTODONCIA ", hayOrtodoncia)
 
         if (typeof actualizarUIOrtodoncia === "function") {
           actualizarUIOrtodoncia();

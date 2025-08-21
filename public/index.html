@@ -806,10 +806,7 @@
         //modificacion cuando es ortodoncia
         window.actualizarUIOrtodoncia = function(){
           
-          console.log("ort", window.hayOrtodoncia)
-          console.log(rdAplaz.checked)
           if (window.hayOrtodoncia && rdAplaz.checked) {
-          console.log(">>> ENTRÉ a la lógica de ortodoncia");
             // ocultar input normal de cuota inicial
             inpCuotaInicial.closest(".form-group").classList.add("hidden");
 

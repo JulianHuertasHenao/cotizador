@@ -322,26 +322,20 @@
     const pago = {};
     if (metodoSel) pago.metodo = metodoSel; // "unico" | "aplazado"
 
-    if (metodoSel === "aplazado") {
-      const cuotaInicial = num(
-        document.getElementById("pago-cuota-inicial")?.value,
-        null
-      );
-      if (cuotaInicial != null) pago.cuota_inicial = cuotaInicial;
+    const totalParaPago = Number.isFinite(totalNeto) ? totalNeto : 0;
+    const esOrtodAplazado = !!(window.hayOrtodoncia && metodoSel === "aplazado");
+    const numeroCuotas = parseInt(
+      document.getElementById("pago-numero-cuotas")?.value,
+      10
+    );
+    const valorCuotaUI = num(
+      document.getElementById("pago-valor-cuota")?.value,
+      null
+    );
 
-      const numeroCuotas = parseInt(
-        document.getElementById("pago-numero-cuotas")?.value,
-        10
-      );
-      if (!Number.isNaN(numeroCuotas)) pago.numero_cuotas = numeroCuotas;
 
-      const valorCuota = num(
-        document.getElementById("pago-valor-cuota")?.value,
-        null
-      );
-      if (valorCuota != null) pago.valor_cuota = valorCuota;
-    }
-
+    
+////
     const pagadoFecha = num(
       document.getElementById("pago-pagado-a-fecha")?.value,
       null
@@ -357,7 +351,47 @@
     if (Object.keys(pago).length) {
       payload.pago = pago;
     }
+/////////
+    if (esOrtodAplazado) {
+        // 👇 NUEVO esquema para ortodoncia
+      const cuota1 = Math.round(totalParaPago * 0.15);
+      const cuota2 = Math.round(totalParaPago * 0.15);
+      const mensual = (Number.isFinite(numeroCuotas) && numeroCuotas > 0)
+        ? Math.floor((totalParaPago * 0.70) / numeroCuotas)
+        : null;
 
+      pago.tipo = "cuotas_ortodoncia";
+      pago.cuota_inicial_1 = cuota1;
+      pago.cuota_inicial_2 = cuota2;
+      pago.porcentaje_inicial_total = 30; // 15% + 15%
+      if (!Number.isNaN(numeroCuotas)) pago.numero_cuotas = numeroCuotas;
+
+      pago.valor_cuota = (mensual != null) ? mensual : valorCuotaUI;
+      // si el pipeline PDF espera pago.cuota_inicial única, mando el 30%)
+      pago.cuota_inicial = cuota1 + cuota2;
+    } else if (metodoSel === "aplazado") {
+      const cuotaInicial = num(
+        document.getElementById("pago-cuota-inicial")?.value,
+        null
+      );
+      
+      if (cuotaInicial != null) pago.cuota_inicial = cuotaInicial;
+
+      const numeroCuotas = parseInt(
+        document.getElementById("pago-numero-cuotas")?.value,
+        10
+      );
+      if (!Number.isNaN(numeroCuotas)) pago.numero_cuotas = numeroCuotas;
+
+      const valorCuota = num(
+        document.getElementById("pago-valor-cuota")?.value,
+        null
+      );
+      if (valorCuota != null) pago.valor_cuota = valorCuota;
+    }
+
+
+/////////////
     return payload;
   }
 
