@@ -366,7 +366,7 @@
                   </div>
 
                   <!-- Pago aplazado ortodoncia (oculto por defecto) -->
-                  <div class="form-group col-md-3">
+                  <div class="form-group col-md-3" id="col-ortodoncia">
                     <div id="pago-aplazado-ortodoncia" class="hidden">
                       <label>Cuota 1 (15%):</label>
                       <input type="text" id="cuota-1" class="form-control" readonly />
@@ -762,6 +762,28 @@
           return isNaN(n) ? 0 : n;
         };
 
+        const calcularCuotasOrtodoncia = function(){
+          if (!(window.hayOrtodoncia && rdAplaz.checked)) return;
+          const totalTxt = document.getElementById("total-cotizacion")?.textContent || "0";
+          const total = parseMoney(totalTxt) 
+          const c1El = document.getElementById("cuota-1");
+          const c2El = document.getElementById("cuota-2");
+          
+          if (!c1El || !c2El) return;
+
+          const cuota1 = Math.floor(total * 0.15);
+          const cuota2 = Math.floor(total * 0.15);
+          c1El.value = cuota1.toLocaleString("es-CO");
+          c2El.value = cuota2.toLocaleString("es-CO");
+        }
+
+        //cuando cambia el total cotizacion
+        const totalEl = document.getElementById("total-cotizacion");
+          if (totalEl) {
+            const obs = new MutationObserver(calcularCuotasOrtodoncia);
+            obs.observe(totalEl, { childList: true, characterData: true, subtree: true });
+        }
+
         const btnCalc = document.getElementById("btn-calcular-cuota");
         btnCalc?.addEventListener("click", () => {
           const totalTxt =
@@ -793,22 +815,15 @@
 
             // mostrar bloque ortodoncia
             document.getElementById("pago-aplazado-ortodoncia").classList.remove("hidden");
+            document.getElementById("col-ortodoncia").classList.remove("hidden");
 
             // al calcular
-            const totalTxt = document.getElementById("total-cotizacion")?.textContent || "0";
-            const total = parseMoney(totalTxt) 
-            const cuota1 = total * 0.15;
-            const cuota2 = total * 0.15;
-            //const restante = total * 0.70;
-            //const n = parseInt(inpNumCuotas.value, 10);
-           // const mensual = Math.floor(restante / n);
-
-            document.getElementById("cuota-1").value = cuota1.toLocaleString("es-CO");
-            document.getElementById("cuota-2").value = cuota2.toLocaleString("es-CO");
-            //inpValorCuota.value = mensual.toLocaleString("es-CO") || "";
+            calcularCuotasOrtodoncia();
           } else {
             inpCuotaInicial.closest(".form-group").classList.remove("hidden");
             document.getElementById("pago-aplazado-ortodoncia").classList.add("hidden");
+            document.getElementById("col-ortodoncia").classList.add("hidden");
+            
           }
         }
 
@@ -820,6 +835,9 @@
           const cuota2 = document.getElementById("cuota-2");
           if (cuota1) cuota1.value = "";
           if (cuota2) cuota2.value = "";
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            calcularCuotasOrtodoncia();
+          }
         }
 
         // Escuchar cambios en los selects de categoría

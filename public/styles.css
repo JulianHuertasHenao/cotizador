@@ -1377,3 +1377,7 @@ input:checked + .toggle-slider:before {
   padding: .35rem .6rem;
   line-height: 1.1;
 }
+
+.hidden{
+    display: none !important;
+}
