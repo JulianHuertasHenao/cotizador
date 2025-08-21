@@ -364,6 +364,19 @@
                       placeholder="$0"
                     />
                   </div>
+
+                  <!-- Pago aplazado ortodoncia (oculto por defecto) -->
+                  <div class="form-group col-md-3">
+                    <div id="pago-aplazado-ortodoncia" class="hidden">
+                      <label>Cuota 1 (15%):</label>
+                      <input type="text" id="cuota-1" class="form-control" readonly />
+
+                      <label>Cuota 2 (15%):</label>
+                      <input type="text" id="cuota-2" class="form-control" readonly />
+                    </div>
+                  </div>
+                  
+
                   <div class="form-group col-md-3">
                     <label>Número de cuotas:</label>
                     <input
@@ -397,6 +410,7 @@
                     </button>
                   </div>
                 </div>
+                
 
                 <div class="form-row">
                   <div class="form-group col-md-3">
@@ -727,9 +741,16 @@
         const toggleAplazado = () => {
           boxAplaz.classList.toggle("hidden", !rdAplaz.checked);
         };
-        rdUnico.addEventListener("change", toggleAplazado);
-        rdAplaz.addEventListener("change", toggleAplazado);
+        rdUnico.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
+        });
+        rdAplaz.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
+        });
         toggleAplazado();
+        
 
         const parseMoney = (s) => {
           const v = String(s || "")
@@ -749,11 +770,68 @@
           const inicial = parseMoney(inpCuotaInicial.value);
           const n = parseInt(inpNumCuotas.value, 10);
           if (!n || n <= 0) return alert("Ingresa el número de cuotas.");
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            const restante = Math.max(0, Math.floor(total * 0.70));
+            const mensual = Math.floor(restante/ n);
+            inpValorCuota.value = mensual.toLocaleString("es-CO");
+            return; 
+          }
           const restante = Math.max(0, total - inicial);
           const cuota = Math.floor(restante / n);
           inpValorCuota.value = cuota.toLocaleString("es-CO");
         });
+
+        //modificacion cuando es ortodoncia
+        window.actualizarUIOrtodoncia = function(){
+          
+          console.log("ort", window.hayOrtodoncia)
+          console.log(rdAplaz.checked)
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+          console.log(">>> ENTRÉ a la lógica de ortodoncia");
+            // ocultar input normal de cuota inicial
+            inpCuotaInicial.closest(".form-group").classList.add("hidden");
+
+            // mostrar bloque ortodoncia
+            document.getElementById("pago-aplazado-ortodoncia").classList.remove("hidden");
+
+            // al calcular
+            const totalTxt = document.getElementById("total-cotizacion")?.textContent || "0";
+            const total = parseMoney(totalTxt) 
+            const cuota1 = total * 0.15;
+            const cuota2 = total * 0.15;
+            //const restante = total * 0.70;
+            //const n = parseInt(inpNumCuotas.value, 10);
+           // const mensual = Math.floor(restante / n);
+
+            document.getElementById("cuota-1").value = cuota1.toLocaleString("es-CO");
+            document.getElementById("cuota-2").value = cuota2.toLocaleString("es-CO");
+            //inpValorCuota.value = mensual.toLocaleString("es-CO") || "";
+          } else {
+            inpCuotaInicial.closest(".form-group").classList.remove("hidden");
+            document.getElementById("pago-aplazado-ortodoncia").classList.add("hidden");
+          }
+        }
+
+        function limpiarCamposPago() {
+          inpCuotaInicial.value = "";
+          inpNumCuotas.value = "";
+          inpValorCuota.value = "";
+          const cuota1 = document.getElementById("cuota-1");
+          const cuota2 = document.getElementById("cuota-2");
+          if (cuota1) cuota1.value = "";
+          if (cuota2) cuota2.value = "";
+        }
+
+        // Escuchar cambios en los selects de categoría
+        document
+          .querySelectorAll(".categoria-fase-select, .categoria-unica-select")
+          .forEach((sel) => {
+            sel.addEventListener("change", limpiarCamposPago);
+          });
+
       }
+
+      
 
       // Llama una vez cuando el DOM esté listo
       if (document.readyState === "loading") {

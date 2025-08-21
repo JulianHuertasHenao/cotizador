@@ -1725,6 +1725,7 @@ document.addEventListener("DOMContentLoaded", function () {
         categorySelect.appendChild(option);
       });
 
+      window.hayOrtodoncia = false;
       // Evento: actualizar servicios al cambiar de categoría
       categorySelect.addEventListener("change", function () {
         const serviciosContainer = category.querySelector(".service-list");
@@ -1734,6 +1735,19 @@ document.addEventListener("DOMContentLoaded", function () {
             agregarServicioEnCategoriasDinamico(serviciosContainer, this.value);
           }
         }
+        //si hay ortodoncia/ortodoncia invisible seleccionado como categoria
+        const selectedText = this.options[this.selectedIndex]?.textContent.toLowerCase() || "";
+        if (selectedText.includes("ortodoncia")) {
+          window.hayOrtodoncia = true
+        } else {
+          window.hayOrtodoncia = false
+        }
+        //console.log("HAY ORTODONCIA ", hayOrtodoncia)
+
+        if (typeof actualizarUIOrtodoncia === "function") {
+          actualizarUIOrtodoncia();
+        }
+
       });
 
       // Autoselección
@@ -2517,6 +2531,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "FaseCategorias (sin fases) registrado con fase_id=cotizacionId."
     );
   }
+    
 
   // ========================== GUARDAR COTIZACIÓN ==========================
   // ========================== GUARDAR COTIZACIÓN (actualizado) ==========================
@@ -2693,6 +2708,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+
+
       // ====== 2) TOTALES ======
       const parseMoney = (txt) =>
         parseFloat(
@@ -2723,6 +2740,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pago = payloadUI?.pago || null;
       } catch (_) {}
 
+  ///
       const cotizacionSimplificada = {
         paciente_id: Number(pacienteId),
         total: subtotal,
