@@ -528,16 +528,19 @@ function filterServiceTable() {
     const cells = serviceRows[i].getElementsByTagName("td");
     const codeCell = cells[1]; // Código
     const categoryCell = cells[2];    // Categoría
+    const subtitleCell = cells[3];    // Categoría
     const descriptionCell = cells[4]; // Descripción
 
-    if (codeCell && descriptionCell && categoryCell) {
+    if (codeCell && descriptionCell && categoryCell && subtitleCell ) {
       const codeText = codeCell.textContent || codeCell.innerText;
       const descText = descriptionCell.textContent || descriptionCell.innerText;
       const categoryText = categoryCell.textContent || categoryCell.innerText;
+      const subtititleText = subtitleCell.textContet || subtitleCell.innerText;
       if (
         codeText.toLowerCase().includes(filter) ||
         descText.toLowerCase().includes(filter)  ||
-        categoryText.toLowerCase().includes(filter)
+        categoryText.toLowerCase().includes(filter) ||
+        subtititleText.toLowerCase().includes(filter)
       ) {
         serviceRows[i].style.display = "";
       } else {
