@@ -361,20 +361,15 @@ async function actualizarServicio(id) {
   }
 
   const codeInput = document.getElementById(`edit-service-code-${id}`);
-  const descriptionInput = document.getElementById(
-    `edit-service-description-${id}`
-  );
-  const subtitleInput = document.getElementById(`edit-service-subtitle-${id}`);
-  const priceInput = document.getElementById(`edit-service-price-${id}`);
-  const categoryInput = document.getElementById(`edit-service-category-${id}`);
+  const descriptionInput = document.getElementById(`edit-service-description-${id}`);
+  const subtitleInput    = document.getElementById(`edit-service-subtitle-${id}`);
+  const priceInput       = document.getElementById(`edit-service-price-${id}`);
+  const categoryInput    = document.getElementById(`edit-service-category-${id}`);
+  const tipoInput        = document.getElementById(`edit-service-tipo-${id}`);
+  const marcaInput       = document.getElementById(`edit-service-marca-${id}`);
+  const presentInput     = document.getElementById(`edit-service-presentacion-${id}`);
 
-  if (
-    !codeInput ||
-    !descriptionInput ||
-    !subtitleInput ||
-    !priceInput ||
-    !categoryInput
-  ) {
+  if (!codeInput || !descriptionInput || !subtitleInput || !priceInput || !categoryInput || !tipoInput) {
     alert("Faltan campos para actualizar el servicio");
     return;
   }
@@ -384,13 +379,14 @@ async function actualizarServicio(id) {
   const subtitulo = subtitleInput.value.trim();
   const precio_neto = Number(priceInput.value);
   const categoria_id = Number(categoryInput.value);
+  const tipo_item    = (tipoInput.value || "servicio").trim();
+
+  const esMaterial   = tipo_item === "material";
+  const marca        = esMaterial ? (marcaInput?.value || "").trim() : null;
+  const presentacion = esMaterial ? (presentInput?.value || "").trim() : null;
 
   if (
-    !codigo ||
-    !descripcion ||
-    !subtitulo ||
-    Number.isNaN(precio_neto) ||
-    Number.isNaN(categoria_id)
+    !codigo || !descripcion || !subtitulo || Number.isNaN(precio_neto) || Number.isNaN(categoria_id)
   ) {
     alert("Todos los campos son obligatorios y deben ser válidos");
     return;
@@ -406,6 +402,7 @@ async function actualizarServicio(id) {
         subtitulo,
         precio_neto,
         categoria_id,
+        tipo_item, marca, presentacion
       }),
     });
     if (!response.ok) throw new Error("Error en la respuesta del servidor");
@@ -428,6 +425,7 @@ async function actualizarServicio(id) {
         subtitulo,
         precio_neto: Number(precio_neto) || 0,
         categoria_id: Number(categoria_id),
+        tipo_item, marca, presentacion
       };
     }
 
@@ -921,19 +919,18 @@ document.addEventListener("DOMContentLoaded", function () {
           `;
 
           row.innerHTML = `
-              <td class="py-3 px-4 text-dark">${service.id}</td>
+              <td class="py-2 px-4">
+                ${
+                  isEditing
+                    ? `<input type="text" class="input" id="edit-service-code-${service.id}" value="${escapeHtml(service.codigo || "")}">`
+                    : `<span class="font-medium text-dark">${escapeHtml(service.codigo || "")}</span>`
+                }
+              </td>
               <td class="py-2 px-4">
                 ${
                   isEditing
                     ?  `<select class="input" id="edit-service-tipo-${service.id}">${tipoOptions}</select>`
                     : `<span class="text-dark">${escapeHtml(tipoActual)}</span>`
-                    
-                    //`<input type="text" class="input" id="edit-service-code-${
-                       // service.id
-                      //}" value="${escapeHtml(service.codigo)}">`
-                    //: `<span class="font-medium text-dark">${escapeHtml(
-                    //    service.codigo
-                    //  )}</span>`
                 }
               </td>
               <td class="py-2 px-4">
