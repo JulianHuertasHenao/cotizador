@@ -258,13 +258,23 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
       const precioInput = servicioItem.querySelector(
         ".precio-unitario-servicio"
       );
+      const marcaInput  = servicioItem.querySelector(".marca-input");
+      const presInput   = servicioItem.querySelector(".presentacion-input");
       const subtitleInput = servicioItem.querySelector(".service-subtitle");
-
+      
       if (servicio) {
         if (descInput) descInput.value = servicio.descripcion;
         if (precioInput) precioInput.value = servicio.precio_neto;
         if (subtitleInput) subtitleInput.value = servicio.subtitulo;
-
+        // si este item es MATERIAL, rellenar marca/presentación
+          const esMaterialFila = (servicioItem.dataset.tipo_item || "servicio") === "material";
+          if (esMaterialFila) {
+            if (marcaInput) marcaInput.value = servicio.marca ?? "";
+            if (presInput)  presInput.value  = servicio.presentacion ?? "";
+          } else {
+            if (marcaInput) marcaInput.value = "";
+            if (presInput)  presInput.value  = "";
+          }
         // ✅ descuento inicial en 0
         const descuentoInput = servicioItem.querySelector(
           ".descuento-servicio"
