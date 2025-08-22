@@ -912,17 +912,28 @@ document.addEventListener("DOMContentLoaded", function () {
             }" ${selected}>${escapeHtml(cat.nombre_categoria)}</option>`;
           });
 
+          // opciones de tipo
+          const tipoActual = service.tipo_item || "servicio";
+          const tipoOptions = `
+            <option value="servicio" ${tipoActual === "servicio" ? "selected" : ""}>servicio</option>
+            <option value="material" ${tipoActual === "material" ? "selected" : ""}>material</option>
+            <option value="adicional" ${tipoActual === "adicional" ? "selected" : ""}>adicional</option>
+          `;
+
           row.innerHTML = `
               <td class="py-3 px-4 text-dark">${service.id}</td>
               <td class="py-2 px-4">
                 ${
                   isEditing
-                    ? `<input type="text" class="input" id="edit-service-code-${
-                        service.id
-                      }" value="${escapeHtml(service.codigo)}">`
-                    : `<span class="font-medium text-dark">${escapeHtml(
-                        service.codigo
-                      )}</span>`
+                    ?  `<select class="input" id="edit-service-tipo-${service.id}">${tipoOptions}</select>`
+                    : `<span class="text-dark">${escapeHtml(tipoActual)}</span>`
+                    
+                    //`<input type="text" class="input" id="edit-service-code-${
+                       // service.id
+                      //}" value="${escapeHtml(service.codigo)}">`
+                    //: `<span class="font-medium text-dark">${escapeHtml(
+                    //    service.codigo
+                    //  )}</span>`
                 }
               </td>
               <td class="py-2 px-4">
@@ -934,6 +945,25 @@ document.addEventListener("DOMContentLoaded", function () {
                       )}</span>`
                 }
               </td>
+              
+                <td class="py-2 px-4">
+                  ${
+                    isEditing
+                      ? `
+                        <div class="grid gap-1">
+                          <input type="text" class="input" id="edit-service-marca-${service.id}" placeholder="Marca" value="${escapeHtml(service.marca || "")}">
+                          <input type="text" class="input" id="edit-service-presentacion-${service.id}" placeholder="Presentación" value="${escapeHtml(service.presentacion || "")}">
+                          <!-- si aún quieres editar subtítulo aquí, déjalo como campo opcional -->
+                          <input type="text" class="input" id="edit-service-subtitle-${service.id}" placeholder="Subtítulo (opcional)" value="${escapeHtml(service.subtitulo || "")}">
+                        </div>
+                      `
+                      : `
+                        <div class="text-dark">
+                          <div>${escapeHtml(service.marca || "-")} / ${escapeHtml(service.presentacion || "-")}</div>
+                        </div>
+                      `
+                  }
+                </td>
               
               <td class="py-2 px-4">
                 ${
@@ -2252,9 +2282,19 @@ document.addEventListener("DOMContentLoaded", function () {
     codigo,
     descripcion,
     subtitulo,
-    precio
+    precio,
+    tipo_item,
+    marca,
+    presentacion
   ) {
     try {
+      const tipoItem = document.querySelector('input[name="tipo_item"]:checked')?.value || "servicio";
+      const isMaterial = tipoItem === "material";
+      const marcaVal = isMaterial ? (document.getElementById("marca")?.value || "").trim() : null;
+      const presentacionVal = isMaterial ? (document.getElementById("presentacion")?.value || "").trim() : null;
+
+
+
       const response = await fetch("/api/servicios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2264,6 +2304,9 @@ document.addEventListener("DOMContentLoaded", function () {
           descripcion: descripcion.trim(),
           subtitulo: subtitulo.trim(),
           precio_neto: parseFloat(precio) || 0, // asegurar número
+          tipo_item: tipoItem,
+          marca: marcaVal,
+          presentacion: presentacionVal,
         }),
       });
 

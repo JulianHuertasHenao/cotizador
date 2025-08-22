@@ -1072,12 +1072,12 @@ app.delete("/api/fases/:id", async (req, res) => {
   }
 });
 app.post("/api/servicios", (req, res) => {
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
+  const { codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion } =
     req.body;
   db.run(
-    `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id) 
-         VALUES (?, ?, ?, ?, ?)`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id],
+    `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion],
     function (err) {
       if (err) {
         console.error("Error al guardar servicio:", err.message);
