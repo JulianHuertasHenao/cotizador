@@ -2238,6 +2238,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  /////
+  //mostrar input marca y presentacion cuando se selecciona material
+  document.querySelectorAll('input[name="tipo_item"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      const esMaterial = document.querySelector('input[name="tipo_item"]:checked').value === "material";
+      document.getElementById("extra-material").style.display = esMaterial ? "block" : "none";
+    });
+  });
+
   async function guardarServicio(
     categoriaId,
     codigo,

@@ -579,6 +579,13 @@
             <!-- Add Service Form -->
             <div class="form-card">
               <h2 class="form-title">Añadir Nuevo Servicio</h2>
+                <div class="form-group">
+                  <label>Tipo de ítem:</label><br>
+                  <label><input type="radio" name="tipo_item" value="servicio" checked> Servicio</label>
+                  <label><input type="radio" name="tipo_item" value="material"> Material</label>
+                  <label><input type="radio" name="tipo_item" value="adicional"> Adicional</label>
+                </div>
+
               <form id="addServiceForm" class="form-grid two-cols">
                 <div class="form-group">
                   <label for="serviceCode">Código de Servicio</label>
@@ -618,6 +625,26 @@
                     required
                     class="input"
                   />
+                </div>
+                <div id="extra-material" style="display:none;">
+                  <div class="form-group">
+                    <label for="serviceMarca">Marca</label>
+                    <input
+                      type="text"
+                      id="serviceMarca"
+                      required
+                      class="input"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="servicePresentacion">Presentación</label>
+                    <input
+                      type="text"
+                      id="servicePresentacion"
+                      required
+                      class="input"
+                    />
+                  </div>
                 </div>
                 <div class="form-group full-width">
                   <button type="submit" class="btn btn-primary">

@@ -856,6 +856,12 @@ const generarPDF = async (cotizacion) =>
           pago.metodo ?? (pago.numero_cuotas > 0 ? "aplazado" : "unico");
         const fmt = (v) => `$ ${Number(v || 0).toLocaleString("es-CO")}`;
 
+        // Detecta modalidad ortodoncia + aplazado
+        const esOrtodApl = metodo === "aplazado" && (
+          pago.tipo === "cuotas_ortodoncia" ||
+          (pago.cuota_inicial_1 != null && pago.cuota_inicial_2 != null)
+        );
+
         // <-- NUEVO: solo mostramos FH si es booleano (true/false)
         const showFH = typeof pago.fase_higienica_incluida === "boolean";
 
@@ -878,6 +884,19 @@ const generarPDF = async (cotizacion) =>
                 text: `Cuota inicial: ${fmt(pago.cuota_inicial)}`,
               }
             : null,
+            //si tiene cuotas 1 y 2
+            pago.cuota_inicial_1 != null
+            ? {
+              type: "text",
+              text: `Cuota 1 (15%): ${fmt(pago.cuota_inicial_1)}`,
+            }
+            :null,
+            pago.cuota_inicial_2 != null
+            ? {
+              type: "text",
+              text: `Cuota 2 (15%): ${fmt(pago.cuota_inicial_2)}`,
+            }
+            :null,
           pago.numero_cuotas != null && pago.valor_cuota != null
             ? {
                 type: "text",
