@@ -950,17 +950,15 @@ document.addEventListener("DOMContentLoaded", function () {
                   ${
                     isEditing
                       ? `
-                        <div class="grid gap-1">
-                          <input type="text" class="input" id="edit-service-marca-${service.id}" placeholder="Marca" value="${escapeHtml(service.marca || "")}">
-                          <input type="text" class="input" id="edit-service-presentacion-${service.id}" placeholder="Presentación" value="${escapeHtml(service.presentacion || "")}">
-                          <!-- si aún quieres editar subtítulo aquí, déjalo como campo opcional -->
-                          <input type="text" class="input" id="edit-service-subtitle-${service.id}" placeholder="Subtítulo (opcional)" value="${escapeHtml(service.subtitulo || "")}">
+                        <div id="edit-extra-material-${service.id}" style="display:${tipoActual === "material" ? "block" : "none"}">
+                          <input type="text" class="input mb-1" id="edit-service-marca-${service.id}" placeholder="Marca" value="${service.marca || ""}">
+                          <input type="text" class="input" id="edit-service-presentacion-${service.id}" placeholder="Presentación" value="${service.presentacion || ""}">
+                        </div>
+                        <div id="edit-extra-material-placeholder-${service.id}" style="display:${tipoActual === "material" ? "none" : "block"};opacity:.7">
+                          <small>Solo aplica para tipo "material".</small>
                         </div>
                       `
-                      : `
-                        <div class="text-dark">
-                          <div>${escapeHtml(service.marca || "-")} / ${escapeHtml(service.presentacion || "-")}</div>
-                        </div>
+                      : `<span class="text-dark">${service.marca || "-"} / ${service.presentacion || "-"}</span>
                       `
                   }
                 </td>
@@ -1025,6 +1023,27 @@ document.addEventListener("DOMContentLoaded", function () {
 </td>`;
 
           serviceTableBody.appendChild(row);
+
+        ////// para validar que material solo tenga marca y presentacion en edicion
+          if (isEditing) {
+            const selTipo = document.getElementById(`edit-service-tipo-${service.id}`);
+            const box = document.getElementById(`edit-extra-material-${service.id}`);
+            const ph  = document.getElementById(`edit-extra-material-placeholder-${service.id}`);
+            selTipo?.addEventListener("change", () => {
+              const esMat = selTipo.value === "material";
+              if (box) box.style.display = esMat ? "block" : "none";
+              if (ph)  ph.style.display  = esMat ? "none"  : "block";
+              // opcional: limpiar marca/presentación si dejó de ser material
+              if (!esMat) {
+                const m = document.getElementById(`edit-service-marca-${service.id}`);
+                const p = document.getElementById(`edit-service-presentacion-${service.id}`);
+                if (m) m.value = "";
+                if (p) p.value = "";
+              }
+            });
+          }
+        /////
+
         });
 
         // Add event listeners

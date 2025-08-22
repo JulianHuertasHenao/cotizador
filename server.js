@@ -1091,13 +1091,14 @@ app.post("/api/servicios", (req, res) => {
 
 app.put("/api/servicios/:id", (req, res) => {
   const { id } = req.params;
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
+  const { codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion } =
     req.body;
   db.run(
     `UPDATE Servicios 
-         SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ? 
-         WHERE id = ?`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id, id],
+        SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ?,
+          tipo_item = ?, marca = ?, presentacion = ? 
+        WHERE id = ?`,
+    [codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion, id],
     function (err) {
       if (err) {
         console.error("Error al actualizar servicio:", err.message);
@@ -1114,6 +1115,9 @@ app.put("/api/servicios/:id", (req, res) => {
         descripcion,
         precio_neto,
         categoria_id,
+        tipo_item,
+        marca,
+        presentacion,
       });
     }
   );
@@ -1152,7 +1156,10 @@ app.get("/api/servicios", (req, res) => {
             descripcion, 
             precio_neto,
             categoria_id,
-            subtitulo
+            subtitulo,
+            tipo_item,       
+            marca,           
+            presentacion
         FROM Servicios
     `;
 
@@ -1181,6 +1188,9 @@ app.get("/api/servicios", (req, res) => {
       precio_neto: servicio.precio_neto,
       categoria_id: servicio.categoria_id,
       subtitulo: servicio.subtitulo,
+      tipo_item: s.tipo_item || "servicio",
+      marca: s.marca || null,
+      presentacion: s.presentacion || null,
     }));
 
     res.json(serviciosFormateados);
