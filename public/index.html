@@ -252,6 +252,12 @@
             </div>
             <template id="service-template">
               <div class="service-item">
+                <!-- 👇 Nuevo: radios por ítem -->
+                  <div class="tipo-item-radios" style="display:flex; gap:8px; align-items:center; margin-right:8px;">
+                    <label><input type="radio" value="servicio" checked> Servicio</label>
+                    <label><input type="radio" value="material"> Material</label>
+                    <label><input type="radio" value="adicional"> Adicional</label>
+                  </div>
                 <select class="form-control servicio-select" style="flex: 1">
                   <option value="">Seleccionar servicio...</option>
                 </select>

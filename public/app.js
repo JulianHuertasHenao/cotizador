@@ -25,6 +25,75 @@ function configurarBotonEliminar(servicioItem) {
   });
 }
 
+//
+  let tipoItemSeq = 0;
+
+  function ensureTipoRadiosForItem(servicioItemEl) {
+    const wrap = servicioItemEl.querySelector(".tipo-item-radios");
+    if (!wrap) return;
+
+    // name único por fila
+    const unique = `tipo_item_item_${++tipoItemSeq}`;
+    wrap.querySelectorAll('input[type="radio"]').forEach(r => {
+      r.name = unique;
+    });
+
+    // estado inicial en dataset del item
+    servicioItemEl.dataset.tipo_item = "servicio";
+
+    // al cambiar => guardar y refiltrar SOLO este item
+    wrap.querySelectorAll('input[type="radio"]').forEach(r => {
+      r.addEventListener("change", () => {
+        if (!r.checked) return;
+        servicioItemEl.dataset.tipo_item = r.value || "servicio";
+        const categoryGroup = servicioItemEl.closest(".category-group, .phase-container");
+        const categoriaSelect = categoryGroup?.querySelector(".categoria-unica-select, .categoria-fase-select");
+        const categoriaId = categoriaSelect?.value || "";
+        if (!categoriaId) return;
+        rellenarSelectServiciosDeItem(servicioItemEl, categoriaId);
+      });
+    });
+  }
+
+  function getTipoFromItem(servicioItemEl) {
+    return servicioItemEl?.dataset?.tipo_item || "servicio";
+  }
+
+  /** Rellena el select de ESTE item usando (categoriaId + tipo_item del item) */
+  function rellenarSelectServiciosDeItem(servicioItemEl, categoriaId) {
+    const servicioSelect = servicioItemEl.querySelector(".servicio-select");
+    if (!servicioSelect) return;
+
+    // conservar opción previa si sigue válida
+    const previo = servicioSelect.value || "";
+    servicioSelect.innerHTML = '<option value="">Seleccionar servicio...</option>';
+
+    const tipoItem = getTipoFromItem(servicioItemEl);
+    const lista = servicios.filter(s =>
+      String(s.categoria_id) === String(categoriaId) &&
+      String((s.tipo_item ?? s.tipo) || "servicio").toLowerCase() === tipoItem.toLowerCase()
+    );
+
+    lista.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = `${s.codigo} - ${s.descripcion}`;
+      opt.dataset.precio = s.precio_neto;
+      servicioSelect.appendChild(opt);
+    });
+
+    // re-seleccionar si aún existe en la lista; si no, limpiar
+    if (previo && lista.some(s => String(s.id) === String(previo))) {
+      servicioSelect.value = previo;
+    } else {
+      servicioSelect.value = "";
+    }
+
+    servicioSelect.dispatchEvent(new Event("change"));
+  }
+
+//
+
 function calcularTotalesFase(faseContainer) {
   let subtotal = 0;
   let totalDescuento = 0;
@@ -134,7 +203,16 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
   }
   const clone = template.content.cloneNode(true);
   const servicioItem = clone.querySelector(".service-item");
+  
+  //  Radios por ítem
+  ensureTipoRadiosForItem(servicioItem);
+
+  //  Rellenar options del select SEGÚN tipo (de esta fila) + categoria
+  rellenarSelectServiciosDeItem(servicioItem, categoriaId);
+
+  
   configurarBotonEliminar(servicioItem);
+
   // Llenar servicios SOLO de la categoría seleccionada
   const servicioSelect = servicioItem.querySelector(".servicio-select");
   if (servicioSelect) {
