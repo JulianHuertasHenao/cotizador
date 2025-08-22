@@ -1072,13 +1072,30 @@ app.delete("/api/fases/:id", async (req, res) => {
   }
 });
 app.post("/api/servicios", (req, res) => {
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion } =
-    req.body;
-    console.log("body recibido", req.body)
+  const {
+    codigo,
+    descripcion,
+    subtitulo,
+    precio_neto,
+    categoria_id,
+    tipo_item,
+    marca,
+    presentacion,
+  } = req.body;
+  console.log("body recibido", req.body);
   db.run(
     `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion],
+    [
+      codigo,
+      descripcion,
+      subtitulo,
+      precio_neto,
+      categoria_id,
+      tipo_item,
+      marca,
+      presentacion,
+    ],
     function (err) {
       if (err) {
         console.error("Error al guardar servicio:", err.message);
@@ -1091,14 +1108,32 @@ app.post("/api/servicios", (req, res) => {
 
 app.put("/api/servicios/:id", (req, res) => {
   const { id } = req.params;
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion } =
-    req.body;
+  const {
+    codigo,
+    descripcion,
+    subtitulo,
+    precio_neto,
+    categoria_id,
+    tipo_item,
+    marca,
+    presentacion,
+  } = req.body;
   db.run(
     `UPDATE Servicios 
         SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ?,
           tipo_item = ?, marca = ?, presentacion = ? 
         WHERE id = ?`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion, id],
+    [
+      codigo,
+      descripcion,
+      subtitulo,
+      precio_neto,
+      categoria_id,
+      tipo_item,
+      marca,
+      presentacion,
+      id,
+    ],
     function (err) {
       if (err) {
         console.error("Error al actualizar servicio:", err.message);
