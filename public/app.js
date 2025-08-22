@@ -2290,24 +2290,25 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       const tipoItem = document.querySelector('input[name="tipo_item"]:checked')?.value || "servicio";
       const isMaterial = tipoItem === "material";
-      const marcaVal = isMaterial ? (document.getElementById("marca")?.value || "").trim() : null;
-      const presentacionVal = isMaterial ? (document.getElementById("presentacion")?.value || "").trim() : null;
+      const marcaVal = isMaterial ? (document.getElementById("serviceMarca")?.value || "").trim() : null;
+      const presentacionVal = isMaterial ? (document.getElementById("servicePresentacion")?.value || "").trim() : null;
 
-
+      const paylodad = {
+        categoria_id: parseInt(categoriaId),
+        codigo: codigo.trim(),
+        descripcion: descripcion.trim(),
+        subtitulo: subtitulo.trim(),
+        precio_neto: parseFloat(precio) || 0, // asegurar número
+        tipo_item: tipoItem,
+        marca: marcaVal,
+        presentacion: presentacionVal,
+      }
+      console.log("payload que envio", paylodad);
 
       const response = await fetch("/api/servicios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoria_id: parseInt(categoriaId),
-          codigo: codigo.trim(),
-          descripcion: descripcion.trim(),
-          subtitulo: subtitulo.trim(),
-          precio_neto: parseFloat(precio) || 0, // asegurar número
-          tipo_item: tipoItem,
-          marca: marcaVal,
-          presentacion: presentacionVal,
-        }),
+        body: JSON.stringify(paylodad),
       });
 
       if (!response.ok) throw new Error("Error en la respuesta del servidor");

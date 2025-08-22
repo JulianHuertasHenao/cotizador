@@ -1074,6 +1074,7 @@ app.delete("/api/fases/:id", async (req, res) => {
 app.post("/api/servicios", (req, res) => {
   const { codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion } =
     req.body;
+    console.log("body recibido", req.body)
   db.run(
     `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
