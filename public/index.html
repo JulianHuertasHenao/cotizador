@@ -258,40 +258,47 @@
                     <label><input type="radio" value="material"> Material</label>
                     <label><input type="radio" value="adicional"> Adicional</label>
                   </div>
-                <select class="form-control servicio-select" style="flex: 1">
-                  <option value="">Seleccionar servicio...</option>
-                </select>
-                <input
-                  type="text"
-                  class="form-control service-description"
-                  placeholder="Descripción"
-                />
-                <input
-                  type="text"
-                  class="form-control service-subtitle"
-                  placeholder="Subtítulo"
-                />
-                <input
-                  type="number"
-                  class="form-control cantidad-servicio"
-                  placeholder="Cantidad"
-                  min="1"
-                />
-                <input
-                  type="number"
-                  class="form-control descuento-servicio"
-                  placeholder="Descuento %"
-                  min="0"
-                  max="100"
-                  step="1"
-                />
-                <input
-                  type="number"
-                  class="form-control precio-unitario-servicio"
-                  placeholder="Precio"
-                  min="0"
-                  step="0.01"
-                />
+                  <div class="service-fields"></div>
+                    <select class="form-control servicio-select" style="flex: 1">
+                      <option value="">Seleccionar servicio...</option>
+                    </select>
+                    <input
+                      type="text"
+                      class="form-control service-description"
+                      placeholder="Descripción"
+                    />
+                    <input
+                      type="text"
+                      class="form-control service-subtitle"
+                      placeholder="Subtítulo"
+                    />
+                    <input
+                      type="number"
+                      class="form-control cantidad-servicio"
+                      placeholder="Cantidad"
+                      min="1"
+                    />
+                    <input
+                      type="number"
+                      class="form-control descuento-servicio"
+                      placeholder="Descuento %"
+                      min="0"
+                      max="100"
+                      step="1"
+                    />
+                    <input
+                      type="number"
+                      class="form-control precio-unitario-servicio"
+                      placeholder="Precio"
+                      min="0"
+                      step="0.01"
+                    />
+                    <!-- 👇 Solo para MATERIAL -->
+                      <div class="extra-material" style="display:none;">
+                        <input type="text" class="form-control marca-input" placeholder="Marca" />
+                        <input type="text" class="form-control presentacion-input" placeholder="Presentación" />
+                      </div>
+                  
                 <div class="service-actions">
                   <span
                     class="precio-servicio"
@@ -304,6 +311,7 @@
                     ×
                   </button>
                 </div>
+              </div>
               </div>
             </template>
             <div class="totals-display">

@@ -1381,3 +1381,10 @@ input:checked + .toggle-slider:before {
 .hidden{
     display: none !important;
 }
+
+.tipo-item-radios {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}

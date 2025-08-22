@@ -32,25 +32,28 @@ function configurarBotonEliminar(servicioItem) {
     const wrap = servicioItemEl.querySelector(".tipo-item-radios");
     if (!wrap) return;
 
-    // name único por fila
+    // name único por fila (para que cada grupo sea independiente)
     const unique = `tipo_item_item_${++tipoItemSeq}`;
-    wrap.querySelectorAll('input[type="radio"]').forEach(r => {
-      r.name = unique;
-    });
+    wrap.querySelectorAll('input[type="radio"]').forEach(r => { r.name = unique; });
 
-    // estado inicial en dataset del item
+    // estado inicial y toggle visual
     servicioItemEl.dataset.tipo_item = "servicio";
+    toggleMaterialFieldsForItem(servicioItemEl); // set inicial
 
-    // al cambiar => guardar y refiltrar SOLO este item
+    // listeners: al cambiar tipo -> guardar, refiltrar select y togglear campos extra
     wrap.querySelectorAll('input[type="radio"]').forEach(r => {
       r.addEventListener("change", () => {
         if (!r.checked) return;
         servicioItemEl.dataset.tipo_item = r.value || "servicio";
+        toggleMaterialFieldsForItem(servicioItemEl);
+
+        // Refiltra el select de este item según categoría + tipo actual
         const categoryGroup = servicioItemEl.closest(".category-group, .phase-container");
         const categoriaSelect = categoryGroup?.querySelector(".categoria-unica-select, .categoria-fase-select");
         const categoriaId = categoriaSelect?.value || "";
-        if (!categoriaId) return;
-        rellenarSelectServiciosDeItem(servicioItemEl, categoriaId);
+        if (categoriaId) {
+          rellenarSelectServiciosDeItem(servicioItemEl, categoriaId);
+        }
       });
     });
   }
@@ -59,12 +62,28 @@ function configurarBotonEliminar(servicioItem) {
     return servicioItemEl?.dataset?.tipo_item || "servicio";
   }
 
-  /** Rellena el select de ESTE item usando (categoriaId + tipo_item del item) */
+  function toggleMaterialFieldsForItem(servicioItemEl) {
+    const esMaterial = getTipoFromItem(servicioItemEl) === "material";
+    const extra = servicioItemEl.querySelector(".extra-material");
+    const marca = servicioItemEl.querySelector(".marca-input");
+    const present = servicioItemEl.querySelector(".presentacion-input");
+
+    if (extra) extra.style.display = esMaterial ? "grid" : "none";
+
+    // Reglas de validación
+    [marca, present].forEach(el => {
+      if (!el) return;
+      el.required = esMaterial;
+      el.disabled = !esMaterial; // deshabilitado => ni se valida ni se envía
+      if (!esMaterial) el.value = "";
+    });
+  }
+
+  /** Re-llena el select de ESTE item usando (categoriaId + tipo_item del item) */
   function rellenarSelectServiciosDeItem(servicioItemEl, categoriaId) {
     const servicioSelect = servicioItemEl.querySelector(".servicio-select");
     if (!servicioSelect) return;
 
-    // conservar opción previa si sigue válida
     const previo = servicioSelect.value || "";
     servicioSelect.innerHTML = '<option value="">Seleccionar servicio...</option>';
 
@@ -82,16 +101,13 @@ function configurarBotonEliminar(servicioItem) {
       servicioSelect.appendChild(opt);
     });
 
-    // re-seleccionar si aún existe en la lista; si no, limpiar
     if (previo && lista.some(s => String(s.id) === String(previo))) {
       servicioSelect.value = previo;
     } else {
       servicioSelect.value = "";
     }
-
     servicioSelect.dispatchEvent(new Event("change"));
   }
-
 //
 
 function calcularTotalesFase(faseContainer) {
