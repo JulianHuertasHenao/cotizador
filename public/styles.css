@@ -1377,3 +1377,61 @@ input:checked + .toggle-slider:before {
   padding: .35rem .6rem;
   line-height: 1.1;
 }
+
+.hidden{
+    display: none !important;
+}
+
+
+
+.tipo-item-radios {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 1px dashed #ddd;
+  border-radius: 8px;
+}
+
+
+.service-item{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+.service-item{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.service-item .tipo-item-row{ flex:1 0 100%; display:flex; margin-bottom:6px; }
+.service-item .tipo-item-radios{
+  display:inline-flex; align-items:center; gap:10px; padding:6px 10px;
+  border:1px dotted #CFCFCF; border-radius:8px; background:#FAFAFA;
+}
+.tipo-item-radios .label{ font-weight:600; margin-right:4px; }
+.tipo-item-radios:hover, .tipo-item-radios:focus-within{ border-color:#247B97; background:#F7FCFE; }
+
+
+#tipo-item-group .group-label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 .75rem 0 0;         /* separa el título de las opciones */
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+#tipo-item-group .radio-row {
+  display: inline-flex;          /* en línea junto al título */
+  flex-wrap: wrap;               /* si no caben, bajan ordenadamente */
+  gap: .75rem 1rem;              /* fila / columna */
+  vertical-align: middle;
+}
+
+#tipo-item-group .radio-row label {
+  display: inline-flex;          /* sobrescribe el display:block global */
+  align-items: center;
+  margin: 0;                     /* quita márgenes del global */
+}
+
+#tipo-item-group .radio-row input[type="radio"] {
+  margin-right: .35rem;
+}

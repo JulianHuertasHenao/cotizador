@@ -15,6 +15,58 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(express.json());
 
+function clampCuotas(n) {
+  return Number.isFinite(n) ? Math.min(36, Math.max(2, n)) : null;
+}
+
+// Arma el bloque "pago" que entiende el PDF usando datos de cabecera + líneas
+function armarPagoDesdeBD(det, cab) {
+  // ¿Hay ortodoncia (invisible incluida) en la cotización?
+  const hayOrto = det.some((r) =>
+    String(r.nombre_categoria || r.subtitulo || "")
+      .toUpperCase()
+      .includes("ORTODONCIA")
+  );
+
+  const metodo = cab.pago_metodo || null;
+  const total = Number(cab.total_con_descuento ?? cab.total ?? 0);
+  const nCuotas = clampCuotas(Number(cab.pago_numero_cuotas ?? 0));
+
+  const base = {
+    metodo,
+    valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
+    fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
+  };
+
+  if (metodo !== "aplazado") return base;
+
+  if (hayOrto) {
+    const c1 = Math.round(total * 0.15);
+    const c2 = Math.round(total * 0.15);
+    const mensual =
+      nCuotas != null ? Math.floor((total * 0.7) / nCuotas) : null;
+
+    return {
+      ...base,
+      tipo: "cuotas_ortodoncia",
+      cuota_inicial_1: c1,
+      cuota_inicial_2: c2,
+      porcentaje_inicial_total: 30,
+      cuota_inicial: c1 + c2, // compat
+      numero_cuotas: nCuotas ?? cab.pago_numero_cuotas ?? null,
+      valor_cuota: mensual ?? cab.pago_valor_cuota ?? null,
+    };
+  }
+
+  // Esquema estándar: Periodoncia/Endodoncia/Cirugía/otros
+  return {
+    ...base,
+    cuota_inicial: cab.pago_cuota_inicial ?? null,
+    numero_cuotas: nCuotas ?? cab.pago_numero_cuotas ?? null,
+    valor_cuota: cab.pago_valor_cuota ?? null,
+  };
+}
+
 async function generarPdfBufferFlexible(payload) {
   // 1) Intenta usar un generarPDFBuffer si algún día lo agregas
   try {
@@ -184,6 +236,8 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
       fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
     },
   };
+
+  payload.pago = armarPagoDesdeBD(det, cab);
 
   return payload;
 }
@@ -415,14 +469,7 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
     };
     payload._totales = { subtotal, descuento_dinero, total_neto };
 
-    payload.pago = {
-      metodo: cab.pago_metodo || null,
-      cuota_inicial: cab.pago_cuota_inicial ?? null,
-      numero_cuotas: cab.pago_numero_cuotas ?? null,
-      valor_cuota: cab.pago_valor_cuota ?? null,
-      valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
-      fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
-    };
+    payload.pago = armarPagoDesdeBD(det, cab);
 
     // 9) Generar y stream
     const filePath = await generarPDF(payload);
@@ -585,16 +632,7 @@ WHERE c.id = ?
         }
       }
     }
-
-    // === NUEVO: bloque de método de pago desde BD ===
-    const pago = {
-      metodo: cab.pago_metodo || null, // "unico" | "aplazado"
-      cuota_inicial: cab.pago_cuota_inicial ?? null,
-      numero_cuotas: cab.pago_numero_cuotas ?? null,
-      valor_cuota: cab.pago_valor_cuota ?? null,
-      valor_pagado_a_la_fecha: cab.pago_valor_pagado ?? null,
-      fase_higienica_incluida: !!cab.pago_fase_higienica_incluida,
-    };
+    const pago = armarPagoDesdeBD(det, cab);
 
     const payload = {
       numero: String(cab.id).padStart(6, "0"),
@@ -1072,12 +1110,30 @@ app.delete("/api/fases/:id", async (req, res) => {
   }
 });
 app.post("/api/servicios", (req, res) => {
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
-    req.body;
+  const {
+    codigo,
+    descripcion,
+    subtitulo,
+    precio_neto,
+    categoria_id,
+    tipo_item,
+    marca,
+    presentacion,
+  } = req.body;
+  console.log("body recibido", req.body);
   db.run(
-    `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id) 
-         VALUES (?, ?, ?, ?, ?)`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id],
+    `INSERT INTO Servicios (codigo, descripcion, subtitulo, precio_neto, categoria_id, tipo_item, marca, presentacion) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      codigo,
+      descripcion,
+      subtitulo,
+      precio_neto,
+      categoria_id,
+      tipo_item,
+      marca,
+      presentacion,
+    ],
     function (err) {
       if (err) {
         console.error("Error al guardar servicio:", err.message);
@@ -1090,13 +1146,32 @@ app.post("/api/servicios", (req, res) => {
 
 app.put("/api/servicios/:id", (req, res) => {
   const { id } = req.params;
-  const { codigo, descripcion, subtitulo, precio_neto, categoria_id } =
-    req.body;
+  const {
+    codigo,
+    descripcion,
+    subtitulo,
+    precio_neto,
+    categoria_id,
+    tipo_item,
+    marca,
+    presentacion,
+  } = req.body;
   db.run(
     `UPDATE Servicios 
-         SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ? 
-         WHERE id = ?`,
-    [codigo, descripcion, subtitulo, precio_neto, categoria_id, id],
+        SET codigo = ?, descripcion = ?, subtitulo = ?, precio_neto = ?, categoria_id = ?,
+          tipo_item = ?, marca = ?, presentacion = ? 
+        WHERE id = ?`,
+    [
+      codigo,
+      descripcion,
+      subtitulo,
+      precio_neto,
+      categoria_id,
+      tipo_item,
+      marca,
+      presentacion,
+      id,
+    ],
     function (err) {
       if (err) {
         console.error("Error al actualizar servicio:", err.message);
@@ -1113,6 +1188,9 @@ app.put("/api/servicios/:id", (req, res) => {
         descripcion,
         precio_neto,
         categoria_id,
+        tipo_item,
+        marca,
+        presentacion,
       });
     }
   );
@@ -1151,7 +1229,10 @@ app.get("/api/servicios", (req, res) => {
             descripcion, 
             precio_neto,
             categoria_id,
-            subtitulo
+            subtitulo,
+            tipo_item,       
+            marca,           
+            presentacion
         FROM Servicios
     `;
 
@@ -1180,6 +1261,9 @@ app.get("/api/servicios", (req, res) => {
       precio_neto: servicio.precio_neto,
       categoria_id: servicio.categoria_id,
       subtitulo: servicio.subtitulo,
+      tipo_item: servicio.tipo_item || "servicio",
+      marca: servicio.marca || null,
+      presentacion: servicio.presentacion || null,
     }));
 
     res.json(serviciosFormateados);
