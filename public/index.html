@@ -252,32 +252,75 @@
             </div>
             <template id="service-template">
               <div class="service-item">
-                <select class="form-control servicio-select" style="flex: 1">
+                <!-- Línea superior: sólo el grupo de radios dentro de una “cápsula” -->
+                <div class="tipo-item-row hidden">
+                  <div class="tipo-item-radios">
+                    <label
+                      ><input
+                        type="radio"
+                        data-role="tipo"
+                        value="servicio"
+                        checked
+                      />
+                      Servicio</label
+                    >
+                    <label
+                      ><input type="radio" data-role="tipo" value="material" />
+                      Material</label
+                    >
+                    <label
+                      ><input type="radio" data-role="tipo" value="adicional" />
+                      Adicional</label
+                    >
+                  </div>
+                </div>
+
+                <!-- Resto de la fila de servicio (segunda línea) -->
+                <select
+                  class="form-control servicio-select"
+                  style="flex: 1; min-width: 220px"
+                >
                   <option value="">Seleccionar servicio...</option>
                 </select>
                 <input
                   type="text"
                   class="form-control service-description"
                   placeholder="Descripción"
+                  style="flex: 1; min-width: 180px"
                 />
                 <input
                   type="text"
-                  class="form-control service-subtitle"
+                  class="form-control field-subtitulo"
                   placeholder="Subtítulo"
+                  style="flex: 1; min-width: 160px"
+                />
+                <input
+                  type="text"
+                  class="form-control field-marca"
+                  placeholder="Marca"
+                  style="flex: 1; min-width: 140px; display: none"
+                />
+                <input
+                  type="text"
+                  class="form-control field-presentacion"
+                  placeholder="Presentación"
+                  style="flex: 1; min-width: 160px; display: none"
                 />
                 <input
                   type="number"
                   class="form-control cantidad-servicio"
-                  placeholder="Cantidad"
+                  placeholder="Cant."
                   min="1"
+                  style="width: 90px"
                 />
                 <input
                   type="number"
                   class="form-control descuento-servicio"
-                  placeholder="Descuento %"
+                  placeholder="Desc.%"
                   min="0"
                   max="100"
                   step="1"
+                  style="width: 100px"
                 />
                 <input
                   type="number"
@@ -285,12 +328,22 @@
                   placeholder="Precio"
                   min="0"
                   step="0.01"
+                  style="width: 140px"
                 />
-                <div class="service-actions">
+                <div
+                  class="service-actions"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-left: auto;
+                  "
+                >
                   <span
                     class="precio-servicio"
-                    style="min-width: 60px; text-align: center"
-                  ></span>
+                    style="min-width: 60px; text-align: right"
+                    >0</span
+                  >
                   <button
                     class="btn btn-sm btn-danger remove-servicio"
                     title="Eliminar este servicio"
@@ -300,6 +353,7 @@
                 </div>
               </div>
             </template>
+
             <div class="totals-display">
               <div class="payment-compact" id="payment-section">
                 <h4>Método de pago</h4>
@@ -356,7 +410,7 @@
 
                 <div id="pago-aplazado-fields" class="form-row hidden">
                   <div class="form-group col-md-3">
-                    <label>Cuota inicial:</label>
+                    <label>Total Cuota inicial:</label>
                     <input
                       type="text"
                       id="pago-cuota-inicial"
@@ -364,6 +418,28 @@
                       placeholder="$0"
                     />
                   </div>
+
+                  <!-- Pago aplazado ortodoncia (oculto por defecto) -->
+                  <div class="form-group col-md-3" id="col-ortodoncia">
+                    <div id="pago-aplazado-ortodoncia" class="hidden">
+                      <label>Cuota 1 (15%):</label>
+                      <input
+                        type="text"
+                        id="cuota-1"
+                        class="form-control"
+                        readonly
+                      />
+
+                      <label>Cuota 2 (15%):</label>
+                      <input
+                        type="text"
+                        id="cuota-2"
+                        class="form-control"
+                        readonly
+                      />
+                    </div>
+                  </div>
+
                   <div class="form-group col-md-3">
                     <label>Número de cuotas:</label>
                     <input
@@ -387,15 +463,7 @@
                   <div
                     class="form-group col-md-3"
                     style="display: flex; align-items: center"
-                  >
-                    <button
-                      type="button"
-                      id="btn-calcular-cuota"
-                      class="btn btn-sm btn-primary"
-                    >
-                      Calcular
-                    </button>
-                  </div>
+                  ></div>
                 </div>
 
                 <div class="form-row">
@@ -565,6 +633,29 @@
             <!-- Add Service Form -->
             <div class="form-card">
               <h2 class="form-title">Añadir Nuevo Servicio</h2>
+              <div class="form-group" id="tipo-item-group">
+                <label class="group-label">Tipo de ítem:</label>
+                <div class="radio-row">
+                  <label
+                    ><input
+                      type="radio"
+                      name="tipo_item"
+                      value="servicio"
+                      checked
+                    />
+                    Servicio</label
+                  >
+                  <label
+                    ><input type="radio" name="tipo_item" value="material" />
+                    Material</label
+                  >
+                  <label
+                    ><input type="radio" name="tipo_item" value="adicional" />
+                    Adicional</label
+                  >
+                </div>
+              </div>
+
               <form id="addServiceForm" class="form-grid two-cols">
                 <div class="form-group">
                   <label for="serviceCode">Código de Servicio</label>
@@ -605,6 +696,16 @@
                     class="input"
                   />
                 </div>
+                <div id="extra-material" style="display: none">
+                  <div class="form-group">
+                    <label for="serviceMarca">Marca</label>
+                    <input type="text" id="serviceMarca" class="input" />
+                  </div>
+                  <div class="form-group">
+                    <label for="servicePresentacion">Presentación</label>
+                    <input type="text" id="servicePresentacion" class="input" />
+                  </div>
+                </div>
                 <div class="form-group full-width">
                   <button type="submit" class="btn btn-primary">
                     <i class="fas fa-plus" style="margin-right: 0.5rem"></i>
@@ -629,9 +730,10 @@
               <table class="table" id="serviceTable">
                 <thead>
                   <tr>
-                    <th>ID</th>
                     <th>Código</th>
+                    <th>Tipo</th>
                     <th>Categoria</th>
+                    <th>Marca / Presentación</th>
                     <th>Subtítulo</th>
                     <th>Descripción</th>
                     <th>Precio neto</th>
@@ -724,13 +826,7 @@
 
         if (!rdUnico || !rdAplaz || !boxAplaz) return;
 
-        const toggleAplazado = () => {
-          boxAplaz.classList.toggle("hidden", !rdAplaz.checked);
-        };
-        rdUnico.addEventListener("change", toggleAplazado);
-        rdAplaz.addEventListener("change", toggleAplazado);
-        toggleAplazado();
-
+        // --- Utilidades ---
         const parseMoney = (s) => {
           const v = String(s || "")
             .replace(/\s/g, "")
@@ -741,29 +837,436 @@
           return isNaN(n) ? 0 : n;
         };
 
-        const btnCalc = document.getElementById("btn-calcular-cuota");
-        btnCalc?.addEventListener("click", () => {
+        // NUEVO: autocalcular “Valor por cuota”
+        const recalcularValorCuota = () => {
+          if (!rdAplaz.checked) {
+            inpValorCuota.value = "";
+            return;
+          }
           const totalTxt =
             document.getElementById("total-cotizacion")?.textContent || "0";
           const total = parseMoney(totalTxt);
-          const inicial = parseMoney(inpCuotaInicial.value);
+
+          let n = parseInt(inpNumCuotas.value, 10);
+          if (!n || n < 2) {
+            n = 2;
+            inpNumCuotas.value = 2; // forzar mínimo 2 en UI
+          }
+
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            // 70% en cuotas (lo mismo que usas en el botón)
+            const restante = Math.max(0, Math.floor(total * 0.7));
+            const mensual = Math.floor(restante / n);
+            inpValorCuota.value = mensual.toLocaleString("es-CO");
+          } else {
+            const inicial = parseMoney(inpCuotaInicial.value);
+            const restante = Math.max(0, total - inicial);
+            const cuota = Math.floor(restante / n);
+            inpValorCuota.value = cuota.toLocaleString("es-CO");
+          }
+        };
+
+        // NUEVO: validación antes de guardar
+        const validarPagoAplazado = () => {
+          if (!rdAplaz.checked) return true;
           const n = parseInt(inpNumCuotas.value, 10);
-          if (!n || n <= 0) return alert("Ingresa el número de cuotas.");
-          const restante = Math.max(0, total - inicial);
-          const cuota = Math.floor(restante / n);
-          inpValorCuota.value = cuota.toLocaleString("es-CO");
+          const vcuota = parseMoney(inpValorCuota.value);
+          if (!n || n < 2 || n > 36) {
+            alert("El número de cuotas debe estar entre 2 y 36.");
+            inpNumCuotas.focus();
+            return false;
+          }
+          if (!vcuota || vcuota <= 0) {
+            alert("El valor por cuota no puede estar vacío.");
+            inpValorCuota.focus();
+            return false;
+          }
+          return true;
+        };
+
+        // Enlaza la validación a tu guardarCotizacion si existe
+        (function wrapGuardar() {
+          if (
+            typeof window.guardarCotizacion === "function" &&
+            !window.guardarCotizacion.__wrapped
+          ) {
+            const orig = window.guardarCotizacion;
+            const wrapped = async function (...args) {
+              if (!validarPagoAplazado()) return;
+              return orig.apply(this, args);
+            };
+            wrapped.__wrapped = true;
+            window.guardarCotizacion = wrapped;
+          } else if (typeof window.guardarCotizacion !== "function") {
+            // reintenta más tarde por si ese script carga después
+            setTimeout(wrapGuardar, 300);
+          }
+        })();
+
+        // --- UI de método ---
+        const toggleAplazado = () => {
+          const on = rdAplaz.checked;
+          boxAplaz.classList.toggle("hidden", !on);
+
+          // NUEVO: atributos/valores por defecto y required
+          inpNumCuotas.min = 2;
+          inpNumCuotas.max = 36;
+          inpNumCuotas.step = 1;
+          if (!inpNumCuotas.value || parseInt(inpNumCuotas.value, 10) < 2) {
+            inpNumCuotas.value = 2;
+          }
+          inpNumCuotas.required = on;
+          inpValorCuota.required = on;
+
+          recalcularValorCuota();
+        };
+
+        rdUnico.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
         });
+        rdAplaz.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
+        });
+        toggleAplazado(); // estado inicial
+
+        // --- Cálculo especial ortodoncia (Cuota 1/2) ---
+        const calcularCuotasOrtodoncia = function () {
+          if (!(window.hayOrtodoncia && rdAplaz.checked)) return;
+          const totalTxt =
+            document.getElementById("total-cotizacion")?.textContent || "0";
+          const total = parseMoney(totalTxt);
+          const c1El = document.getElementById("cuota-1");
+          const c2El = document.getElementById("cuota-2");
+          if (!c1El || !c2El) return;
+
+          const cuota1 = Math.floor(total * 0.15);
+          const cuota2 = Math.floor(total * 0.15);
+          c1El.value = cuota1.toLocaleString("es-CO");
+          c2El.value = cuota2.toLocaleString("es-CO");
+        };
+
+        // Observar cambios del total → recalcular todo
+        const totalEl = document.getElementById("total-cotizacion");
+        if (totalEl) {
+          const obs = new MutationObserver(() => {
+            calcularCuotasOrtodoncia();
+            recalcularValorCuota(); // NUEVO
+          });
+          obs.observe(totalEl, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+        }
+
+        // Botón existente (sigue funcionando, pero ahora todo es automático)
+        const btnCalc = document.getElementById("btn-calcular-cuota");
+        btnCalc?.addEventListener("click", () => {
+          // Simplemente reutiliza el mismo cálculo automático
+          recalcularValorCuota();
+        });
+
+        // NUEVO: recalcular cuando el usuario escribe
+        inpCuotaInicial?.addEventListener("input", recalcularValorCuota);
+        inpNumCuotas?.addEventListener("input", recalcularValorCuota);
+        inpNumCuotas?.addEventListener("change", recalcularValorCuota);
+
+        // --- Mostrar/ocultar bloque ortodoncia (tu lógica original) ---
+        window.actualizarUIOrtodoncia = function () {
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            inpCuotaInicial.closest(".form-group").classList.add("hidden");
+            document
+              .getElementById("pago-aplazado-ortodoncia")
+              .classList.remove("hidden");
+            document
+              .getElementById("col-ortodoncia")
+              .classList.remove("hidden");
+            calcularCuotasOrtodoncia();
+          } else {
+            inpCuotaInicial.closest(".form-group").classList.remove("hidden");
+            document
+              .getElementById("pago-aplazado-ortodoncia")
+              .classList.add("hidden");
+            document.getElementById("col-ortodoncia").classList.add("hidden");
+          }
+          // Además recalcula el valor por cuota
+          recalcularValorCuota();
+        };
+
+        function limpiarCamposPago() {
+          // Si es aplazado, mantenemos “nº cuotas = 2” por defecto; limpiamos el resto
+          if (rdAplaz.checked) {
+            inpCuotaInicial.value = "";
+            inpValorCuota.value = "";
+            if (!inpNumCuotas.value || parseInt(inpNumCuotas.value, 10) < 2) {
+              inpNumCuotas.value = 2;
+            }
+          } else {
+            inpCuotaInicial.value = "";
+            inpNumCuotas.value = "";
+            inpValorCuota.value = "";
+          }
+          const cuota1 = document.getElementById("cuota-1");
+          const cuota2 = document.getElementById("cuota-2");
+          if (cuota1) cuota1.value = "";
+          if (cuota2) cuota2.value = "";
+
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            calcularCuotasOrtodoncia();
+          }
+          recalcularValorCuota(); // NUEVO
+        }
+
+        // Cuando cambian categorías, limpia y recalcula
+        document
+          .querySelectorAll(".categoria-fase-select, .categoria-unica-select")
+          .forEach((sel) => sel.addEventListener("change", limpiarCamposPago));
       }
 
-      // Llama una vez cuando el DOM esté listo
+      // Inicializa
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initPaymentUI);
       } else {
         initPaymentUI();
       }
-
       // expórtalo si reutilizas:
       window.initPaymentUI = initPaymentUI;
+    })();
+
+    function setSelectPlaceholder(item, mode) {
+      const sel = item.querySelector(".servicio-select");
+      if (!sel) return;
+
+      // Asegura que exista una opción vacía al inicio
+      let firstOpt = sel.querySelector('option[value=""]') || sel.options?.[0];
+      if (!firstOpt || firstOpt.value !== "") {
+        firstOpt = document.createElement("option");
+        firstOpt.value = "";
+        sel.insertBefore(firstOpt, sel.firstChild);
+      }
+
+      // Texto según el modo
+      const text =
+        mode === "material"
+          ? "Seleccionar material..."
+          : mode === "adicional"
+          ? "Seleccionar adicional..."
+          : "Seleccionar servicio...";
+
+      firstOpt.textContent = text;
+
+      // Si no hay valor elegido, que muestre el placeholder
+      if (!sel.value) sel.selectedIndex = 0;
+
+      // Si usas Select2 sobre este <select>, refresca visualmente
+      if (window.$ && window.jQuery && $(sel).data("select2")) {
+        $(sel).find('option[value=""]').text(text);
+        $(sel).trigger("change.select2");
+      }
+    }
+
+    (function () {
+      // detecta si hay una categoría de Ortodoncia (cubre Ortodoncia Invisible también)
+      function detectarEspecialidadPago() {
+        const sels = document.querySelectorAll(
+          ".categoria-fase-select, .categoria-unica-select"
+        );
+        let hayOrto = false;
+        sels.forEach((s) => {
+          const t = (
+            s.selectedOptions?.[0]?.text ||
+            s.value ||
+            ""
+          ).toUpperCase();
+          if (t.includes("ORTODONCIA")) hayOrto = true; // "ORTODONCIA INVISIBLE" también matchea
+        });
+        window.hayOrtodoncia = hayOrto; // <- usado por tu UI/payload
+        window.actualizarUIOrtodoncia?.(); // <- ya existe en tu initPaymentUI
+      }
+
+      // engancha cambios de categoría para refrescar la UI de pago
+      document.addEventListener("change", (e) => {
+        if (
+          e.target.matches(".categoria-fase-select") ||
+          e.target.matches(".categoria-unica-select")
+        ) {
+          detectarEspecialidadPago();
+        }
+      });
+
+      // primer cómputo al cargar
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", detectarEspecialidadPago);
+      } else {
+        detectarEspecialidadPago();
+      }
+    })();
+
+    (function () {
+      // Palabras clave permitidas (en mayúsculas). Ajusta si tu texto exacto difiere.
+      const ALLOW_KWS = ["PERIODONCIA", "ENDODONCIA", "CIRUG"];
+
+      function categoriaPermiteRadios(select) {
+        if (!select) return false;
+        const txt = (
+          select.selectedOptions?.[0]?.text ||
+          select.value ||
+          ""
+        ).toUpperCase();
+        return ALLOW_KWS.some((k) => txt.includes(k)); // “CIRUG” cubre CIRUGÍA / CIRUGIA
+      }
+
+      function getCategoriaSelectFor(item) {
+        const group = item.closest(".category-group");
+        return group?.querySelector(
+          ".categoria-fase-select, .categoria-unica-select"
+        );
+      }
+
+      function updateItemRadiosVisibility(item) {
+        const filaRadios = item.querySelector(".tipo-item-row");
+        if (!filaRadios) return;
+        const sel = getCategoriaSelectFor(item);
+        const show = categoriaPermiteRadios(sel);
+        filaRadios.classList.toggle("hidden", !show);
+      }
+
+      function wireCategorySelect(select) {
+        if (!select || select.dataset.radiosGuard === "1") return;
+        select.dataset.radiosGuard = "1";
+        select.addEventListener("change", () => {
+          const group = select.closest(".category-group");
+          group
+            ?.querySelectorAll(".service-item")
+            .forEach(updateItemRadiosVisibility);
+        });
+      }
+
+      function initRadiosGuard() {
+        // Para selects ya presentes
+        document
+          .querySelectorAll(".categoria-fase-select, .categoria-unica-select")
+          .forEach(wireCategorySelect);
+        // Para service-items ya presentes
+        document
+          .querySelectorAll(".service-item")
+          .forEach(updateItemRadiosVisibility);
+
+        // Observar nuevos service-items o selects que se agreguen dinámicamente
+        const obs = new MutationObserver((muts) => {
+          muts.forEach((m) => {
+            m.addedNodes.forEach((n) => {
+              if (n.nodeType !== 1) return;
+              if (n.matches?.(".service-item")) updateItemRadiosVisibility(n);
+              n.querySelectorAll?.(".service-item").forEach(
+                updateItemRadiosVisibility
+              );
+
+              if (
+                n.matches?.(".categoria-fase-select, .categoria-unica-select")
+              )
+                wireCategorySelect(n);
+              n.querySelectorAll?.(
+                ".categoria-fase-select, .categoria-unica-select"
+              ).forEach(wireCategorySelect);
+            });
+          });
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initRadiosGuard);
+      } else {
+        initRadiosGuard();
+      }
+
+      // Utilidad opcional por si quieres forzar refresco manualmente
+      window.updateTipoItemRadiosAll = function () {
+        document
+          .querySelectorAll(".service-item")
+          .forEach(updateItemRadiosVisibility);
+      };
+    })();
+
+    (function () {
+      let __svcItemSeq = 0;
+
+      function applyMode(item, mode) {
+        const subtitulo = item.querySelector(".field-subtitulo");
+        const marca = item.querySelector(".field-marca");
+        const presentacion = item.querySelector(".field-presentacion");
+
+        if (!subtitulo || !marca || !presentacion) return;
+
+        if (mode === "material") {
+          // Material: mostrar Marca/Presentación, ocultar Subtítulo
+          subtitulo.style.display = "none";
+          marca.style.display = "";
+          presentacion.style.display = "";
+        } else {
+          // Servicio y Adicional: mostrar Subtítulo, ocultar Marca/Presentación
+          subtitulo.style.display = "";
+          marca.style.display = "none";
+          presentacion.style.display = "none";
+        }
+
+        setSelectPlaceholder(item, mode);
+      }
+
+      function wireServiceItem(item) {
+        if (!item || item.dataset.wired === "1") return;
+        item.dataset.wired = "1";
+
+        // 1) Agrupar radios con name único por fila
+        const radios = item.querySelectorAll(
+          'input[type="radio"][data-role="tipo"]'
+        );
+        const groupName =
+          "tipo_item_" + ++__svcItemSeq + "_" + Date.now().toString(36);
+        radios.forEach((r) => {
+          r.name = groupName;
+        });
+
+        // 2) Estado inicial
+        const checked = item.querySelector(
+          'input[type="radio"][data-role="tipo"]:checked'
+        );
+        applyMode(item, checked ? checked.value : "servicio");
+
+        // 3) Cambios de modo
+        item.addEventListener("change", (e) => {
+          if (e.target.matches('input[type="radio"][data-role="tipo"]')) {
+            applyMode(item, e.target.value);
+          }
+        });
+      }
+
+      // Inicializa los existentes y observa nuevos (cuando se clona el template)
+      function initServiceItemsObserver() {
+        document.querySelectorAll(".service-item").forEach(wireServiceItem);
+
+        const obs = new MutationObserver((muts) => {
+          muts.forEach((m) => {
+            m.addedNodes.forEach((n) => {
+              if (n.nodeType === 1) {
+                if (n.matches && n.matches(".service-item")) wireServiceItem(n);
+                n.querySelectorAll?.(".service-item").forEach(wireServiceItem);
+              }
+            });
+          });
+        });
+
+        obs.observe(document.body, { childList: true, subtree: true });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initServiceItemsObserver);
+      } else {
+        initServiceItemsObserver();
+      }
     })();
   </script>
 </html>
