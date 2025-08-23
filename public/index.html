@@ -834,19 +834,7 @@
 
         if (!rdUnico || !rdAplaz || !boxAplaz) return;
 
-        const toggleAplazado = () => {
-          boxAplaz.classList.toggle("hidden", !rdAplaz.checked);
-        };
-        rdUnico.addEventListener("change", () => {
-          toggleAplazado();
-          window.actualizarUIOrtodoncia();
-        });
-        rdAplaz.addEventListener("change", () => {
-          toggleAplazado();
-          window.actualizarUIOrtodoncia();
-        });
-        toggleAplazado();
-
+        // --- Utilidades ---
         const parseMoney = (s) => {
           const v = String(s || "")
             .replace(/\s/g, "")
@@ -857,6 +845,101 @@
           return isNaN(n) ? 0 : n;
         };
 
+        // NUEVO: autocalcular “Valor por cuota”
+        const recalcularValorCuota = () => {
+          if (!rdAplaz.checked) {
+            inpValorCuota.value = "";
+            return;
+          }
+          const totalTxt =
+            document.getElementById("total-cotizacion")?.textContent || "0";
+          const total = parseMoney(totalTxt);
+
+          let n = parseInt(inpNumCuotas.value, 10);
+          if (!n || n < 2) {
+            n = 2;
+            inpNumCuotas.value = 2; // forzar mínimo 2 en UI
+          }
+
+          if (window.hayOrtodoncia && rdAplaz.checked) {
+            // 70% en cuotas (lo mismo que usas en el botón)
+            const restante = Math.max(0, Math.floor(total * 0.7));
+            const mensual = Math.floor(restante / n);
+            inpValorCuota.value = mensual.toLocaleString("es-CO");
+          } else {
+            const inicial = parseMoney(inpCuotaInicial.value);
+            const restante = Math.max(0, total - inicial);
+            const cuota = Math.floor(restante / n);
+            inpValorCuota.value = cuota.toLocaleString("es-CO");
+          }
+        };
+
+        // NUEVO: validación antes de guardar
+        const validarPagoAplazado = () => {
+          if (!rdAplaz.checked) return true;
+          const n = parseInt(inpNumCuotas.value, 10);
+          const vcuota = parseMoney(inpValorCuota.value);
+          if (!n || n < 2 || n > 36) {
+            alert("El número de cuotas debe estar entre 2 y 36.");
+            inpNumCuotas.focus();
+            return false;
+          }
+          if (!vcuota || vcuota <= 0) {
+            alert("El valor por cuota no puede estar vacío.");
+            inpValorCuota.focus();
+            return false;
+          }
+          return true;
+        };
+
+        // Enlaza la validación a tu guardarCotizacion si existe
+        (function wrapGuardar() {
+          if (
+            typeof window.guardarCotizacion === "function" &&
+            !window.guardarCotizacion.__wrapped
+          ) {
+            const orig = window.guardarCotizacion;
+            const wrapped = async function (...args) {
+              if (!validarPagoAplazado()) return;
+              return orig.apply(this, args);
+            };
+            wrapped.__wrapped = true;
+            window.guardarCotizacion = wrapped;
+          } else if (typeof window.guardarCotizacion !== "function") {
+            // reintenta más tarde por si ese script carga después
+            setTimeout(wrapGuardar, 300);
+          }
+        })();
+
+        // --- UI de método ---
+        const toggleAplazado = () => {
+          const on = rdAplaz.checked;
+          boxAplaz.classList.toggle("hidden", !on);
+
+          // NUEVO: atributos/valores por defecto y required
+          inpNumCuotas.min = 2;
+          inpNumCuotas.max = 36;
+          inpNumCuotas.step = 1;
+          if (!inpNumCuotas.value || parseInt(inpNumCuotas.value, 10) < 2) {
+            inpNumCuotas.value = 2;
+          }
+          inpNumCuotas.required = on;
+          inpValorCuota.required = on;
+
+          recalcularValorCuota();
+        };
+
+        rdUnico.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
+        });
+        rdAplaz.addEventListener("change", () => {
+          toggleAplazado();
+          window.actualizarUIOrtodoncia();
+        });
+        toggleAplazado(); // estado inicial
+
+        // --- Cálculo especial ortodoncia (Cuota 1/2) ---
         const calcularCuotasOrtodoncia = function () {
           if (!(window.hayOrtodoncia && rdAplaz.checked)) return;
           const totalTxt =
@@ -864,7 +947,6 @@
           const total = parseMoney(totalTxt);
           const c1El = document.getElementById("cuota-1");
           const c2El = document.getElementById("cuota-2");
-
           if (!c1El || !c2El) return;
 
           const cuota1 = Math.floor(total * 0.15);
@@ -873,10 +955,13 @@
           c2El.value = cuota2.toLocaleString("es-CO");
         };
 
-        //cuando cambia el total cotizacion
+        // Observar cambios del total → recalcular todo
         const totalEl = document.getElementById("total-cotizacion");
         if (totalEl) {
-          const obs = new MutationObserver(calcularCuotasOrtodoncia);
+          const obs = new MutationObserver(() => {
+            calcularCuotasOrtodoncia();
+            recalcularValorCuota(); // NUEVO
+          });
           obs.observe(totalEl, {
             childList: true,
             characterData: true,
@@ -884,46 +969,28 @@
           });
         }
 
+        // Botón existente (sigue funcionando, pero ahora todo es automático)
         const btnCalc = document.getElementById("btn-calcular-cuota");
         btnCalc?.addEventListener("click", () => {
-          const totalTxt =
-            document.getElementById("total-cotizacion")?.textContent || "0";
-          const total = parseMoney(totalTxt);
-          const inicial = parseMoney(inpCuotaInicial.value);
-          const n = parseInt(inpNumCuotas.value, 10);
-
-          // nuevo: rango 2..36
-          if (!n || n < 2 || n > 36) {
-            return alert("El número de cuotas debe estar entre 2 y 36.");
-          }
-
-          if (window.hayOrtodoncia && rdAplaz.checked) {
-            const restante = Math.max(0, Math.floor(total * 0.7)); // 70%
-            const mensual = Math.floor(restante / n);
-            inpValorCuota.value = mensual.toLocaleString("es-CO");
-            return;
-          }
-
-          const restante = Math.max(0, total - inicial);
-          const cuota = Math.floor(restante / n);
-          inpValorCuota.value = cuota.toLocaleString("es-CO");
+          // Simplemente reutiliza el mismo cálculo automático
+          recalcularValorCuota();
         });
 
-        //modificacion cuando es ortodoncia
+        // NUEVO: recalcular cuando el usuario escribe
+        inpCuotaInicial?.addEventListener("input", recalcularValorCuota);
+        inpNumCuotas?.addEventListener("input", recalcularValorCuota);
+        inpNumCuotas?.addEventListener("change", recalcularValorCuota);
+
+        // --- Mostrar/ocultar bloque ortodoncia (tu lógica original) ---
         window.actualizarUIOrtodoncia = function () {
           if (window.hayOrtodoncia && rdAplaz.checked) {
-            // ocultar input normal de cuota inicial
             inpCuotaInicial.closest(".form-group").classList.add("hidden");
-
-            // mostrar bloque ortodoncia
             document
               .getElementById("pago-aplazado-ortodoncia")
               .classList.remove("hidden");
             document
               .getElementById("col-ortodoncia")
               .classList.remove("hidden");
-
-            // al calcular
             calcularCuotasOrtodoncia();
           } else {
             inpCuotaInicial.closest(".form-group").classList.remove("hidden");
@@ -932,36 +999,46 @@
               .classList.add("hidden");
             document.getElementById("col-ortodoncia").classList.add("hidden");
           }
+          // Además recalcula el valor por cuota
+          recalcularValorCuota();
         };
 
         function limpiarCamposPago() {
-          inpCuotaInicial.value = "";
-          inpNumCuotas.value = "";
-          inpValorCuota.value = "";
+          // Si es aplazado, mantenemos “nº cuotas = 2” por defecto; limpiamos el resto
+          if (rdAplaz.checked) {
+            inpCuotaInicial.value = "";
+            inpValorCuota.value = "";
+            if (!inpNumCuotas.value || parseInt(inpNumCuotas.value, 10) < 2) {
+              inpNumCuotas.value = 2;
+            }
+          } else {
+            inpCuotaInicial.value = "";
+            inpNumCuotas.value = "";
+            inpValorCuota.value = "";
+          }
           const cuota1 = document.getElementById("cuota-1");
           const cuota2 = document.getElementById("cuota-2");
           if (cuota1) cuota1.value = "";
           if (cuota2) cuota2.value = "";
+
           if (window.hayOrtodoncia && rdAplaz.checked) {
             calcularCuotasOrtodoncia();
           }
+          recalcularValorCuota(); // NUEVO
         }
 
-        // Escuchar cambios en los selects de categoría
+        // Cuando cambian categorías, limpia y recalcula
         document
           .querySelectorAll(".categoria-fase-select, .categoria-unica-select")
-          .forEach((sel) => {
-            sel.addEventListener("change", limpiarCamposPago);
-          });
+          .forEach((sel) => sel.addEventListener("change", limpiarCamposPago));
       }
 
-      // Llama una vez cuando el DOM esté listo
+      // Inicializa
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initPaymentUI);
       } else {
         initPaymentUI();
       }
-
       // expórtalo si reutilizas:
       window.initPaymentUI = initPaymentUI;
     })();
