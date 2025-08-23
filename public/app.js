@@ -26,88 +26,124 @@ function configurarBotonEliminar(servicioItem) {
 }
 
 //
-  let tipoItemSeq = 0;
+let tipoItemSeq = 0;
 
-  function ensureTipoRadiosForItem(servicioItemEl) {
-    const wrap = servicioItemEl.querySelector(".tipo-item-radios");
-    if (!wrap) return;
+function ensureTipoRadiosForItem(servicioItemEl) {
+  const wrap = servicioItemEl.querySelector(".tipo-item-radios");
+  if (!wrap) return;
 
-    // name único por fila (para que cada grupo sea independiente)
-    const unique = `tipo_item_item_${++tipoItemSeq}`;
-    wrap.querySelectorAll('input[type="radio"]').forEach(r => { r.name = unique; });
+  // name único por fila (para que cada grupo sea independiente)
+  const unique = `tipo_item_item_${++tipoItemSeq}`;
+  wrap.querySelectorAll('input[type="radio"]').forEach((r) => {
+    r.name = unique;
+  });
 
-    // estado inicial y toggle visual
-    servicioItemEl.dataset.tipo_item = "servicio";
-    toggleMaterialFieldsForItem(servicioItemEl); // set inicial
+  // estado inicial y toggle visual
+  servicioItemEl.dataset.tipo_item = "servicio";
+  toggleMaterialFieldsForItem(servicioItemEl); // set inicial
 
-    // listeners: al cambiar tipo -> guardar, refiltrar select y togglear campos extra
-    wrap.querySelectorAll('input[type="radio"]').forEach(r => {
-      r.addEventListener("change", () => {
-        if (!r.checked) return;
-        servicioItemEl.dataset.tipo_item = r.value || "servicio";
-        toggleMaterialFieldsForItem(servicioItemEl);
+  // listeners: al cambiar tipo -> guardar, refiltrar select y togglear campos extra
+  wrap.querySelectorAll('input[type="radio"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      if (!r.checked) return;
+      servicioItemEl.dataset.tipo_item = r.value || "servicio";
+      toggleMaterialFieldsForItem(servicioItemEl);
 
-        // Refiltra el select de este item según categoría + tipo actual
-        const categoryGroup = servicioItemEl.closest(".category-group, .phase-container");
-        const categoriaSelect = categoryGroup?.querySelector(".categoria-unica-select, .categoria-fase-select");
-        const categoriaId = categoriaSelect?.value || "";
-        if (categoriaId) {
-          rellenarSelectServiciosDeItem(servicioItemEl, categoriaId);
-        }
-      });
+      // Refiltra el select de este item según categoría + tipo actual
+      const categoryGroup = servicioItemEl.closest(
+        ".category-group, .phase-container"
+      );
+      const categoriaSelect = categoryGroup?.querySelector(
+        ".categoria-unica-select, .categoria-fase-select"
+      );
+      const categoriaId = categoriaSelect?.value || "";
+      if (categoriaId) {
+        rellenarSelectServiciosDeItem(servicioItemEl, categoriaId);
+      }
     });
+  });
+}
+
+function getTipoFromItem(servicioItemEl) {
+  return servicioItemEl?.dataset?.tipo_item || "servicio";
+}
+
+function toggleMaterialFieldsForItem(servicioItemEl) {
+  const tipo = getTipoFromItem(servicioItemEl); // "servicio" | "material" | "adicional"
+  const esMaterial = tipo === "material";
+
+  const subtitulo = servicioItemEl.querySelector(".field-subtitulo");
+  const marca = servicioItemEl.querySelector(".field-marca");
+  const present = servicioItemEl.querySelector(".field-presentacion");
+
+  // Mostrar/ocultar según el tipo
+  if (subtitulo) subtitulo.style.display = esMaterial ? "none" : "";
+  if (marca) {
+    marca.style.display = esMaterial ? "" : "none";
+    marca.required = esMaterial;
+    marca.disabled = !esMaterial;
+    if (!esMaterial) marca.value = "";
+  }
+  if (present) {
+    present.style.display = esMaterial ? "" : "none";
+    present.required = esMaterial;
+    present.disabled = !esMaterial;
+    if (!esMaterial) present.value = "";
   }
 
-  function getTipoFromItem(servicioItemEl) {
-    return servicioItemEl?.dataset?.tipo_item || "servicio";
-  }
-
-  function toggleMaterialFieldsForItem(servicioItemEl) {
-    const esMaterial = getTipoFromItem(servicioItemEl) === "material";
-    const extra = servicioItemEl.querySelector(".extra-material");
-    const marca = servicioItemEl.querySelector(".marca-input");
-    const present = servicioItemEl.querySelector(".presentacion-input");
-
-    if (extra) extra.style.display = esMaterial ? "grid" : "none";
-
-    // Reglas de validación
-    [marca, present].forEach(el => {
-      if (!el) return;
-      el.required = esMaterial;
-      el.disabled = !esMaterial; // deshabilitado => ni se valida ni se envía
-      if (!esMaterial) el.value = "";
-    });
-  }
-
-  /** Re-llena el select de ESTE item usando (categoriaId + tipo_item del item) */
-  function rellenarSelectServiciosDeItem(servicioItemEl, categoriaId) {
-    const servicioSelect = servicioItemEl.querySelector(".servicio-select");
-    if (!servicioSelect) return;
-
-    const previo = servicioSelect.value || "";
-    servicioSelect.innerHTML = '<option value="">Seleccionar servicio...</option>';
-
-    const tipoItem = getTipoFromItem(servicioItemEl);
-    const lista = servicios.filter(s =>
-      String(s.categoria_id) === String(categoriaId) &&
-      String((s.tipo_item ?? s.tipo) || "servicio").toLowerCase() === tipoItem.toLowerCase()
-    );
-
-    lista.forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = `${s.codigo} - ${s.descripcion}`;
-      opt.dataset.precio = s.precio_neto;
-      servicioSelect.appendChild(opt);
-    });
-
-    if (previo && lista.some(s => String(s.id) === String(previo))) {
-      servicioSelect.value = previo;
-    } else {
-      servicioSelect.value = "";
+  // Actualiza el placeholder del select de este item
+  const sel = servicioItemEl.querySelector(".servicio-select");
+  if (sel) {
+    const firstOpt = sel.querySelector('option[value=""]') || sel.options?.[0];
+    if (firstOpt) {
+      firstOpt.textContent = esMaterial
+        ? "Seleccionar material..."
+        : tipo === "adicional"
+        ? "Seleccionar adicional..."
+        : "Seleccionar servicio...";
     }
-    servicioSelect.dispatchEvent(new Event("change"));
+    if (!sel.value) sel.selectedIndex = 0;
+
+    // Si usas Select2
+    if (window.$ && window.jQuery && $(sel).data("select2")) {
+      $(sel).find('option[value=""]').text(firstOpt.textContent);
+      $(sel).trigger("change.select2");
+    }
   }
+}
+
+/** Re-llena el select de ESTE item usando (categoriaId + tipo_item del item) */
+function rellenarSelectServiciosDeItem(servicioItemEl, categoriaId) {
+  const servicioSelect = servicioItemEl.querySelector(".servicio-select");
+  if (!servicioSelect) return;
+
+  const previo = servicioSelect.value || "";
+  servicioSelect.innerHTML =
+    '<option value="">Seleccionar servicio...</option>';
+
+  const tipoItem = getTipoFromItem(servicioItemEl);
+  const lista = servicios.filter(
+    (s) =>
+      String(s.categoria_id) === String(categoriaId) &&
+      String((s.tipo_item ?? s.tipo) || "servicio").toLowerCase() ===
+        tipoItem.toLowerCase()
+  );
+
+  lista.forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = `${s.codigo} - ${s.descripcion}`;
+    opt.dataset.precio = s.precio_neto;
+    servicioSelect.appendChild(opt);
+  });
+
+  if (previo && lista.some((s) => String(s.id) === String(previo))) {
+    servicioSelect.value = previo;
+  } else {
+    servicioSelect.value = "";
+  }
+  servicioSelect.dispatchEvent(new Event("change"));
+}
 //
 
 function calcularTotalesFase(faseContainer) {
@@ -219,14 +255,13 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
   }
   const clone = template.content.cloneNode(true);
   const servicioItem = clone.querySelector(".service-item");
-  
+
   //  Radios por ítem
   ensureTipoRadiosForItem(servicioItem);
 
   //  Rellenar options del select SEGÚN tipo (de esta fila) + categoria
   rellenarSelectServiciosDeItem(servicioItem, categoriaId);
 
-  
   configurarBotonEliminar(servicioItem);
 
   // Llenar servicios SOLO de la categoría seleccionada
@@ -258,23 +293,25 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
       const precioInput = servicioItem.querySelector(
         ".precio-unitario-servicio"
       );
-      const marcaInput  = servicioItem.querySelector(".marca-input");
-      const presInput   = servicioItem.querySelector(".presentacion-input");
-      const subtitleInput = servicioItem.querySelector(".service-subtitle");
-      
+      const subtitleInput = servicioItem.querySelector(".field-subtitulo");
+      const marcaInput = servicioItem.querySelector(".field-marca");
+      const presInput = servicioItem.querySelector(".field-presentacion");
+
       if (servicio) {
         if (descInput) descInput.value = servicio.descripcion;
         if (precioInput) precioInput.value = servicio.precio_neto;
         if (subtitleInput) subtitleInput.value = servicio.subtitulo;
-        // si este item es MATERIAL, rellenar marca/presentación
-          const esMaterialFila = (servicioItem.dataset.tipo_item || "servicio") === "material";
-          if (esMaterialFila) {
-            if (marcaInput) marcaInput.value = servicio.marca ?? "";
-            if (presInput)  presInput.value  = servicio.presentacion ?? "";
-          } else {
-            if (marcaInput) marcaInput.value = "";
-            if (presInput)  presInput.value  = "";
-          }
+
+        const esMaterialFila =
+          (servicioItem.dataset.tipo_item || "servicio") === "material";
+        if (esMaterialFila) {
+          if (marcaInput) marcaInput.value = servicio.marca ?? "";
+          if (presInput) presInput.value = servicio.presentacion ?? "";
+        } else {
+          if (marcaInput) marcaInput.value = "";
+          if (presInput) presInput.value = "";
+        }
+
         // ✅ descuento inicial en 0
         const descuentoInput = servicioItem.querySelector(
           ".descuento-servicio"
@@ -410,7 +447,7 @@ function actualizarPrecioServicio(servicioItem) {
   const descuentoInput = servicioItem.querySelector(".descuento-servicio");
   const precioTotalSpan = servicioItem.querySelector(".precio-servicio");
   const descInput = servicioItem.querySelector(".service-description");
-  const subtitleInput = servicioItem.querySelector(".service-subtitle");
+  const subtitleInput = servicioItem.querySelector(".field-subtitulo");
 
   // ✅ Si el usuario vuelve a "Seleccionar servicio..."
   if (!servicioSelect || !servicioSelect.value) {
@@ -465,15 +502,26 @@ async function actualizarServicio(id) {
   }
 
   const codeInput = document.getElementById(`edit-service-code-${id}`);
-  const descriptionInput = document.getElementById(`edit-service-description-${id}`);
-  const subtitleInput    = document.getElementById(`edit-service-subtitle-${id}`);
-  const priceInput       = document.getElementById(`edit-service-price-${id}`);
-  const categoryInput    = document.getElementById(`edit-service-category-${id}`);
-  const tipoInput        = document.getElementById(`edit-service-tipo-${id}`);
-  const marcaInput       = document.getElementById(`edit-service-marca-${id}`);
-  const presentInput     = document.getElementById(`edit-service-presentacion-${id}`);
+  const descriptionInput = document.getElementById(
+    `edit-service-description-${id}`
+  );
+  const subtitleInput = document.getElementById(`edit-service-subtitle-${id}`);
+  const priceInput = document.getElementById(`edit-service-price-${id}`);
+  const categoryInput = document.getElementById(`edit-service-category-${id}`);
+  const tipoInput = document.getElementById(`edit-service-tipo-${id}`);
+  const marcaInput = document.getElementById(`edit-service-marca-${id}`);
+  const presentInput = document.getElementById(
+    `edit-service-presentacion-${id}`
+  );
 
-  if (!codeInput || !descriptionInput || !subtitleInput || !priceInput || !categoryInput || !tipoInput) {
+  if (
+    !codeInput ||
+    !descriptionInput ||
+    !subtitleInput ||
+    !priceInput ||
+    !categoryInput ||
+    !tipoInput
+  ) {
     alert("Faltan campos para actualizar el servicio");
     return;
   }
@@ -483,14 +531,18 @@ async function actualizarServicio(id) {
   const subtitulo = subtitleInput.value.trim();
   const precio_neto = Number(priceInput.value);
   const categoria_id = Number(categoryInput.value);
-  const tipo_item    = (tipoInput.value || "servicio").trim();
+  const tipo_item = (tipoInput.value || "servicio").trim();
 
-  const esMaterial   = tipo_item === "material";
-  const marca        = esMaterial ? (marcaInput?.value || "").trim() : null;
+  const esMaterial = tipo_item === "material";
+  const marca = esMaterial ? (marcaInput?.value || "").trim() : null;
   const presentacion = esMaterial ? (presentInput?.value || "").trim() : null;
 
   if (
-    !codigo || !descripcion || !subtitulo || Number.isNaN(precio_neto) || Number.isNaN(categoria_id)
+    !codigo ||
+    !descripcion ||
+    !subtitulo ||
+    Number.isNaN(precio_neto) ||
+    Number.isNaN(categoria_id)
   ) {
     alert("Todos los campos son obligatorios y deben ser válidos");
     return;
@@ -506,7 +558,9 @@ async function actualizarServicio(id) {
         subtitulo,
         precio_neto,
         categoria_id,
-        tipo_item, marca, presentacion
+        tipo_item,
+        marca,
+        presentacion,
       }),
     });
     if (!response.ok) throw new Error("Error en la respuesta del servidor");
@@ -529,7 +583,9 @@ async function actualizarServicio(id) {
         subtitulo,
         precio_neto: Number(precio_neto) || 0,
         categoria_id: Number(categoria_id),
-        tipo_item, marca, presentacion
+        tipo_item,
+        marca,
+        presentacion,
       };
     }
 
@@ -550,7 +606,7 @@ async function actualizarServicio(id) {
           const descInput = item.querySelector(".service-description");
           if (descInput) descInput.value = descripcion;
 
-          const subInput = item.querySelector(".service-subtitle");
+          const subInput = item.querySelector(".field-subtitulo");
           if (subInput) subInput.value = subtitulo;
 
           const priceInp = item.querySelector(".precio-unitario-servicio");
@@ -629,18 +685,18 @@ function filterServiceTable() {
   for (let i = 1; i < serviceRows.length; i++) {
     const cells = serviceRows[i].getElementsByTagName("td");
     const codeCell = cells[1]; // Código
-    const categoryCell = cells[2];    // Categoría
-    const subtitleCell = cells[3];    // Categoría
+    const categoryCell = cells[2]; // Categoría
+    const subtitleCell = cells[3]; // Categoría
     const descriptionCell = cells[4]; // Descripción
 
-    if (codeCell && descriptionCell && categoryCell && subtitleCell ) {
+    if (codeCell && descriptionCell && categoryCell && subtitleCell) {
       const codeText = codeCell.textContent || codeCell.innerText;
       const descText = descriptionCell.textContent || descriptionCell.innerText;
       const categoryText = categoryCell.textContent || categoryCell.innerText;
       const subtititleText = subtitleCell.textContet || subtitleCell.innerText;
       if (
         codeText.toLowerCase().includes(filter) ||
-        descText.toLowerCase().includes(filter)  ||
+        descText.toLowerCase().includes(filter) ||
         categoryText.toLowerCase().includes(filter) ||
         subtititleText.toLowerCase().includes(filter)
       ) {
@@ -1017,23 +1073,33 @@ document.addEventListener("DOMContentLoaded", function () {
           // opciones de tipo
           const tipoActual = service.tipo_item || "servicio";
           const tipoOptions = `
-            <option value="servicio" ${tipoActual === "servicio" ? "selected" : ""}>servicio</option>
-            <option value="material" ${tipoActual === "material" ? "selected" : ""}>material</option>
-            <option value="adicional" ${tipoActual === "adicional" ? "selected" : ""}>adicional</option>
+            <option value="servicio" ${
+              tipoActual === "servicio" ? "selected" : ""
+            }>servicio</option>
+            <option value="material" ${
+              tipoActual === "material" ? "selected" : ""
+            }>material</option>
+            <option value="adicional" ${
+              tipoActual === "adicional" ? "selected" : ""
+            }>adicional</option>
           `;
 
           row.innerHTML = `
               <td class="py-2 px-4">
                 ${
                   isEditing
-                    ? `<input type="text" class="input" id="edit-service-code-${service.id}" value="${escapeHtml(service.codigo || "")}">`
-                    : `<span class="font-medium text-dark">${escapeHtml(service.codigo || "")}</span>`
+                    ? `<input type="text" class="input" id="edit-service-code-${
+                        service.id
+                      }" value="${escapeHtml(service.codigo || "")}">`
+                    : `<span class="font-medium text-dark">${escapeHtml(
+                        service.codigo || ""
+                      )}</span>`
                 }
               </td>
               <td class="py-2 px-4">
                 ${
                   isEditing
-                    ?  `<select class="input" id="edit-service-tipo-${service.id}">${tipoOptions}</select>`
+                    ? `<select class="input" id="edit-service-tipo-${service.id}">${tipoOptions}</select>`
                     : `<span class="text-dark">${escapeHtml(tipoActual)}</span>`
                 }
               </td>
@@ -1051,15 +1117,31 @@ document.addEventListener("DOMContentLoaded", function () {
                   ${
                     isEditing
                       ? `
-                        <div id="edit-extra-material-${service.id}" style="display:${tipoActual === "material" ? "block" : "none"}">
-                          <input type="text" class="input mb-1" id="edit-service-marca-${service.id}" placeholder="Marca" value="${service.marca || ""}">
-                          <input type="text" class="input" id="edit-service-presentacion-${service.id}" placeholder="Presentación" value="${service.presentacion || ""}">
+                        <div id="edit-extra-material-${
+                          service.id
+                        }" style="display:${
+                          tipoActual === "material" ? "block" : "none"
+                        }">
+                          <input type="text" class="input mb-1" id="edit-service-marca-${
+                            service.id
+                          }" placeholder="Marca" value="${service.marca || ""}">
+                          <input type="text" class="input" id="edit-service-presentacion-${
+                            service.id
+                          }" placeholder="Presentación" value="${
+                          service.presentacion || ""
+                        }">
                         </div>
-                        <div id="edit-extra-material-placeholder-${service.id}" style="display:${tipoActual === "material" ? "none" : "block"};opacity:.7">
+                        <div id="edit-extra-material-placeholder-${
+                          service.id
+                        }" style="display:${
+                          tipoActual === "material" ? "none" : "block"
+                        };opacity:.7">
                           <small>Solo aplica para tipo "material".</small>
                         </div>
                       `
-                      : `<span class="text-dark">${service.marca || "-"} / ${service.presentacion || "-"}</span>
+                      : `<span class="text-dark">${service.marca || "-"} / ${
+                          service.presentacion || "-"
+                        }</span>
                       `
                   }
                 </td>
@@ -1125,26 +1207,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
           serviceTableBody.appendChild(row);
 
-        ////// para validar que material solo tenga marca y presentacion en edicion
+          ////// para validar que material solo tenga marca y presentacion en edicion
           if (isEditing) {
-            const selTipo = document.getElementById(`edit-service-tipo-${service.id}`);
-            const box = document.getElementById(`edit-extra-material-${service.id}`);
-            const ph  = document.getElementById(`edit-extra-material-placeholder-${service.id}`);
+            const selTipo = document.getElementById(
+              `edit-service-tipo-${service.id}`
+            );
+            const box = document.getElementById(
+              `edit-extra-material-${service.id}`
+            );
+            const ph = document.getElementById(
+              `edit-extra-material-placeholder-${service.id}`
+            );
             selTipo?.addEventListener("change", () => {
               const esMat = selTipo.value === "material";
               if (box) box.style.display = esMat ? "block" : "none";
-              if (ph)  ph.style.display  = esMat ? "none"  : "block";
+              if (ph) ph.style.display = esMat ? "none" : "block";
               // opcional: limpiar marca/presentación si dejó de ser material
               if (!esMat) {
-                const m = document.getElementById(`edit-service-marca-${service.id}`);
-                const p = document.getElementById(`edit-service-presentacion-${service.id}`);
+                const m = document.getElementById(
+                  `edit-service-marca-${service.id}`
+                );
+                const p = document.getElementById(
+                  `edit-service-presentacion-${service.id}`
+                );
                 if (m) m.value = "";
                 if (p) p.value = "";
               }
             });
           }
-        /////
-
+          /////
         });
 
         // Add event listeners
@@ -1463,17 +1554,15 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function inicializarPrimeraCategoria() {
-    // Inicializa la fila estática de categoría y sus eventos
     const categoriaSelect = document.getElementById("categoriaUnicaSelect");
     const serviciosContainer = document.querySelector(
-      "#no-phase-categories .servicios-categorias-container"
+      "#no-phase-categories .service-list"
     );
 
     if (categoriaSelect) {
       categoriaSelect.innerHTML =
         '<option value="">Seleccionar categoría...</option>';
 
-      // Llenar opciones de categorías con el formato mejorado
       categorias.forEach((cat) => {
         const option = document.createElement("option");
         option.value = cat.id;
@@ -1486,7 +1575,7 @@ document.addEventListener("DOMContentLoaded", function () {
         categoriaSelect.appendChild(option);
       });
 
-      // Handler para cambio de categoría
+      // Cambio de categoría
       categoriaSelect.addEventListener("change", function () {
         if (serviciosContainer) serviciosContainer.innerHTML = "";
         if (this.value && serviciosContainer) {
@@ -1494,24 +1583,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      // Handler para botón "Añadir Servicio" de la fila estática
       const addServiceBtn = document.querySelector(
         "#no-phase-categories .add-service-btn"
       );
-
-      if (addServiceBtn) {
-        addServiceBtn.addEventListener("click", function (e) {
-          //e.preventDefault();
-          if (categoriaSelect.value && serviciosContainer) {
-            agregarServicioEnCategoriasDinamico(
-              serviciosContainer,
-              categoriaSelect.value
-            );
-          }
+      if (addServiceBtn && !addServiceBtn.dataset.bound) {
+        addServiceBtn.dataset.bound = "1"; // evita doble binding
+        addServiceBtn.addEventListener("click", () => {
+          // usa el flujo unificado
+          addNewService(serviciosContainer);
         });
       }
 
-      // Selecciona automáticamente la primera categoría si existe
       if (categorias.length > 0) {
         categoriaSelect.value = categorias[0].id;
         categoriaSelect.dispatchEvent(new Event("change"));
@@ -1621,20 +1703,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const addCat = document.getElementById("add-category-btn");
     if (addCat) {
       addCat.addEventListener("click", addNewCategory);
-    }
-
-    // — 5) Inicializar la “primera categoría” en modo no-fase
-    const firstCat = document.querySelector(
-      "#no-phase-categories .category-group"
-    );
-    if (firstCat) {
-      setupCategoryEvents(firstCat);
-    }
-    const firstSvc = document.querySelector(
-      "#no-phase-categories .service-list"
-    );
-    if (firstSvc) {
-      addNewService(firstSvc);
     }
 
     // — 6) Botón “Reset”
@@ -1850,10 +1918,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Botón añadir servicio
     const addServiceBtn = category.querySelector(".add-service-btn");
-    if (addServiceBtn) {
+    if (addServiceBtn && !addServiceBtn.dataset.bound) {
+      addServiceBtn.dataset.bound = "1"; // ✅ evita doble listener
       addServiceBtn.addEventListener("click", function () {
         const serviceList = category.querySelector(".service-list");
-        addNewService(serviceList);
+        addNewService(serviceList); // ahora siempre usa el flujo unificado
       });
     }
 
@@ -1886,17 +1955,17 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         //si hay ortodoncia/ortodoncia invisible seleccionado como categoria
-        const selectedText = this.options[this.selectedIndex]?.textContent.toLowerCase() || "";
+        const selectedText =
+          this.options[this.selectedIndex]?.textContent.toLowerCase() || "";
         if (selectedText.includes("ortodoncia")) {
-          window.hayOrtodoncia = true
+          window.hayOrtodoncia = true;
         } else {
-          window.hayOrtodoncia = false
+          window.hayOrtodoncia = false;
         }
 
         if (typeof actualizarUIOrtodoncia === "function") {
           actualizarUIOrtodoncia();
         }
-
       });
 
       // Autoselección
@@ -1909,116 +1978,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Add a new service to a service list
   function addNewService(serviceList) {
-    const template = document.getElementById("service-template");
-    const newService = template.content.cloneNode(true);
-    const servicioItem = newService.querySelector(".service-item");
-
-    configurarBotonEliminar(servicioItem);
-    // Set up botón de eliminar servicio
-    /*
-     */
-    // Obtener categoría seleccionada
     const categorySelect = serviceList
       .closest(".category-group")
       ?.querySelector(".categoria-fase-select, .categoria-unica-select");
-    const servicioSelect = servicioItem.querySelector(".servicio-select");
-
-    // Llenar opciones de servicio
-    if (categorySelect && servicioSelect) {
-      servicioSelect.innerHTML =
-        '<option value="">Seleccionar servicio...</option>';
-      const serviciosCategoria = servicios.filter(
-        (s) => String(s.categoria_id) === String(categorySelect.value)
-      );
-
-      serviciosCategoria.forEach((servicio) => {
-        const option = document.createElement("option");
-        option.value = servicio.id;
-        option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-        option.setAttribute("data-precio", servicio.precio_neto);
-        servicioSelect.appendChild(option);
-      });
-
-      // Evento: al seleccionar un servicio, llenar descripción y precio
-      servicioSelect.addEventListener("change", () => {
-        const selectedId = servicioSelect.value;
-        const servicio = servicios.find(
-          (s) => String(s.id) === String(selectedId)
-        );
-
-        const descInput = servicioItem.querySelector(".service-description");
-        const precioInput = servicioItem.querySelector(
-          ".precio-unitario-servicio"
-        );
-        const subtitleInput = servicioItem.querySelector(".service-subtitle");
-
-        if (servicio) {
-          if (descInput) descInput.value = servicio.descripcion;
-          if (precioInput) precioInput.value = servicio.precio_neto;
-          if (subtitleInput) subtitleInput.value = servicio.subtitulo || "";
-        } else {
-          // ✅ si selecciona "Seleccionar servicio..." limpiamos todo
-          actualizarPrecioServicio(servicioItem);
-          return;
-        }
-
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-
-      // Evento: si cambia la categoría, actualizar el select de servicios
-      if (!categorySelect._listenerServicios) {
-        categorySelect.addEventListener("change", function () {
-          servicioSelect.innerHTML =
-            '<option value="">Seleccionar servicio...</option>';
-          const serviciosCategoria = servicios.filter(
-            (s) => String(s.categoria_id) === String(this.value)
-          );
-          serviciosCategoria.forEach((servicio) => {
-            const option = document.createElement("option");
-            option.value = servicio.id;
-            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-            option.setAttribute("data-precio", servicio.precio_neto);
-            servicioSelect.appendChild(option);
-          });
-        });
-        categorySelect._listenerServicios = true;
-      }
-    }
-
-    // Eventos de cantidad y descuento
-    const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
-    const descuentoInput = servicioItem.querySelector(".descuento-servicio");
-    if (cantidadInput) {
-      cantidadInput.addEventListener("input", () => {
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-    }
-    if (descuentoInput) {
-      descuentoInput.addEventListener("input", () => {
-        actualizarPrecioServicio(servicioItem);
-        actualizarTotalCategorias();
-      });
-    }
-
-    // Botón para duplicar servicio
-    const agregarBtn = servicioItem.querySelector(".agregar-servicio");
-    if (agregarBtn) {
-      agregarBtn.addEventListener("click", () => {
-        addNewService(serviceList);
-      });
-    }
-
-    // Insertar servicio y aplicar valores por defecto
-    serviceList.appendChild(servicioItem);
-    setTimeout(() => {
-      if (cantidadInput) cantidadInput.value = "";
-      if (descuentoInput) descuentoInput.value = "";
-
-      actualizarPrecioServicio(servicioItem);
-      actualizarTotalCategorias();
-    }, 10);
+    const categoriaId = categorySelect?.value || "";
+    if (!categoriaId) return;
+    agregarServicioEnCategoriasDinamico(serviceList, categoriaId);
   }
 
   // Update subcategory options when category changes
@@ -2390,10 +2355,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /////
   //mostrar input marca y presentacion cuando se selecciona material
-  document.querySelectorAll('input[name="tipo_item"]').forEach(radio => {
+  document.querySelectorAll('input[name="tipo_item"]').forEach((radio) => {
     radio.addEventListener("change", () => {
-      const esMaterial = document.querySelector('input[name="tipo_item"]:checked').value === "material";
-      document.getElementById("extra-material").style.display = esMaterial ? "block" : "none";
+      const esMaterial =
+        document.querySelector('input[name="tipo_item"]:checked').value ===
+        "material";
+      document.getElementById("extra-material").style.display = esMaterial
+        ? "block"
+        : "none";
     });
   });
 
@@ -2408,10 +2377,16 @@ document.addEventListener("DOMContentLoaded", function () {
     presentacion
   ) {
     try {
-      const tipoItem = document.querySelector('input[name="tipo_item"]:checked')?.value || "servicio";
+      const tipoItem =
+        document.querySelector('input[name="tipo_item"]:checked')?.value ||
+        "servicio";
       const isMaterial = tipoItem === "material";
-      const marcaVal = isMaterial ? (document.getElementById("serviceMarca")?.value || "").trim() : null;
-      const presentacionVal = isMaterial ? (document.getElementById("servicePresentacion")?.value || "").trim() : null;
+      const marcaVal = isMaterial
+        ? (document.getElementById("serviceMarca")?.value || "").trim()
+        : null;
+      const presentacionVal = isMaterial
+        ? (document.getElementById("servicePresentacion")?.value || "").trim()
+        : null;
 
       const paylodad = {
         categoria_id: parseInt(categoriaId),
@@ -2422,7 +2397,7 @@ document.addEventListener("DOMContentLoaded", function () {
         tipo_item: tipoItem,
         marca: marcaVal,
         presentacion: presentacionVal,
-      }
+      };
       console.log("payload que envio", paylodad);
 
       const response = await fetch("/api/servicios", {
@@ -2703,7 +2678,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "FaseCategorias (sin fases) registrado con fase_id=cotizacionId."
     );
   }
-    
 
   // ========================== GUARDAR COTIZACIÓN ==========================
   // ========================== GUARDAR COTIZACIÓN (actualizado) ==========================
@@ -2880,8 +2854,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-
-
       // ====== 2) TOTALES ======
       const parseMoney = (txt) =>
         parseFloat(
@@ -2912,7 +2884,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pago = payloadUI?.pago || null;
       } catch (_) {}
 
-  ///
+      ///
       const cotizacionSimplificada = {
         paciente_id: Number(pacienteId),
         total: subtotal,

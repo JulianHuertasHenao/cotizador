@@ -410,7 +410,7 @@
 
                 <div id="pago-aplazado-fields" class="form-row hidden">
                   <div class="form-group col-md-3">
-                    <label>Cuota inicial:</label>
+                    <label>Total Cuota inicial:</label>
                     <input
                       type="text"
                       id="pago-cuota-inicial"
@@ -891,13 +891,19 @@
           const total = parseMoney(totalTxt);
           const inicial = parseMoney(inpCuotaInicial.value);
           const n = parseInt(inpNumCuotas.value, 10);
-          if (!n || n <= 0) return alert("Ingresa el número de cuotas.");
+
+          // nuevo: rango 2..36
+          if (!n || n < 2 || n > 36) {
+            return alert("El número de cuotas debe estar entre 2 y 36.");
+          }
+
           if (window.hayOrtodoncia && rdAplaz.checked) {
-            const restante = Math.max(0, Math.floor(total * 0.7));
+            const restante = Math.max(0, Math.floor(total * 0.7)); // 70%
             const mensual = Math.floor(restante / n);
             inpValorCuota.value = mensual.toLocaleString("es-CO");
             return;
           }
+
           const restante = Math.max(0, total - inicial);
           const cuota = Math.floor(restante / n);
           inpValorCuota.value = cuota.toLocaleString("es-CO");
@@ -958,6 +964,75 @@
 
       // expórtalo si reutilizas:
       window.initPaymentUI = initPaymentUI;
+    })();
+
+    function setSelectPlaceholder(item, mode) {
+      const sel = item.querySelector(".servicio-select");
+      if (!sel) return;
+
+      // Asegura que exista una opción vacía al inicio
+      let firstOpt = sel.querySelector('option[value=""]') || sel.options?.[0];
+      if (!firstOpt || firstOpt.value !== "") {
+        firstOpt = document.createElement("option");
+        firstOpt.value = "";
+        sel.insertBefore(firstOpt, sel.firstChild);
+      }
+
+      // Texto según el modo
+      const text =
+        mode === "material"
+          ? "Seleccionar material..."
+          : mode === "adicional"
+          ? "Seleccionar adicional..."
+          : "Seleccionar servicio...";
+
+      firstOpt.textContent = text;
+
+      // Si no hay valor elegido, que muestre el placeholder
+      if (!sel.value) sel.selectedIndex = 0;
+
+      // Si usas Select2 sobre este <select>, refresca visualmente
+      if (window.$ && window.jQuery && $(sel).data("select2")) {
+        $(sel).find('option[value=""]').text(text);
+        $(sel).trigger("change.select2");
+      }
+    }
+
+    (function () {
+      // detecta si hay una categoría de Ortodoncia (cubre Ortodoncia Invisible también)
+      function detectarEspecialidadPago() {
+        const sels = document.querySelectorAll(
+          ".categoria-fase-select, .categoria-unica-select"
+        );
+        let hayOrto = false;
+        sels.forEach((s) => {
+          const t = (
+            s.selectedOptions?.[0]?.text ||
+            s.value ||
+            ""
+          ).toUpperCase();
+          if (t.includes("ORTODONCIA")) hayOrto = true; // "ORTODONCIA INVISIBLE" también matchea
+        });
+        window.hayOrtodoncia = hayOrto; // <- usado por tu UI/payload
+        window.actualizarUIOrtodoncia?.(); // <- ya existe en tu initPaymentUI
+      }
+
+      // engancha cambios de categoría para refrescar la UI de pago
+      document.addEventListener("change", (e) => {
+        if (
+          e.target.matches(".categoria-fase-select") ||
+          e.target.matches(".categoria-unica-select")
+        ) {
+          detectarEspecialidadPago();
+        }
+      });
+
+      // primer cómputo al cargar
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", detectarEspecialidadPago);
+      } else {
+        detectarEspecialidadPago();
+      }
     })();
 
     (function () {
@@ -1068,6 +1143,8 @@
           marca.style.display = "none";
           presentacion.style.display = "none";
         }
+
+        setSelectPlaceholder(item, mode);
       }
 
       function wireServiceItem(item) {

@@ -1,6 +1,9 @@
 // /public/pdf-payload.js
 (function (root) {
   function armarPayloadPDFDesdeUI() {
+    const clampCuotas = (n) =>
+      Number.isFinite(n) ? Math.min(36, Math.max(2, n)) : null;
+
     const int = (v, d = 0) => {
       const n = parseInt(String(v).replace(/[^\d-]/g, ""), 10);
       return Number.isNaN(n) ? d : n;
@@ -119,11 +122,37 @@
                   svcSel.options[svcSel.selectedIndex]?.textContent || "";
                 const codeFromText = (optTxt.split(" - ")[0] || "").trim();
 
+                const subUI =
+                  item.querySelector(".field-subtitulo")?.value?.trim() ||
+                  svcData?.subtitulo ||
+                  "";
+
+                // base de descripción
                 const descUI =
                   item.querySelector(".service-description")?.value?.trim() ||
                   "";
-                const subUI =
-                  item.querySelector(".service-subtitle")?.value?.trim() || "";
+
+                // detecta tipo y trae marca/presentación
+                const tipoItem = (item.dataset?.tipo_item || "").toLowerCase();
+                const marcaUI =
+                  item.querySelector(".field-marca")?.value?.trim() || "";
+                const presentUI =
+                  item.querySelector(".field-presentacion")?.value?.trim() ||
+                  "";
+
+                // fallback a datos del servicio (por si vienen precargados)
+                const marca = marcaUI || (svcData?.marca ?? "");
+                const presentacion = presentUI || (svcData?.presentacion ?? "");
+
+                // descripción final para PDF
+                const descBase = descUI || svcData?.descripcion || "Servicio";
+                const nombrePDF =
+                  tipoItem === "material" || marca || presentacion
+                    ? `${descBase}${marca ? ` – ${marca}` : ""}${
+                        presentacion ? ` – ${presentacion}` : ""
+                      }`
+                    : descBase;
+
                 const cant = int(
                   item.querySelector(".cantidad-servicio")?.value || 1,
                   1
@@ -147,8 +176,38 @@
                   fase: String(numeroFase),
                   duracion: duracion,
                   duracion_unidad: durUnidad,
-                  subcategoria_nombre: subUI || svcData?.subtitulo || "OTROS",
-                  nombre_servicio: descUI || svcData?.descripcion || "Servicio",
+
+                  // subtítulo correcto desde la UI, con fallback al servicio
+                  subcategoria_nombre:
+                    item.querySelector(".field-subtitulo")?.value?.trim() ||
+                    svcData?.subtitulo ||
+                    "OTROS",
+
+                  // descripción + (marca/presentación si existen o si el tipo es material)
+                  nombre_servicio: (() => {
+                    const base = descUI || svcData?.descripcion || "Servicio";
+                    const marca =
+                      item.querySelector(".field-marca")?.value?.trim() ||
+                      (svcData?.marca ?? "");
+                    const presentacion =
+                      item
+                        .querySelector(".field-presentacion")
+                        ?.value?.trim() ||
+                      (svcData?.presentacion ?? "");
+                    const tipo = (item.dataset?.tipo_item || "").toLowerCase();
+                    return tipo === "material" || marca || presentacion
+                      ? [base, marca, presentacion].filter(Boolean).join(" – ")
+                      : base;
+                  })(),
+
+                  // se envían también por si luego los quieres usar en el servidor
+                  marca:
+                    item.querySelector(".field-marca")?.value?.trim() ||
+                    (svcData?.marca ?? ""),
+                  presentacion:
+                    item.querySelector(".field-presentacion")?.value?.trim() ||
+                    (svcData?.presentacion ?? ""),
+
                   unidad: String(cant),
                   codigo: svcData?.codigo ?? codeFromText ?? "",
                   precio_unitario: pu,
@@ -222,10 +281,35 @@
                 svcSel.options[svcSel.selectedIndex]?.textContent || "";
               const codeFromText = (optTxt.split(" - ")[0] || "").trim();
 
+              const subUI =
+                item.querySelector(".field-subtitulo")?.value?.trim() ||
+                svcData?.subtitulo ||
+                "";
+
+              // base de descripción
               const descUI =
                 item.querySelector(".service-description")?.value?.trim() || "";
-              const subUI =
-                item.querySelector(".service-subtitle")?.value?.trim() || "";
+
+              // detecta tipo y trae marca/presentación
+              const tipoItem = (item.dataset?.tipo_item || "").toLowerCase();
+              const marcaUI =
+                item.querySelector(".field-marca")?.value?.trim() || "";
+              const presentUI =
+                item.querySelector(".field-presentacion")?.value?.trim() || "";
+
+              // fallback a datos del servicio (por si vienen precargados)
+              const marca = marcaUI || (svcData?.marca ?? "");
+              const presentacion = presentUI || (svcData?.presentacion ?? "");
+
+              // descripción final para PDF
+              const descBase = descUI || svcData?.descripcion || "Servicio";
+              const nombrePDF =
+                tipoItem === "material" || marca || presentacion
+                  ? `${descBase}${marca ? ` – ${marca}` : ""}${
+                      presentacion ? ` – ${presentacion}` : ""
+                    }`
+                  : descBase;
+
               const cant = int(
                 item.querySelector(".cantidad-servicio")?.value || 1,
                 1
@@ -249,8 +333,33 @@
                 fase: "",
                 duracion: null,
                 duracion_unidad: null,
-                subcategoria_nombre: subUI || svcData?.subtitulo || "OTROS",
-                nombre_servicio: descUI || svcData?.descripcion || "Servicio",
+
+                subcategoria_nombre:
+                  item.querySelector(".field-subtitulo")?.value?.trim() ||
+                  svcData?.subtitulo ||
+                  "OTROS",
+
+                nombre_servicio: (() => {
+                  const base = descUI || svcData?.descripcion || "Servicio";
+                  const marca =
+                    item.querySelector(".field-marca")?.value?.trim() ||
+                    (svcData?.marca ?? "");
+                  const presentacion =
+                    item.querySelector(".field-presentacion")?.value?.trim() ||
+                    (svcData?.presentacion ?? "");
+                  const tipo = (item.dataset?.tipo_item || "").toLowerCase();
+                  return tipo === "material" || marca || presentacion
+                    ? [base, marca, presentacion].filter(Boolean).join(" – ")
+                    : base;
+                })(),
+
+                marca:
+                  item.querySelector(".field-marca")?.value?.trim() ||
+                  (svcData?.marca ?? ""),
+                presentacion:
+                  item.querySelector(".field-presentacion")?.value?.trim() ||
+                  (svcData?.presentacion ?? ""),
+
                 unidad: String(cant),
                 codigo: svcData?.codigo ?? codeFromText ?? "",
                 precio_unitario: pu,
@@ -323,19 +432,21 @@
     if (metodoSel) pago.metodo = metodoSel; // "unico" | "aplazado"
 
     const totalParaPago = Number.isFinite(totalNeto) ? totalNeto : 0;
-    const esOrtodAplazado = !!(window.hayOrtodoncia && metodoSel === "aplazado");
-    const numeroCuotas = parseInt(
+    const esOrtodAplazado = !!(
+      window.hayOrtodoncia && metodoSel === "aplazado"
+    );
+    const numeroCuotasRaw = parseInt(
       document.getElementById("pago-numero-cuotas")?.value,
       10
     );
+    const numeroCuotas = clampCuotas(numeroCuotasRaw);
+
     const valorCuotaUI = num(
       document.getElementById("pago-valor-cuota")?.value,
       null
     );
 
-
-    
-////
+    ////
     const pagadoFecha = num(
       document.getElementById("pago-pagado-a-fecha")?.value,
       null
@@ -351,30 +462,44 @@
     if (Object.keys(pago).length) {
       payload.pago = pago;
     }
-/////////
+
+    /////////
     if (esOrtodAplazado) {
-        // 👇 NUEVO esquema para ortodoncia
       const cuota1 = Math.round(totalParaPago * 0.15);
       const cuota2 = Math.round(totalParaPago * 0.15);
-      const mensual = (Number.isFinite(numeroCuotas) && numeroCuotas > 0)
-        ? Math.floor((totalParaPago * 0.70) / numeroCuotas)
-        : null;
+      const mensual =
+        numeroCuotas != null
+          ? Math.floor((totalParaPago * 0.7) / numeroCuotas)
+          : null;
 
-      pago.tipo = "cuotas_ortodoncia";
+      pago.tipo = "cuotas_ortodoncia"; // cubre ortodoncia e invisible
       pago.cuota_inicial_1 = cuota1;
       pago.cuota_inicial_2 = cuota2;
       pago.porcentaje_inicial_total = 30; // 15% + 15%
-      if (!Number.isNaN(numeroCuotas)) pago.numero_cuotas = numeroCuotas;
+      if (numeroCuotas != null) pago.numero_cuotas = numeroCuotas;
+      pago.valor_cuota = mensual != null ? mensual : valorCuotaUI;
 
-      pago.valor_cuota = (mensual != null) ? mensual : valorCuotaUI;
-      // si el pipeline PDF espera pago.cuota_inicial única, mando el 30%)
+      // compat: si el PDF espera una sola "cuota_inicial"
       pago.cuota_inicial = cuota1 + cuota2;
     } else if (metodoSel === "aplazado") {
       const cuotaInicial = num(
         document.getElementById("pago-cuota-inicial")?.value,
         null
       );
-      
+      if (cuotaInicial != null) pago.cuota_inicial = cuotaInicial;
+      if (numeroCuotas != null) pago.numero_cuotas = numeroCuotas;
+
+      const valorCuota = num(
+        document.getElementById("pago-valor-cuota")?.value,
+        null
+      );
+      if (valorCuota != null) pago.valor_cuota = valorCuota;
+    } else if (metodoSel === "aplazado") {
+      const cuotaInicial = num(
+        document.getElementById("pago-cuota-inicial")?.value,
+        null
+      );
+
       if (cuotaInicial != null) pago.cuota_inicial = cuotaInicial;
 
       const numeroCuotas = parseInt(
@@ -390,8 +515,7 @@
       if (valorCuota != null) pago.valor_cuota = valorCuota;
     }
 
-
-/////////////
+    /////////////
     return payload;
   }
 

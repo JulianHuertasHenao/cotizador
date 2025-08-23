@@ -412,10 +412,13 @@ function buildPhases(procedimientos = []) {
     };
 
     const cat = p.subcategoria_nombre || "OTROS";
+    const descJoined = [p.nombre_servicio, p.marca, p.presentacion]
+      .filter((v) => v && String(v).trim().length)
+      .join(" – ");
     ph.sections[secKey].categories[cat] ||= [];
     ph.sections[secKey].categories[cat].push({
       code: p.codigo,
-      desc: p.nombre_servicio,
+      desc: descJoined || p.nombre_servicio,
       units: p.unidad ?? "",
       price: Number(p.precio_unitario || 0),
       discount: p.descuento ?? "N.A",
@@ -779,17 +782,21 @@ const generarPDF = async (cotizacion) =>
         // Observaciones globales solo si NO hubo por sección
         if (!printedAnySectionObs) {
           doc.y = Math.max(doc.y, tabla.y);
-          const obsGlobal =
-            cotizacion.observaciones_generales ??
-            (() => {
-              const src = cotizacion.observaciones_fases;
-              if (!src) return null;
-              const vals = Array.isArray(src) ? src : Object.values(src);
-              const joined = vals.filter(Boolean).join("\n");
-              return joined || null;
-            })();
+          const rawObsGlobal =
+            typeof cotizacion.observaciones_generales === "string"
+              ? cotizacion.observaciones_generales
+              : (() => {
+                  const src = cotizacion.observaciones_fases;
+                  if (!src) return "";
+                  const vals = Array.isArray(src) ? src : Object.values(src);
+                  return vals
+                    .filter((s) => typeof s === "string" && s.trim())
+                    .join("\n");
+                })();
 
-          if (obsGlobal) {
+          const obsGlobal = rawObsGlobal.trim();
+
+          if (obsGlobal.length > 0) {
             const PAD = 8;
             const GAP_AFTER_BOX = 4;
             const title = "Observaciones";
@@ -857,10 +864,10 @@ const generarPDF = async (cotizacion) =>
         const fmt = (v) => `$ ${Number(v || 0).toLocaleString("es-CO")}`;
 
         // Detecta modalidad ortodoncia + aplazado
-        const esOrtodApl = metodo === "aplazado" && (
-          pago.tipo === "cuotas_ortodoncia" ||
-          (pago.cuota_inicial_1 != null && pago.cuota_inicial_2 != null)
-        );
+        const esOrtodApl =
+          metodo === "aplazado" &&
+          (pago.tipo === "cuotas_ortodoncia" ||
+            (pago.cuota_inicial_1 != null && pago.cuota_inicial_2 != null));
 
         // <-- NUEVO: solo mostramos FH si es booleano (true/false)
         const showFH = typeof pago.fase_higienica_incluida === "boolean";
@@ -881,22 +888,22 @@ const generarPDF = async (cotizacion) =>
           pago.cuota_inicial != null
             ? {
                 type: "text",
-                text: `Cuota inicial: ${fmt(pago.cuota_inicial)}`,
+                text: `Total Cuota inicial: ${fmt(pago.cuota_inicial)}`,
               }
             : null,
-            //si tiene cuotas 1 y 2
-            pago.cuota_inicial_1 != null
+          //si tiene cuotas 1 y 2
+          pago.cuota_inicial_1 != null
             ? {
-              type: "text",
-              text: `Cuota 1 (15%): ${fmt(pago.cuota_inicial_1)}`,
-            }
-            :null,
-            pago.cuota_inicial_2 != null
+                type: "text",
+                text: `Cuota 1 (15%): ${fmt(pago.cuota_inicial_1)}`,
+              }
+            : null,
+          pago.cuota_inicial_2 != null
             ? {
-              type: "text",
-              text: `Cuota 2 (15%): ${fmt(pago.cuota_inicial_2)}`,
-            }
-            :null,
+                type: "text",
+                text: `Cuota 2 (15%): ${fmt(pago.cuota_inicial_2)}`,
+              }
+            : null,
           pago.numero_cuotas != null && pago.valor_cuota != null
             ? {
                 type: "text",
