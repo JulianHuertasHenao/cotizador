@@ -1864,9 +1864,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // Add a new category to a phase
   function addNewCategoryToPhase(phase) {
     const newCategory = phase.querySelector(".category-group").cloneNode(true);
+    const addBtn = newCategory.querySelector(".add-service-btn");
+    if (addBtn) addBtn.removeAttribute("data-bound");
 
     // Clear any existing services
-
     newCategory.querySelector(".service-list").innerHTML = "";
 
     setupCategoryEvents(newCategory);
@@ -1886,6 +1887,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const firstCategory = container.querySelector(".category-group");
 
     const newCategory = firstCategory.cloneNode(true);
+
+    const addBtn = newCategory.querySelector(".add-service-btn");
+    if (addBtn) addBtn.removeAttribute("data-bound");
 
     // Clear any existing services
 
