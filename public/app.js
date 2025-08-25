@@ -395,7 +395,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
   }
 
   // Recálculo de total de fase al agregar servicio
-  const faseContainer = servicioItem.closest(".phase-container");
+  /*const faseContainer = servicioItem.closest(".phase-container");
   if (faseContainer) {
     const precioInput = servicioItem.querySelector(".precio-unitario-servicio");
     const cantidadInput = servicioItem.querySelector(".cantidad-servicio");
@@ -435,7 +435,7 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
         minimumFractionDigits: 2,
       })}`;
     }
-  }
+  }*/
 }
 
 function actualizarPrecioServicio(servicioItem) {
@@ -684,10 +684,10 @@ function filterServiceTable() {
 
   for (let i = 1; i < serviceRows.length; i++) {
     const cells = serviceRows[i].getElementsByTagName("td");
-    const codeCell = cells[1]; // Código
-    const categoryCell = cells[2]; // Categoría
-    const subtitleCell = cells[3]; // Categoría
-    const descriptionCell = cells[4]; // Descripción
+    const codeCell = cells[0]; // Código
+    const categoryCell = cells[2]; // Categoria
+    const subtitleCell = cells[4]; // Subtitulo
+    const descriptionCell = cells[5]; // Descripción
 
     if (codeCell && descriptionCell && categoryCell && subtitleCell) {
       const codeText = codeCell.textContent || codeCell.innerText;
@@ -3243,14 +3243,50 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  ////limpiar form
+
   function nuevaCotizacion() {
     currentQuoteId = null;
     isEditing = false;
     document.getElementById("quoteTitle").textContent = "Nueva Cotización";
     document.getElementById("cotizacionForm").reset();
     document.getElementById("nuevoPacienteForm").style.display = "none";
-    document.getElementById("phases-container").innerHTML = "";
-    currentFaseId = 0;
+    //document.getElementById("phases-container").innerHTML = "";
+    const pacienteInput = document.getElementById("pacienteSearchInput");
+    if (pacienteInput) pacienteInput.value = "";
+    document.getElementById("pacienteSelectIdHidden")?.remove();
+
+// checkbox “Organizar tratamiento en fases” -> DESMARCADO
+  const phasesChk = document.getElementById("use-phases");
+  if (phasesChk) {
+    phasesChk.checked = false;
+    phasesChk.dispatchEvent(new Event("change"));
+  }
+
+  // limpiar items y selects del modo sin fases
+  document.querySelectorAll("#no-phase-categories .service-list")
+    .forEach(el => el.innerHTML = "");
+  document.querySelectorAll("#no-phase-categories .categoria-unica-select")
+    .forEach(sel => sel.selectedIndex = 0);
+
+    // totales globales y de fases a $0.00
+    ["subtotal-cotizacion","descuento-cotizacion","total-cotizacion"]
+      .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = "$0.00"; });
+    document.querySelectorAll(".fase-subtotal,.fase-descuento,.fase-total-amount")
+      .forEach(el => el.textContent = "$0.00");
+
+      // reset precios de inputs y spans
+    document.querySelectorAll(".precio-unitario-servicio").forEach(inp => inp.value = "");
+    document.querySelectorAll(".precio-servicio").forEach(span => span.textContent = "0");
+
+
+    // estado global
+    window.hayOrtodoncia = false;
+    if (typeof currentFaseId !== "undefined") currentFaseId = 0;
+
+      inicializarPrimeraCategoria();
+
+      currentFaseId = 0;
 
     switchTab("new");
   }
