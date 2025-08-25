@@ -3279,6 +3279,16 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".precio-unitario-servicio").forEach(inp => inp.value = "");
     document.querySelectorAll(".precio-servicio").forEach(span => span.textContent = "0");
 
+    //radios
+    const rdUnico   = document.getElementById("pago-metodo-unico");
+    const rdAplaz   = document.getElementById("pago-metodo-aplazado");
+    const boxAplaz  = document.getElementById("pago-aplazado-fields");
+
+    if (rdUnico) rdUnico.checked = true;
+    if (rdAplaz) rdAplaz.checked = false;
+    if (boxAplaz) boxAplaz.classList.add("hidden");
+    if (rdUnico) rdUnico.dispatchEvent(new Event("change"));
+
 
     // estado global
     window.hayOrtodoncia = false;
