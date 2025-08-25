@@ -3292,11 +3292,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // estado global
     window.hayOrtodoncia = false;
-    if (typeof currentFaseId !== "undefined") currentFaseId = 0;
 
       inicializarPrimeraCategoria();
 
-      currentFaseId = 0;
+      window.currentFaseId = 0;
 
     switchTab("new");
   }
