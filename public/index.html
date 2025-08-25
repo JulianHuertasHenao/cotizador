@@ -241,7 +241,7 @@
                 </div>
               </div>
             </div>
-            <!--
+            
             <div style="margin-top: 0.75rem; margin-bottom: 0.75rem">
               
               <button
@@ -252,7 +252,7 @@
                 + Añadir Categoría
               </button>
             </div>
-            -->
+            
             <template id="service-template">
               <div class="service-item">
                 <!-- Línea superior: sólo el grupo de radios dentro de una “cápsula” -->
@@ -1077,6 +1077,23 @@
         $(sel).trigger("change.select2");
       }
     }
+
+    //ocultar +añadir categoría en fases
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleFases = document.getElementById("use-phases");
+      const addCategoryBtn = document.getElementById("add-category-btn");
+
+      if (toggleFases && addCategoryBtn) {
+        toggleFases.addEventListener("change", () => {
+          if (toggleFases.checked) {
+            addCategoryBtn.style.display = "none";
+          } else {
+            addCategoryBtn.style.display = "inline-block";
+          }
+        });
+      }
+    });
+//
 
     (function () {
       // detecta si hay una categoría de Ortodoncia (cubre Ortodoncia Invisible también)

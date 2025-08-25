@@ -3255,6 +3255,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const pacienteInput = document.getElementById("pacienteSearchInput");
     if (pacienteInput) pacienteInput.value = "";
     document.getElementById("pacienteSelectIdHidden")?.remove();
+    
 
 // checkbox “Organizar tratamiento en fases” -> DESMARCADO
   const phasesChk = document.getElementById("use-phases");
@@ -3296,6 +3297,7 @@ document.addEventListener("DOMContentLoaded", function () {
       inicializarPrimeraCategoria();
 
       window.currentFaseId = 0;
+      
 
     switchTab("new");
   }
