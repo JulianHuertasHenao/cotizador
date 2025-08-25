@@ -3228,9 +3228,11 @@ document.addEventListener("DOMContentLoaded", function () {
           // No agregamos/quitamos clases al body; solo mostramos el toast
           window.showToast("Cotización guardada correctamente");
           setTimeout(goToHistory, 300);
+          nuevaCotizacion();
         } else {
           alert("Cotización guardada correctamente");
           goToHistory();
+          nuevaCotizacion();
         }
       } catch {
         goToHistory();
