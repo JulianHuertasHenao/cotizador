@@ -800,6 +800,11 @@ document.addEventListener("DOMContentLoaded", function () {
       // Resaltar tab activo
       tabs.forEach((tab2) => tab2.classList.remove("active"));
       tab.classList.add("active");
+       // recarga la página completa
+      if (target === "new") {
+        location.reload();
+        return; // detenemos aquí
+      }
     });
   });
 
@@ -3255,7 +3260,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const pacienteInput = document.getElementById("pacienteSearchInput");
     if (pacienteInput) pacienteInput.value = "";
     document.getElementById("pacienteSelectIdHidden")?.remove();
-    
+
 
 // checkbox “Organizar tratamiento en fases” -> DESMARCADO
   const phasesChk = document.getElementById("use-phases");
