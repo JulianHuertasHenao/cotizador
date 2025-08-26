@@ -202,6 +202,7 @@ function actualizarTotalCategorias() {
   precioCotizacion = 0;
 
   document.querySelectorAll(".service-item").forEach((item) => {
+    if (item.offsetParent === null) return;
     const precio =
       parseFloat(item.querySelector(".precio-unitario-servicio")?.value || 0) ||
       0;
@@ -764,8 +765,71 @@ document.addEventListener("DOMContentLoaded", function () {
     setupPhaseToggleAndButtons();
     // Asegura que la barra de búsqueda de pacientes se inicialice después de cargar los datos
     setupPacienteSearchBar();
+    phasesToggleCleaner();
   }
 
+  // helpers de limpieza (no tocan paciente ni radios de pago)
+function clearNoPhaseUI() {
+  const noPhaseWrap = document.getElementById("no-phase-categories");
+  if (!noPhaseWrap) return;
+  // limpiar items
+  noPhaseWrap.querySelectorAll(".service-list").forEach(el => (el.innerHTML = ""));
+  // reset selects de categoría
+  noPhaseWrap.querySelectorAll(".categoria-unica-select").forEach(sel => (sel.selectedIndex = 0));
+  // totales visibles del modo sin fases
+  if (typeof actualizarTotalCategorias === "function") actualizarTotalCategorias();
+}
+
+function clearPhasesUI() {
+  const phasesContainer = document.getElementById("phases-container");
+  const phasesGrid      = document.getElementById("phases-grid");
+  const noPhasesMsg     = document.getElementById("no-phases-message");
+  
+
+  //if (phasesGrid) phasesGrid.innerHTML = "";
+  phasesContainer.querySelectorAll(".service-list").forEach(list => {
+    list.innerHTML = ""; // quita servicios agregados
+  });
+  phasesContainer.querySelectorAll(".phase-duration").forEach(inp => inp.value = "1");
+  phasesContainer.querySelectorAll(".observaciones-fases").forEach(inp => inp.value = "");
+  
+  // reset totales mostrados dentro de fases (si hubiera)
+  phasesContainer?.querySelectorAll(".fase-subtotal,.fase-descuento,.fase-total-amount")
+    .forEach(el => el.textContent = "$0.00");
+    // reset precios de inputs y spans
+  phasesContainer?.querySelectorAll(".precio-unitario-servicio").forEach(inp => inp.value = "");
+  phasesContainer?.querySelectorAll(".precio-servicio").forEach(span => span.textContent = "0");
+  if (noPhasesMsg) noPhasesMsg.classList.add("hidden");
+  
+}
+
+// listener del toggle que limpia SOLO lo oculto
+function phasesToggleCleaner() {
+  const phasesChk = document.getElementById("use-phases");
+  if (!phasesChk || phasesChk.dataset.bound === "1") return;
+
+  phasesChk.addEventListener("change", () => {
+    const usandoFases = phasesChk.checked;
+
+    if (usandoFases) {
+      clearNoPhaseUI();
+      clearPhasesUI();       // por si había basura previa invisible
+      //ensureOneFreshPhase();
+    } else {
+      clearPhasesUI();
+      inicializarPrimeraCategoria();
+    }
+
+    // recalcula totales globales con lo que quedó visible
+    if (typeof actualizarTotalCategorias === "function") {
+      actualizarTotalCategorias();
+    }
+  });
+
+  phasesChk.dataset.bound = "1"; // evita doble binding
+}
+
+//
   async function cargarCategorias() {
     try {
       const response = await fetch("/api/categorias");
@@ -3249,6 +3313,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   ////limpiar form
+  
 
   function nuevaCotizacion() {
     currentQuoteId = null;
@@ -3297,13 +3362,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // estado global
-    window.hayOrtodoncia = false;
-
+      window.hayOrtodoncia = false;
       inicializarPrimeraCategoria();
-
       window.currentFaseId = 0;
       
-
     switchTab("new");
   }
 
