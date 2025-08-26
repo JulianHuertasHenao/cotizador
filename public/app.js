@@ -800,6 +800,20 @@ function clearPhasesUI() {
   phasesContainer?.querySelectorAll(".precio-unitario-servicio").forEach(inp => inp.value = "");
   phasesContainer?.querySelectorAll(".precio-servicio").forEach(span => span.textContent = "0");
   if (noPhasesMsg) noPhasesMsg.classList.add("hidden");
+
+  phasesContainer.querySelectorAll(".category-group").forEach(group => {
+    const sel  = group.querySelector(".categoria-fase-select");
+    const list = group.querySelector(".service-list");
+    if (!sel || !list) return;
+
+    // Si el select está vacío, coloca la primera categoría real
+    if (!sel.value && sel.options.length > 1) {
+      sel.value = sel.options[1].value; // omite el placeholder
+    }
+
+    // Fuerza el flujo que ya tienes: el change de categoría crea la primera fila
+    sel.dispatchEvent(new Event("change")); // tu handler hace agregarServicioEnCategoriasDinamico(...)
+  });
   
 }
 
