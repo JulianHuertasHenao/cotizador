@@ -314,12 +314,12 @@ function agregarServicioEnCategoriasDinamico(serviciosContainer, categoriaId) {
                     (servicioItem.dataset.tipo_item || "servicio") ===
                     "material";
                 if (esMaterialFila) {
-                    if (marcaInput) marcaInput.value = servicio.marca ?? "NA";
+                    if (marcaInput) marcaInput.value = servicio.marca ?? "";
                     if (presInput)
-                        presInput.value = servicio.presentacion ?? "NA";
+                        presInput.value = servicio.presentacion ?? "";
                 } else {
-                    if (marcaInput) marcaInput.value = "NA";
-                    if (presInput) presInput.value = "NA";
+                    if (marcaInput) marcaInput.value = "";
+                    if (presInput) presInput.value = "";
                 }
 
                 // ✅ descuento inicial en 0
