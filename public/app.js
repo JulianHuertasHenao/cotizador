@@ -673,7 +673,33 @@ async function borrarServicio(id) {
         showToast("No se pudo eliminar el servicio");
     }
 }
+function filterCotizationTable() {
+    const input = document.getElementById("cotizationSearchInput"); // Obtener la barra de búsqueda
+    const filter = input.value.toLowerCase(); // Convertir el valor de búsqueda a minúsculas
+    const cotizationTable = document.getElementById("cotizacionesList");
+    const cotizationRows = cotizationTable.getElementsByTagName("tr"); // Obtener todas las filas de la tabla de cotizaciones
+    // Recorrer todas las filas de la tabla de cotizaciones
+    for (let i = 1; i < cotizationRows.length; i++) {
+        const cells = cotizationRows[i].getElementsByTagName("td");
+        const codeCell = cells[0]; // Código
+        const descriptionCell = cells[1]; // Descripción
+        const dateCell = cells[2]; // Fecha
 
+        // Si alguna celda contiene el texto de búsqueda, mostrar la fila
+        if (
+            codeCell &&
+            descriptionCell &&
+            dateCell &&
+            (codeCell.textContent.toLowerCase().includes(filter) ||
+                descriptionCell.textContent.toLowerCase().includes(filter) ||
+                dateCell.textContent.toLowerCase().includes(filter))
+        ) {
+            cotizationRows[i].style.display = ""; // Mostrar fila
+        } else {
+            cotizationRows[i].style.display = "none"; // Ocultar fila
+        }
+    }
+}
 function filterCategoryTable() {
     const input = document.getElementById("categorySearchInput"); // Obtener la barra de búsqueda
     const filter = input.value.toLowerCase(); // Convertir el valor de búsqueda a minúsculas
