@@ -123,7 +123,7 @@
                 const codeFromText = (optTxt.split(" - ")[0] || "").trim();
 
                 const subUI =
-                  item.querySelector(".field-subtitulo")?.value?.trim() ||
+                  item.querySelector(".service-subtitle")?.value?.trim() ||
                   svcData?.subtitulo ||
                   "";
 
@@ -135,9 +135,9 @@
                 // detecta tipo y trae marca/presentación
                 const tipoItem = (item.dataset?.tipo_item || "").toLowerCase();
                 const marcaUI =
-                  item.querySelector(".field-marca")?.value?.trim() || "";
+                  item.querySelector(".marca-input")?.value?.trim() || "";
                 const presentUI =
-                  item.querySelector(".field-presentacion")?.value?.trim() ||
+                  item.querySelector(".presentacion-input")?.value?.trim() ||
                   "";
 
                 // fallback a datos del servicio (por si vienen precargados)
@@ -179,7 +179,7 @@
 
                   // subtítulo correcto desde la UI, con fallback al servicio
                   subcategoria_nombre:
-                    item.querySelector(".field-subtitulo")?.value?.trim() ||
+                    item.querySelector(".service-subtitle")?.value?.trim() ||
                     svcData?.subtitulo ||
                     "OTROS",
 
@@ -187,11 +187,11 @@
                   nombre_servicio: (() => {
                     const base = descUI || svcData?.descripcion || "Servicio";
                     const marca =
-                      item.querySelector(".field-marca")?.value?.trim() ||
+                      item.querySelector(".marca-input")?.value?.trim() ||
                       (svcData?.marca ?? "");
                     const presentacion =
                       item
-                        .querySelector(".field-presentacion")
+                        .querySelector(".presentacion-input")
                         ?.value?.trim() ||
                       (svcData?.presentacion ?? "");
                     const tipo = (item.dataset?.tipo_item || "").toLowerCase();
@@ -202,10 +202,10 @@
 
                   // se envían también por si luego los quieres usar en el servidor
                   marca:
-                    item.querySelector(".field-marca")?.value?.trim() ||
+                    item.querySelector(".marca-input")?.value?.trim() ||
                     (svcData?.marca ?? ""),
                   presentacion:
-                    item.querySelector(".field-presentacion")?.value?.trim() ||
+                    item.querySelector(".presentacion-input")?.value?.trim() ||
                     (svcData?.presentacion ?? ""),
 
                   unidad: String(cant),
@@ -282,7 +282,7 @@
               const codeFromText = (optTxt.split(" - ")[0] || "").trim();
 
               const subUI =
-                item.querySelector(".field-subtitulo")?.value?.trim() ||
+                item.querySelector(".service-subtitle")?.value?.trim() ||
                 svcData?.subtitulo ||
                 "";
 
@@ -293,9 +293,9 @@
               // detecta tipo y trae marca/presentación
               const tipoItem = (item.dataset?.tipo_item || "").toLowerCase();
               const marcaUI =
-                item.querySelector(".field-marca")?.value?.trim() || "";
+                item.querySelector(".marca-input")?.value?.trim() || "";
               const presentUI =
-                item.querySelector(".field-presentacion")?.value?.trim() || "";
+                item.querySelector(".presentacion-input")?.value?.trim() || "";
 
               // fallback a datos del servicio (por si vienen precargados)
               const marca = marcaUI || (svcData?.marca ?? "");
@@ -335,17 +335,17 @@
                 duracion_unidad: null,
 
                 subcategoria_nombre:
-                  item.querySelector(".field-subtitulo")?.value?.trim() ||
+                  item.querySelector(".service-subtitle")?.value?.trim() ||
                   svcData?.subtitulo ||
                   "OTROS",
 
                 nombre_servicio: (() => {
                   const base = descUI || svcData?.descripcion || "Servicio";
                   const marca =
-                    item.querySelector(".field-marca")?.value?.trim() ||
+                    item.querySelector(".marca-input")?.value?.trim() ||
                     (svcData?.marca ?? "");
                   const presentacion =
-                    item.querySelector(".field-presentacion")?.value?.trim() ||
+                    item.querySelector(".presentacion-input")?.value?.trim() ||
                     (svcData?.presentacion ?? "");
                   const tipo = (item.dataset?.tipo_item || "").toLowerCase();
                   return tipo === "material" || marca || presentacion
@@ -354,10 +354,10 @@
                 })(),
 
                 marca:
-                  item.querySelector(".field-marca")?.value?.trim() ||
+                  item.querySelector(".marca-input")?.value?.trim() ||
                   (svcData?.marca ?? ""),
                 presentacion:
-                  item.querySelector(".field-presentacion")?.value?.trim() ||
+                  item.querySelector(".presentacion-input")?.value?.trim() ||
                   (svcData?.presentacion ?? ""),
 
                 unidad: String(cant),
