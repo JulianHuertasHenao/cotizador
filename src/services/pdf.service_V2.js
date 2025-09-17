@@ -5,9 +5,10 @@ const path = require("path");
 
 // ===== Helpers comunes =====
 const THEME = {
-  primary: "#247B97",
+  primary: "#D6C39F",
   secondary: "#E59CAF",
-  accent: "#D6C39F",
+  //accent: "#FFFFFF",
+  accent: "#FFFFFF",
   dark: "#1B1B1B",
   light: "#FFFFFF",
 };
@@ -120,7 +121,7 @@ function renderHeader(doc, cotizacion, dims) {
   // Datos de la clínica / número
   const clinicY = versionY + lineH + 15;
   setFont(doc, "OpenSans-Regular", 10, THEME.dark).text(
-    "Av. C. 127 #19A-28,\nBogotá D.C. Colombia\nEmail: spaortodoncia@hotmail.com\nwww.drasandraalarcon.com.co",
+    "Av. C. 127 #19A-28, Acomedica 1: Consultorio 504-505  \nBogotá D.C. Colombia\nEmail: spaortodoncia@hotmail.com\nwww.drasandraalarcon.com.co",
     MARGIN,
     clinicY
   );
@@ -370,10 +371,7 @@ class TablaPDF {
     });
 
     // Bordes verticales
-    this.doc
-      .save()
-      .strokeColor(accent || "#d6c39f")
-      .lineWidth(0.5);
+    this.doc.save().strokeColor("#d6c39f").lineWidth(0.5);
     let vx = margin;
     for (let i = 0; i <= columns.length; i++) {
       this.doc
