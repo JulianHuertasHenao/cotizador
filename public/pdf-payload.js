@@ -182,10 +182,10 @@
                   duracion_unidad: durUnidad,
 
                   // subtítulo correcto desde la UI, con fallback al servicio
-                 /* subcategoria_nombre:
+                  subcategoria_nombre:
                     item.querySelector(".field-subtitulo")?.value?.trim() ||
                     svcData?.subtitulo ||
-                    "OTROS",*/
+                    "OTROS",
 
                   // descripción + (marca/presentación si existen o si el tipo es material)
                   nombre_servicio: (() => {
@@ -349,10 +349,10 @@
                 duracion: null,
                 duracion_unidad: null,
 
-                /*subcategoria_nombre:
+                subcategoria_nombre:
                   item.querySelector(".field-subtitulo")?.value?.trim() ||
                   svcData?.subtitulo ||
-                  "OTROS",*/
+                  "OTROS",
 
                 nombre_servicio: (() => {
                   const base = descUI || svcData?.descripcion || "Servicio";
