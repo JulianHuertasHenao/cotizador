@@ -170,6 +170,10 @@
                 const subtotal = pu * cant;
                 const total = subtotal - subtotal * (dPct / 100);
 
+                const subtitulo =
+                  item.querySelector(".field-subtitulo")?.value?.trim() ||
+                  (svcData?.subtitulo ?? "");
+
                 procedimientos.push({
                   especialidad_codigo: espCod,
                   especialidad_nombre: espNom,
@@ -178,14 +182,16 @@
                   duracion_unidad: durUnidad,
 
                   // subtítulo correcto desde la UI, con fallback al servicio
-                  subcategoria_nombre:
+                 /* subcategoria_nombre:
                     item.querySelector(".field-subtitulo")?.value?.trim() ||
                     svcData?.subtitulo ||
-                    "OTROS",
+                    "OTROS",*/
 
                   // descripción + (marca/presentación si existen o si el tipo es material)
                   nombre_servicio: (() => {
                     const base = descUI || svcData?.descripcion || "Servicio";
+                    const partes = [base];
+                    if (subtitulo) partes.push(subtitulo); 
                     const marca =
                       item.querySelector(".field-marca")?.value?.trim() ||
                       (svcData?.marca ?? "");
@@ -195,9 +201,15 @@
                         ?.value?.trim() ||
                       (svcData?.presentacion ?? "");
                     const tipo = (item.dataset?.tipo_item || "").toLowerCase();
-                    return tipo === "material" || marca || presentacion
+
+                    if (tipo === "material" || marca || presentacion) {
+                      if (marca) partes.push(marca);
+                      if (presentacion) partes.push(presentacion);
+                    }
+                      /*return tipo === "material" || marca || presentacion
                       ? [base, marca, presentacion].filter(Boolean).join(" – ")
-                      : base;
+                      : base;*/
+                      return partes.filter(Boolean).join(" – ");
                   })(),
 
                   // se envían también por si luego los quieres usar en el servidor
@@ -326,6 +338,9 @@
               );
               const subtotal = pu * cant;
               const total = subtotal - subtotal * (dPct / 100);
+              const subtitulo =
+                item.querySelector(".field-subtitulo")?.value?.trim() ||
+                (svcData?.subtitulo ?? "");
 
               procedimientos.push({
                 especialidad_codigo: espCod,
@@ -334,13 +349,16 @@
                 duracion: null,
                 duracion_unidad: null,
 
-                subcategoria_nombre:
+                /*subcategoria_nombre:
                   item.querySelector(".field-subtitulo")?.value?.trim() ||
                   svcData?.subtitulo ||
-                  "OTROS",
+                  "OTROS",*/
 
                 nombre_servicio: (() => {
                   const base = descUI || svcData?.descripcion || "Servicio";
+                  const partes = [base];
+
+                  if (subtitulo) partes.push(subtitulo);  
                   const marca =
                     item.querySelector(".field-marca")?.value?.trim() ||
                     (svcData?.marca ?? "");
@@ -348,9 +366,15 @@
                     item.querySelector(".field-presentacion")?.value?.trim() ||
                     (svcData?.presentacion ?? "");
                   const tipo = (item.dataset?.tipo_item || "").toLowerCase();
-                  return tipo === "material" || marca || presentacion
+
+                  if (tipo === "material" || marca || presentacion) {
+                    if (marca) partes.push(marca);
+                    if (presentacion) partes.push(presentacion);
+                  }
+                  /*return tipo === "material" || marca || presentacion
                     ? [base, marca, presentacion].filter(Boolean).join(" – ")
-                    : base;
+                    : base;*/
+                    return partes.filter(Boolean).join(" – ");
                 })(),
 
                 marca:
@@ -366,6 +390,7 @@
                 descuento: dPct > 0 ? `${dPct}%` : "N.A",
                 total: Math.round(total),
               });
+              
             });
 
           // Adjuntar el arreglo al scope para consumirlo luego en el retorno
