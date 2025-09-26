@@ -325,6 +325,8 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
         s.descripcion,
         s.subtitulo,
         s.categoria_id,
+        s.marca,
+        s.presentacion,
         cat.nombre_categoria,
         cat.id AS cat_id
       FROM DetallesCotizacion dc
@@ -422,6 +424,8 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
                     unidad: String(row.cantidad || 1),
                     precio_unitario: Number(row.precio_unitario || 0),
                     descuento: labelDesc,
+                    marca: row.marca,
+                    presentacion: row.presentacion,
                     total: Number(row.total || 0),
                 };
             } else {
@@ -437,6 +441,8 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
                     unidad: String(row.cantidad || 1),
                     precio_unitario: Number(row.precio_unitario || 0),
                     descuento: labelDesc,
+                    marca: row.marca,
+                    presentacion: row.presentacion,
                     total: Number(row.total || 0),
                 };
             }

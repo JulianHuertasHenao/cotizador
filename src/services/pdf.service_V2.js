@@ -410,7 +410,7 @@ function buildPhases(procedimientos = []) {
     };
 
     const cat = p.subcategoria_nombre || "OTROS";
-    const descJoined = [p.nombre_servicio, p.marca, p.presentacion]
+    const descJoined = [`${p.nombre_servicio} - ${p.subcategoria_nombre} - ${p.marca} - ${p.presentacion}`]
       .filter((v) => v && String(v).trim().length)
       .join(" – ");
     ph.sections[secKey].categories[cat] ||= [];
@@ -448,10 +448,11 @@ function buildSectionsNoPhase(procedimientos = []) {
       categories: {},
     };
     const cat = p.subcategoria_nombre || "OTROS";
+    const descJoined = [`${p.nombre_servicio} - ${p.subcategoria_nombre} - ${p.marca} - ${p.presentacion}`]
     acc[secKey].categories[cat] ||= [];
     acc[secKey].categories[cat].push({
       code: p.codigo,
-      desc: p.nombre_servicio,
+      desc: descJoined || p.nombre_servicio,
       units: p.unidad ?? "",
       price: Number(p.precio_unitario || 0),
       discount: p.descuento ?? "N.A",
