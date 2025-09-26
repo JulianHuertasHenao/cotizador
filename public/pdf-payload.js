@@ -354,28 +354,7 @@
                   svcData?.subtitulo ||
                   "OTROS",
 
-                nombre_servicio: (() => {
-                  const base = descUI || svcData?.descripcion || "Servicio";
-                  const partes = [base];
-
-                  if (subtitulo) partes.push(subtitulo);  
-                  const marca =
-                    item.querySelector(".field-marca")?.value?.trim() ||
-                    (svcData?.marca ?? "");
-                  const presentacion =
-                    item.querySelector(".field-presentacion")?.value?.trim() ||
-                    (svcData?.presentacion ?? "");
-                  const tipo = (item.dataset?.tipo_item || "").toLowerCase();
-
-                  if (tipo === "material" || marca || presentacion) {
-                    if (marca) partes.push(marca);
-                    if (presentacion) partes.push(presentacion);
-                  }
-                  /*return tipo === "material" || marca || presentacion
-                    ? [base, marca, presentacion].filter(Boolean).join(" – ")
-                    : base;*/
-                    return partes.filter(Boolean).join(" – ");
-                })(),
+                nombre_servicio: descUI,
 
                 marca:
                   item.querySelector(".field-marca")?.value?.trim() ||

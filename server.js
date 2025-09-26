@@ -327,6 +327,7 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
         s.categoria_id,
         s.marca,
         s.presentacion,
+        s.tipo_item,
         cat.nombre_categoria,
         cat.id AS cat_id
       FROM DetallesCotizacion dc
@@ -443,6 +444,7 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
                     descuento: labelDesc,
                     marca: row.marca,
                     presentacion: row.presentacion,
+                    tipo: row.tipo_item,
                     total: Number(row.total || 0),
                 };
             }
