@@ -410,13 +410,21 @@ function buildPhases(procedimientos = []) {
     };
 
     const cat = p.subcategoria_nombre || "OTROS";
-    const descJoined = [`${p.nombre_servicio} - ${p.subcategoria_nombre} - ${p.marca} - ${p.presentacion}`]
-      .filter((v) => v && String(v).trim().length)
-      .join(" – ");
+    const descJoined = () =>{
+      const base = [p.nombre_servicio]
+      const partes = [base];
+                  if (p.subcategoria_nombre) partes.push(p.subcategoria_nombre);  
+                  if (p.tipo === "material" || p.marca || p.presentacion) {
+                    if (p.marca) partes.push(p.marca);
+                    if (p.presentacion) partes.push(p.presentacion);
+                  }
+                    return partes.filter(Boolean).join(" – ");
+    } 
+
     ph.sections[secKey].categories[cat] ||= [];
     ph.sections[secKey].categories[cat].push({
       code: p.codigo,
-      desc: descJoined || p.nombre_servicio,
+      desc: descJoined() || p.nombre_servicio,
       units: p.unidad ?? "",
       price: Number(p.precio_unitario || 0),
       discount: p.descuento ?? "N.A",
