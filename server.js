@@ -539,7 +539,7 @@ WHERE c.id = ?
         dc.precio_unitario,
         dc.descuento,
         dc.total,
-        s.codigo, s.descripcion, s.subtitulo,
+        s.codigo, s.descripcion, s.subtitulo, s.marca, s.presentacion,
         s.categoria_id AS cat_id,
         cat.nombre_categoria
       FROM DetallesCotizacion dc
@@ -625,6 +625,8 @@ WHERE c.id = ?
                     precio_unitario: Number(row.precio_unitario || 0),
                     descuento: labelDesc,
                     total: Number(row.total || 0),
+                    marca: row.marca,
+                    presentacion: row.presentacion,
                 };
             } else {
                 return {
@@ -640,6 +642,8 @@ WHERE c.id = ?
                     precio_unitario: Number(row.precio_unitario || 0),
                     descuento: labelDesc,
                     total: Number(row.total || 0),
+                    marca: row.marca,
+                    presentacion: row.presentacion,
                 };
             }
         });
