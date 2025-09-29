@@ -2781,6 +2781,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     subtotal * (descuento / 100)
                 ).toFixed(2);
 
+                // === SNAPSHOTS desde UI (con fallback al catálogo) ===
+                const descripcion_snapshot = item.querySelector(".service-description")?.value || null;
+                const subtitulo_snapshot   = item.querySelector(".field-subtitulo")?.value     || null;
+                const marca_snapshot       = item.querySelector(".field-marca")?.value         || null;
+                const presentacion_snapshot= item.querySelector(".field-presentacion")?.value  || null;
+                const codigo_snapshot      =  null;
+
+
                 servicios.push({
                     servicio_id,
                     cantidad,
@@ -2788,7 +2796,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     descuento,
                     subtotal,
                     total,
-                });
+                    codigo_snapshot,
+                    descripcion_snapshot,
+                    subtitulo_snapshot,
+                    marca_snapshot,
+                    presentacion_snapshot,
+                                });
             });
         return servicios;
     }
@@ -3307,6 +3320,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             precio_unitario: Number(s.precio_unitario) || 0,
                             descuento: Number(s.descuento) || 0,
                             total: Number(s.total) || 0,
+                            descripcion_snapshot:  s.descripcion_snapshot  ?? null,
+                            subtitulo_snapshot:    s.subtitulo_snapshot    ?? null,
+                            marca_snapshot:        s.marca_snapshot        ?? null,
+                            presentacion_snapshot: s.presentacion_snapshot ?? null,
+                            codigo_snapshot:       s.codigo_snapshot       ?? null,
                         });
                     });
                 });
@@ -3325,6 +3343,11 @@ document.addEventListener("DOMContentLoaded", function () {
                                 Number(s.precio_unitario ?? s.precio) || 0,
                             descuento: Number(s.descuento) || 0,
                             total: Number(s.total) || 0,
+                            descripcion_snapshot:  s.descripcion_snapshot  ?? null,
+                            subtitulo_snapshot:    s.subtitulo_snapshot    ?? null,
+                            marca_snapshot:        s.marca_snapshot        ?? null,
+                            presentacion_snapshot: s.presentacion_snapshot ?? null,
+                            codigo_snapshot:       s.codigo_snapshot       ?? null,
                         });
                     });
                 });

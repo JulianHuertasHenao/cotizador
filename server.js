@@ -993,8 +993,9 @@ app.post("/api/cotizaciones/detalle", async (req, res) => {
         await db.run("BEGIN");
         const stmt = await db.prepare(`
       INSERT INTO DetallesCotizacion
-        (cotizacion_id, servicio_id, cantidad, precio_unitario, descuento, total)
-      VALUES (?, ?, ?, ?, ?, ?)
+        (cotizacion_id, servicio_id, cantidad, precio_unitario, descuento, total,
+        codigo_snapshot, descripcion_snapshot, subtitulo_snapshot, marca_snapshot, presentacion_snapshot)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
         for (const it of items) {
             await stmt.run(
@@ -1003,7 +1004,12 @@ app.post("/api/cotizaciones/detalle", async (req, res) => {
                 Number(it.cantidad) || 1,
                 Number(it.precio_unitario) || 0,
                 Number(it.descuento) || 0,
-                Number(it.total) || 0
+                Number(it.total) || 0,
+                Number(it.codigo_snapshot) || null,
+                it.descripcion_snapshot ?? null,
+                it.subtitulo_snapshot ?? null,
+                it.marca_snapshot ?? null,
+                it.presentacion_snapshot ?? null,
             );
         }
         await stmt.finalize();
