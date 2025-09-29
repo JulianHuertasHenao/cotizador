@@ -3228,6 +3228,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         const total =
                             subtotalServicio - (subtotalServicio * desc) / 100;
 
+                        const descripcion_snapshot = item.querySelector(".service-description")?.value || null;
+                        const subtitulo_snapshot   = item.querySelector(".field-subtitulo")?.value     || null;
+                        const marca_snapshot       = item.querySelector(".field-marca")?.value         || null;
+                        const presentacion_snapshot= item.querySelector(".field-presentacion")?.value  || null;
+                        const codigo_snapshot      =  null;
+
                         // Categoría (select en header de la categoría)
                         const catSel =
                             item
@@ -3243,6 +3249,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             precio_unitario: precio,
                             descuento: desc,
                             total,
+                            codigo_snapshot,
+                            descripcion_snapshot,
+                            subtitulo_snapshot,
+                            marca_snapshot,
+                            presentacion_snapshot,
                         });
                     });
 
@@ -3328,6 +3339,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     });
                 });
+                console.log(items)
                 return items;
             };
 
