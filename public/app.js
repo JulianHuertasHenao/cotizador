@@ -3339,7 +3339,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     });
                 });
-                console.log(items)
                 return items;
             };
 
