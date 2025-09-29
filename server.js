@@ -322,11 +322,11 @@ LEFT JOIN Pacientes p ON p.id = c.paciente_id
         dc.descuento,         -- % numérico
         dc.total,
         s.codigo,
-        s.descripcion,
-        s.subtitulo,
+        COALESCE(dc.descripcion_snapshot, s.descripcion, 'Servicio') AS descripcion,
+        COALESCE(dc.subtitulo_snapshot, s.subtitulo, 'OTROS')   AS subtitulo,
+        COALESCE(dc.marca_snapshot, s.marca, '')                AS marca,
+        COALESCE(dc.presentacion_snapshot, s.presentacion, '')  AS presentacion,
         s.categoria_id,
-        s.marca,
-        s.presentacion,
         s.tipo_item,
         cat.nombre_categoria,
         cat.id AS cat_id
@@ -539,7 +539,11 @@ WHERE c.id = ?
         dc.precio_unitario,
         dc.descuento,
         dc.total,
-        s.codigo, s.descripcion, s.subtitulo, s.marca, s.presentacion,
+        s.codigo, 
+        COALESCE(dc.descripcion_snapshot, s.descripcion, 'Servicio') AS descripcion,
+        COALESCE(dc.subtitulo_snapshot, s.subtitulo, 'OTROS')   AS subtitulo,
+        COALESCE(dc.marca_snapshot, s.marca, '')                AS marca,
+        COALESCE(dc.presentacion_snapshot, s.presentacion, '')  AS presentacion,
         s.categoria_id AS cat_id,
         cat.nombre_categoria
       FROM DetallesCotizacion dc
