@@ -1,1519 +1,1135 @@
 <!DOCTYPE html>
 <html lang="es">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Cotizador</title>
-        <link rel="stylesheet" href="styles.css" />
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-        />
-        <link rel="icon" type="image/png" href="logo-sandra.png" />
-    </head>
-    <body>
-        <div class="header">
-            <img src="logo-sandra.png" alt="Logo Sandra" class="logo" />
-            <h1>Cotizador Odontologico</h1>
-        </div>
 
-        <div class="tabs">
-            <div class="tab active" data-tab="new">Nueva Cotización</div>
-            <div class="tab" data-tab="history">Historial</div>
-            <div class="tab" data-tab="dataManagement">Gestión de Datos</div>
-        </div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cotizador</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="icon" type="image/png" href="bill-logo.png" />
+</head>
 
-        <div id="newQuoteTab" class="tab-content active">
-            <div class="card">
-                <h2 id="quoteTitle">Nueva Cotización</h2>
-                <form id="cotizacionForm" name="cotizacionForm">
-                    <div class="form-group">
-                        <label class="patient-selection-label"
-                            ><i class="fas fa-user"></i> Paciente</label
-                        >
-                        <div class="patient-selection">
-                            <div class="search-wrapper" style="width: 100%">
-                                <input
-                                    type="text"
-                                    id="pacienteSearchInput"
-                                    class="form-control"
-                                    placeholder="Buscar por nombre o correo..."
-                                    autocomplete="off"
-                                />
-                                <div
-                                    id="pacienteSearchResults"
-                                    class="search-dropdown"
-                                    style="display: none; width: 100%"
-                                ></div>
+<body>
+    <div class="header">
+        <img src="bill-logo-colorchanged.png" alt="Logo Cotizador" class="logo" />
+        <h1>Sistema de Cotizaciones</h1>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="new">Nueva Cotización</div>
+        <div class="tab" data-tab="history">Historial</div>
+        <div class="tab" data-tab="dataManagement">Gestión de Datos</div>
+    </div>
+
+    <div id="newQuoteTab" class="tab-content active">
+        <div class="card">
+            <h2 id="quoteTitle">Nueva Cotización</h2>
+            <form id="cotizacionForm" name="cotizacionForm">
+                <div class="form-group">
+                    <label class="patient-selection-label"><i class="fas fa-user"></i> Paciente</label>
+                    <div class="patient-selection">
+                        <div class="search-wrapper" style="width: 100%">
+                            <input type="text" id="pacienteSearchInput" class="form-control"
+                                placeholder="Buscar por nombre o correo..." autocomplete="off" />
+                            <div id="pacienteSearchResults" class="search-dropdown" style="display: none; width: 100%">
                             </div>
-                            <button
-                                type="button"
-                                id="nuevoPacienteBtn"
-                                class="btn btn-outline-secondary"
-                            >
-                                <i class="fas fa-plus"></i> Nuevo paciente
-                            </button>
                         </div>
-                        <div
-                            id="nuevoPacienteForm"
-                            style="display: none; margin-top: 1rem"
-                        >
-                            <div class="form-group">
-                                <input
-                                    type="text"
-                                    id="nombrePaciente"
-                                    class="form-control"
-                                    placeholder="Ingrese el nombre del paciente"
-                                />
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <input
-                                        type="email"
-                                        id="correoPaciente"
-                                        class="form-control"
-                                        placeholder="Correo electrónico del paciente"
-                                    />
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <input
-                                        type="tel"
-                                        id="telefonoPaciente"
-                                        class="form-control"
-                                        placeholder="Teléfono"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                class="btn btn-success"
-                                id="guardarPacienteBtn"
-                            >
-                                Guardar Paciente
-                            </button>
-                        </div>
+                        <button type="button" id="nuevoPacienteBtn" class="btn btn-outline-secondary">
+                            <i class="fas fa-plus"></i> Nuevo paciente
+                        </button>
                     </div>
-                    <div class="form-section">
-                        <div class="toggle-container">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="use-phases" />
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label"
-                                >Organizar tratamiento en fases</span
-                            >
+                    <div id="nuevoPacienteForm" style="display: none; margin-top: 1rem">
+                        <div class="form-group">
+                            <input type="text" id="nombrePaciente" class="form-control"
+                                placeholder="Ingrese el nombre del paciente" />
                         </div>
-                        <div id="phases-container" class="hidden">
-                            <div
-                                id="no-phases-message"
-                                class="no-phases-message"
-                            >
-                                <p>No hay fases añadidas todavía</p>
-                                <button
-                                    id="add-first-phase-btn"
-                                    class="btn btn-primary"
-                                >
-                                    Añadir Primera Fase
-                                </button>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <input type="email" id="correoPaciente" class="form-control"
+                                    placeholder="Correo electrónico del paciente" />
                             </div>
-                            <div id="phases-grid" class="phases-grid">
-                                <template id="phase-template">
-                                    <div class="phase-container">
-                                        <div class="phase-header">
-                                            <div class="phase-title">
-                                                <span class="phase-number-badge"
-                                                    >1</span
-                                                >
-                                                <span
-                                                    >Fase
-                                                    <span
-                                                        class="phase-number-text"
-                                                        >1</span
-                                                    ></span
-                                                >
-                                            </div>
-                                            <button
-                                                class="btn btn-sm btn-danger remove-phase-btn"
-                                                title="Eliminar fase"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                        <div class="duration-input">
-                                            <label
-                                                class="duration-label"
-                                                for="duracion-fase-{n}"
-                                                >Duración:</label
-                                            >
-                                            <input
-                                                type="number"
-                                                class="phase-duration form-control"
-                                                min="1"
-                                                value="1"
-                                                id="duracion-fase-{n}"
-                                            />
-                                            <span>meses</span>
-                                        </div>
-                                        <div class="category-group">
-                                            <div class="category-header">
-                                                <select
-                                                    class="form-control categoria-fase-select"
-                                                    style="
-                                                        flex: 1;
-                                                        min-width: 150px;
-                                                    "
-                                                >
-                                                    <option value=""
-                                                        >Seleccionar
-                                                        categoría...</option
-                                                    >
-                                                </select>
-                                                <div class="category-actions">
-                                                    <button
-                                                        class="btn btn-sm btn-primary add-service-btn"
-                                                        type="button"
-                                                    >
-                                                        Añadir Servicio
-                                                    </button>
-                                                    <button
-                                                        class="btn btn-sm btn-danger remove-category-btn"
-                                                        title="Eliminar categoría"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="service-list"></div>
-                                            <div class="form-group">
-                                                <label
-                                                    for="observaciones-fases-{n}"
-                                                    ><i
-                                                        class="fas fa-comment"
-                                                    ></i>
-                                                    Observaciones</label
-                                                >
-                                                <textarea
-                                                    id="observaciones-fases-{n}"
-                                                    rows="1"
-                                                    class="form-control observaciones-fases"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-                                        <div style="margin-top: 0.75rem">
-                                            <button
-                                                class="btn btn-primary add-category-btn"
-                                                type="button"
-                                            >
-                                                Añadir Categoría
-                                            </button>
-                                        </div>
-                                        <div class="fase-totals">
-                                            <div class="totals-row">
-                                                <span>Subtotal Fase:</span>
-                                                <span class="fase-subtotal"
-                                                    >$0.00</span
-                                                >
-                                            </div>
-                                            <div class="totals-row">
-                                                <span>Descuento Fase:</span>
-                                                <span class="fase-descuento"
-                                                    >$0.00</span
-                                                >
-                                            </div>
-                                            <div class="totals-row fase-total">
-                                                <span>Total Fase:</span>
-                                                <span class="fase-total-amount"
-                                                    >$0.00</span
-                                                >
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-                            <div style="margin-top: 0.75rem">
-                                <button
-                                    id="add-phase-btn"
-                                    class="btn btn-secondary"
-                                    type="button"
-                                >
-                                    + Añadir Fase
-                                </button>
+                            <div class="form-group col-md-6">
+                                <input type="tel" id="telefonoPaciente" class="form-control" placeholder="Teléfono" />
                             </div>
                         </div>
-                        <div id="no-phase-categories">
-                            <div class="category-group">
-                                <div class="category-header">
-                                    <select
-                                        class="form-control categoria-unica-select"
-                                        style="flex: 1; min-width: 150px"
-                                        id="categoriaUnicaSelect"
-                                    >
-                                        <option value=""
-                                            >Seleccionar categoría...</option
-                                        >
-                                    </select>
-                                    <div class="category-actions">
-                                        <button
-                                            class="btn btn-sm btn-primary add-service-btn"
-                                            type="button"
-                                        >
-                                            Añadir Servicio
-                                        </button>
-                                        <button
-                                            class="btn btn-sm btn-danger remove-category-btn"
-                                            title="Eliminar categoría"
-                                        >
+                        <button type="button" class="btn btn-success" id="guardarPacienteBtn">
+                            Guardar Paciente
+                        </button>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="use-phases" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">Organizar tratamiento en fases</span>
+                    </div>
+                    <div id="phases-container" class="hidden">
+                        <div id="no-phases-message" class="no-phases-message">
+                            <p>No hay fases añadidas todavía</p>
+                            <button id="add-first-phase-btn" class="btn btn-primary">
+                                Añadir Primera Fase
+                            </button>
+                        </div>
+                        <div id="phases-grid" class="phases-grid">
+                            <template id="phase-template">
+                                <div class="phase-container">
+                                    <div class="phase-header">
+                                        <div class="phase-title">
+                                            <span class="phase-number-badge">1</span>
+                                            <span>Fase
+                                                <span class="phase-number-text">1</span></span>
+                                        </div>
+                                        <button class="btn btn-sm btn-danger remove-phase-btn" title="Eliminar fase">
                                             ×
                                         </button>
                                     </div>
-                                </div>
-                                <div class="service-list"></div>
-                                <div class="form-group">
-                                    <label for="observaciones-no-fase-{n}"
-                                        >Observaciones</label
-                                    >
-                                    <textarea
-                                        id="observaciones-no-fase-{n}"
-                                        rows="1"
-                                        class="form-control observaciones-no-fase"
-                                    ></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            style="margin-top: 0.75rem; margin-bottom: 0.75rem"
-                        >
-                            <button
-                                id="add-category-btn"
-                                class="btn btn-primary"
-                                type="button"
-                            >
-                                + Añadir Categoría
-                            </button>
-                        </div>
-
-                        <template id="service-template">
-                            <div class="service-item">
-                                <!-- Línea superior: sólo el grupo de radios dentro de una “cápsula” -->
-                                <div class="tipo-item-row hidden">
-                                    <div class="tipo-item-radios">
-                                        <label
-                                            ><input
-                                                type="radio"
-                                                data-role="tipo"
-                                                value="servicio"
-                                                checked
-                                            />
-                                            Servicio</label
-                                        >
-                                        <label
-                                            ><input
-                                                type="radio"
-                                                data-role="tipo"
-                                                value="material"
-                                            />
-                                            Material</label
-                                        >
-                                        <label
-                                            ><input
-                                                type="radio"
-                                                data-role="tipo"
-                                                value="adicional"
-                                            />
-                                            Adicional</label
-                                        >
+                                    <div class="duration-input">
+                                        <label class="duration-label" for="duracion-fase-{n}">Duración:</label>
+                                        <input type="number" class="phase-duration form-control" min="1" value="1"
+                                            id="duracion-fase-{n}" />
+                                        <span>meses</span>
+                                    </div>
+                                    <div class="category-group">
+                                        <div class="category-header">
+                                            <select class="form-control categoria-fase-select" style="
+                                                        flex: 1;
+                                                        min-width: 150px;
+                                                    ">
+                                                <option value="">Seleccionar
+                                                    categoría...</option>
+                                            </select>
+                                            <div class="category-actions">
+                                                <button class="btn btn-sm btn-primary add-service-btn" type="button">
+                                                    Añadir Servicio
+                                                </button>
+                                                <button class="btn btn-sm btn-danger remove-category-btn"
+                                                    title="Eliminar categoría">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="service-list"></div>
+                                        <div class="form-group">
+                                            <label for="observaciones-fases-{n}"><i class="fas fa-comment"></i>
+                                                Observaciones</label>
+                                            <textarea id="observaciones-fases-{n}" rows="1"
+                                                class="form-control observaciones-fases"></textarea>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 0.75rem">
+                                        <button class="btn btn-primary add-category-btn" type="button">
+                                            Añadir Categoría
+                                        </button>
+                                    </div>
+                                    <div class="fase-totals">
+                                        <div class="totals-row">
+                                            <span>Subtotal Fase:</span>
+                                            <span class="fase-subtotal">$0.00</span>
+                                        </div>
+                                        <div class="totals-row">
+                                            <span>Descuento Fase:</span>
+                                            <span class="fase-descuento">$0.00</span>
+                                        </div>
+                                        <div class="totals-row fase-total">
+                                            <span>Total Fase:</span>
+                                            <span class="fase-total-amount">$0.00</span>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <!-- Resto de la fila de servicio (segunda línea) -->
-                                <select
-                                    class="form-control servicio-select"
-                                    style="flex: 1; min-width: 220px"
-                                >
-                                    <option value=""
-                                        >Seleccionar servicio...</option
-                                    >
+                            </template>
+                        </div>
+                        <div style="margin-top: 0.75rem">
+                            <button id="add-phase-btn" class="btn btn-secondary" type="button">
+                                + Añadir Fase
+                            </button>
+                        </div>
+                    </div>
+                    <div id="no-phase-categories">
+                        <div class="category-group">
+                            <div class="category-header">
+                                <select class="form-control categoria-unica-select" style="flex: 1; min-width: 150px"
+                                    id="categoriaUnicaSelect">
+                                    <option value="">Seleccionar categoría...</option>
                                 </select>
-                                <input
-                                    type="text"
-                                    class="form-control service-description"
-                                    placeholder="Descripción"
-                                    style="flex: 1; min-width: 180px"
-                                />
-                                <input
-                                    type="text"
-                                    class="form-control field-subtitulo"
-                                    placeholder="Subtítulo"
-                                    style="flex: 1; min-width: 160px"
-                                />
-                                <input
-                                    type="text"
-                                    class="form-control field-marca"
-                                    placeholder="Marca"
-                                    style="
-                                        flex: 1;
-                                        min-width: 140px;
-                                        display: none;
-                                    "
-                                />
-                                <input
-                                    type="text"
-                                    class="form-control field-presentacion"
-                                    placeholder="Presentación"
-                                    style="
-                                        flex: 1;
-                                        min-width: 160px;
-                                        display: none;
-                                    "
-                                />
-                                <input
-                                    type="number"
-                                    class="form-control cantidad-servicio"
-                                    placeholder="Cant."
-                                    min="1"
-                                    style="width: 90px"
-                                />
-                                <input
-                                    type="number"
-                                    class="form-control descuento-servicio"
-                                    placeholder="Desc.%"
-                                    min="0"
-                                    max="100"
-                                    step="1"
-                                    style="width: 100px"
-                                />
-                                <input
-                                    type="number"
-                                    class="form-control precio-unitario-servicio"
-                                    placeholder="Precio"
-                                    min="0"
-                                    step="0.01"
-                                    style="width: 140px"
-                                />
-                                <div
-                                    class="service-actions"
-                                    style="
-                                        display: flex;
-                                        align-items: center;
-                                        gap: 8px;
-                                        margin-left: auto;
-                                    "
-                                >
-                                    <span
-                                        class="precio-servicio"
-                                        style="
-                                            min-width: 60px;
-                                            text-align: right;
-                                        "
-                                        >0</span
-                                    >
-                                    <button
-                                        class="btn btn-sm btn-danger remove-servicio"
-                                        title="Eliminar este servicio"
-                                        type="button"
-                                    >
+                                <div class="category-actions">
+                                    <button class="btn btn-sm btn-primary add-service-btn" type="button">
+                                        Añadir Servicio
+                                    </button>
+                                    <button class="btn btn-sm btn-danger remove-category-btn"
+                                        title="Eliminar categoría">
                                         ×
                                     </button>
                                 </div>
                             </div>
-                        </template>
+                            <div class="service-list"></div>
+                            <div class="form-group">
+                                <label for="observaciones-no-fase-{n}">Observaciones</label>
+                                <textarea id="observaciones-no-fase-{n}" rows="1"
+                                    class="form-control observaciones-no-fase"></textarea>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="totals-display">
-                            <div class="payment-compact" id="payment-section">
-                                <h4>Método de pago</h4>
+                    <div style="margin-top: 0.75rem; margin-bottom: 0.75rem">
+                        <button id="add-category-btn" class="btn btn-primary" type="button">
+                            + Añadir Categoría
+                        </button>
+                    </div>
 
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <div class="discount-options">
-                                            <label class="discount-option">
-                                                <input
-                                                    type="radio"
-                                                    name="pago-metodo"
-                                                    value="unico"
-                                                    id="pago-metodo-unico"
-                                                    checked
-                                                />
-                                                Pago único
-                                            </label>
-                                            <label class="discount-option">
-                                                <input
-                                                    type="radio"
-                                                    name="pago-metodo"
-                                                    value="aplazado"
-                                                    id="pago-metodo-aplazado"
-                                                />
-                                                Pago aplazado
-                                            </label>
-                                        </div>
-                                    </div>
+                    <template id="service-template">
+                        <div class="service-item">
+                            <!-- Línea superior: sólo el grupo de radios dentro de una “cápsula” -->
+                            <div class="tipo-item-row hidden">
+                                <div class="tipo-item-radios">
+                                    <label><input type="radio" data-role="tipo" value="servicio" checked />
+                                        Servicio</label>
+                                    <label><input type="radio" data-role="tipo" value="material" />
+                                        Material</label>
+                                    <label><input type="radio" data-role="tipo" value="adicional" />
+                                        Adicional</label>
+                                </div>
+                            </div>
 
-                                    <div class="form-group col-md-6">
-                                        <label>Fase higiénica incluida:</label>
-                                        <div class="discount-options">
-                                            <label class="discount-option">
-                                                <input
-                                                    type="radio"
-                                                    name="fase-higienica"
-                                                    value="si"
-                                                    id="fh-si"
-                                                />
-                                                Sí
-                                            </label>
-                                            <label class="discount-option">
-                                                <input
-                                                    type="radio"
-                                                    name="fase-higienica"
-                                                    value="no"
-                                                    id="fh-no"
-                                                />
-                                                No
-                                            </label>
-                                        </div>
+                            <!-- Resto de la fila de servicio (segunda línea) -->
+                            <select class="form-control servicio-select" style="flex: 1; min-width: 220px">
+                                <option value="">Seleccionar servicio...</option>
+                            </select>
+                            <input type="text" class="form-control service-description" placeholder="Descripción"
+                                style="flex: 1; min-width: 180px" />
+                            <input type="text" class="form-control field-subtitulo" placeholder="Subtítulo"
+                                style="flex: 1; min-width: 160px" />
+                            <input type="text" class="form-control field-marca" placeholder="Marca" style="
+                                        flex: 1;
+                                        min-width: 140px;
+                                        display: none;
+                                    " />
+                            <input type="text" class="form-control field-presentacion" placeholder="Presentación" style="
+                                        flex: 1;
+                                        min-width: 160px;
+                                        display: none;
+                                    " />
+                            <input type="number" class="form-control cantidad-servicio" placeholder="Cant." min="1"
+                                style="width: 90px" />
+                            <input type="number" class="form-control descuento-servicio" placeholder="Desc.%" min="0"
+                                max="100" step="1" style="width: 100px" />
+                            <input type="number" class="form-control precio-unitario-servicio" placeholder="Precio"
+                                min="0" step="0.01" style="width: 140px" />
+                            <div class="service-actions" style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        margin-left: auto;
+                                    ">
+                                <span class="precio-servicio" style="
+                                            min-width: 60px;
+                                            text-align: right;
+                                        ">0</span>
+                                <button class="btn btn-sm btn-danger remove-servicio" title="Eliminar este servicio"
+                                    type="button">
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="totals-display">
+                        <div class="payment-compact" id="payment-section">
+                            <h4>Método de pago</h4>
+
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <div class="discount-options">
+                                        <label class="discount-option">
+                                            <input type="radio" name="pago-metodo" value="unico" id="pago-metodo-unico"
+                                                checked />
+                                            Pago único
+                                        </label>
+                                        <label class="discount-option">
+                                            <input type="radio" name="pago-metodo" value="aplazado"
+                                                id="pago-metodo-aplazado" />
+                                            Pago aplazado
+                                        </label>
                                     </div>
                                 </div>
 
-                                <div
-                                    id="pago-aplazado-fields"
-                                    class="form-row hidden"
-                                >
-                                    <div class="form-group col-md-3">
-                                        <label>Total Cuota inicial:</label>
-                                        <input
-                                            type="text"
-                                            id="pago-cuota-inicial"
-                                            class="form-control"
-                                            placeholder="$0"
-                                        />
+                                <div class="form-group col-md-6">
+                                    <label>Fase higiénica incluida:</label>
+                                    <div class="discount-options">
+                                        <label class="discount-option">
+                                            <input type="radio" name="fase-higienica" value="si" id="fh-si" />
+                                            Sí
+                                        </label>
+                                        <label class="discount-option">
+                                            <input type="radio" name="fase-higienica" value="no" id="fh-no" />
+                                            No
+                                        </label>
                                     </div>
+                                </div>
+                            </div>
 
-                                    <!-- Pago aplazado ortodoncia (oculto por defecto) -->
-                                    <div
-                                        class="form-group col-md-3"
-                                        id="col-ortodoncia"
-                                    >
-                                        <div
-                                            id="pago-aplazado-ortodoncia"
-                                            class="hidden"
-                                        >
-                                            <label>Cuota 1 (15%):</label>
-                                            <input
-                                                type="text"
-                                                id="cuota-1"
-                                                class="form-control"
-                                                readonly
-                                            />
+                            <div id="pago-aplazado-fields" class="form-row hidden">
+                                <div class="form-group col-md-3">
+                                    <label>Total Cuota inicial:</label>
+                                    <input type="text" id="pago-cuota-inicial" class="form-control" placeholder="$0" />
+                                </div>
 
-                                            <label>Cuota 2 (15%):</label>
-                                            <input
-                                                type="text"
-                                                id="cuota-2"
-                                                class="form-control"
-                                                readonly
-                                            />
-                                        </div>
-                                    </div>
+                                <!-- Pago aplazado ortodoncia (oculto por defecto) -->
+                                <div class="form-group col-md-3" id="col-ortodoncia">
+                                    <div id="pago-aplazado-ortodoncia" class="hidden">
+                                        <label>Cuota 1 (15%):</label>
+                                        <input type="text" id="cuota-1" class="form-control" readonly />
 
-                                    <div class="form-group col-md-3">
-                                        <label>Número de cuotas:</label>
-                                        <input
-                                            type="number"
-                                            id="pago-numero-cuotas"
-                                            class="form-control"
-                                            min="1"
-                                            step="1"
-                                            placeholder="Ej. 6"
-                                        />
+                                        <label>Cuota 2 (15%):</label>
+                                        <input type="text" id="cuota-2" class="form-control" readonly />
                                     </div>
-                                    <div class="form-group col-md-3">
-                                        <label>Valor por cuota:</label>
-                                        <input
-                                            type="text"
-                                            id="pago-valor-cuota"
-                                            class="form-control"
-                                            placeholder="$0"
-                                        />
-                                    </div>
-                                    <div
-                                        class="form-group col-md-3"
-                                        style="
+                                </div>
+
+                                <div class="form-group col-md-3">
+                                    <label>Número de cuotas:</label>
+                                    <input type="number" id="pago-numero-cuotas" class="form-control" min="1" step="1"
+                                        placeholder="Ej. 6" />
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Valor por cuota:</label>
+                                    <input type="text" id="pago-valor-cuota" class="form-control" placeholder="$0" />
+                                </div>
+                                <div class="form-group col-md-3" style="
                                             display: flex;
                                             align-items: center;
-                                        "
-                                    ></div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group col-md-3">
-                                        <label>Pagado a la fecha:</label>
-                                        <input
-                                            type="text"
-                                            id="pago-pagado-a-fecha"
-                                            class="form-control"
-                                            placeholder="$0"
-                                        />
-                                    </div>
-                                </div>
+                                        "></div>
                             </div>
 
-                            <br />
-                            <h4>Totales de la cotización</h4>
-                            <div class="totals-row">
-                                <span>Subtotal:</span>
-                                <span id="subtotal-cotizacion">$0.00</span>
-                            </div>
-                            <div class="totals-row">
-                                <span>Descuento total:</span>
-                                <span id="descuento-cotizacion">$0.00</span>
-                            </div>
-                            <div class="totals-row total">
-                                <span>Total a pagar:</span>
-                                <span id="total-cotizacion">$0.00</span>
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label>Pagado a la fecha:</label>
+                                    <input type="text" id="pago-pagado-a-fecha" class="form-control" placeholder="$0" />
+                                </div>
                             </div>
                         </div>
-                        <div class="action-buttons">
-                            <button id="reset-btn" class="btn btn-danger">
-                                Reiniciar Formulario
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-success"
-                                id="generatePdfBtn"
-                            >
-                                <i class="fas fa-file-pdf"></i> Generar PDF
-                            </button>
-                            <button
-                                type="button"
-                                class="btn btn-warning"
-                                id="sendEmailBtn"
-                            >
-                                <i class="fas fa-paper-plane"></i> Enviar por
-                                Email
-                            </button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Guardar Cotización
-                            </button>
+
+                        <br />
+                        <h4>Totales de la cotización</h4>
+                        <div class="totals-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal-cotizacion">$0.00</span>
+                        </div>
+                        <div class="totals-row">
+                            <span>Descuento total:</span>
+                            <span id="descuento-cotizacion">$0.00</span>
+                        </div>
+                        <div class="totals-row total">
+                            <span>Total a pagar:</span>
+                            <span id="total-cotizacion">$0.00</span>
                         </div>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <div id="historyTab" class="tab-content">
-            <div class="card">
-                <h2
-                    ><i class="fas fa-history"></i> Historial de
-                    Cotizaciones</h2
-                >
-                <div class="search-container" style="width: 100%">
-                    <input
-                        type="text"
-                        id="cotizationSearchInput"
-                        class="search-input form-control"
-                        style="width: 40%; margin-bottom: 1rem; padding: 1rem"
-                        placeholder="Buscar cotizaciones..."
-                        onkeyup="filterCotizationTable()"
-                    />
-                </div>
-                <div id="cotizacionesList">
-                    <!-- Lista de cotizaciones se cargará aquí -->
-                </div>
-            </div>
-        </div>
-
-        <div id="dataManagement" class="tab-content">
-            <!-- Data Management Section -->
-            <div id="dataManagementSection" class="fade-in">
-                <!-- Sub Tabs -->
-                <div class="tabs">
-                    <button id="categoriesTab" class="tab-button active">
-                        Categorías
-                    </button>
-                    <button id="servicesTab" class="tab-button"
-                        >Servicios</button
-                    >
-                </div>
-
-                <!-- Categories Section -->
-                <div id="categoriesSection">
-                    <div class="card">
-                        <h2 class="main-title">Gestión de Categorías</h2>
-                        <p class="subtitle">
-                            Añadir, editar y eliminar categorías con esta tabla
-                            interactiva
-                        </p>
-
-                        <!-- Add Category Form -->
-                        <div class="form-card">
-                            <h2 class="form-title">Añadir Nueva Categoría</h2>
-                            <form
-                                id="addCategoryForm"
-                                class="form-grid three-cols"
-                            >
-                                <div class="form-group">
-                                    <label for="categoryName"
-                                        >Nombre de Categoría</label
-                                    >
-                                    <input
-                                        type="text"
-                                        id="categoryName"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div class="form-group">
-                                    <label for="categoryDescription"
-                                        >Descripción</label
-                                    >
-                                    <input
-                                        type="text"
-                                        id="categoryDescription"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div class="form-group full-width">
-                                    <button
-                                        type="submit"
-                                        class="btn btn-primary"
-                                    >
-                                        <i
-                                            class="fas fa-plus"
-                                            style="margin-right: 0.5rem"
-                                        ></i>
-                                        Añadir Categoría
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Categories Table -->
-                        <div class="search-container" style="width: 100%">
-                            <input
-                                type="text"
-                                id="categorySearchInput"
-                                class="search-input form-control"
-                                style="
-                                    width: 40%;
-                                    margin-bottom: 1rem;
-                                    padding: 1rem;
-                                "
-                                placeholder="Buscar categorías..."
-                                onkeyup="filterCategoryTable()"
-                            />
-                        </div>
-                        <div class="table-container">
-                            <table class="table" id="categoryTable">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nombre de Categoría</th>
-                                        <th>Descripción</th>
-                                        <th class="center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="categoryTableBody">
-                                    <!-- Filas dinámicas -->
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Empty state message -->
-                        <div id="categoryEmptyState" class="empty-state">
-                            <i class="fas fa-clipboard-list icon-empty"></i>
-                            <h3>No hay categorías aún</h3>
-                            <p
-                                >Añade tu primera categoría usando el formulario
-                                de arriba</p
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Stats Card -->
-                    <div class="card">
-                        <h2 class="form-title">Estadísticas de Categorías</h2>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <p>Total de Categorías</p>
-                                <span id="totalCategories">0</span>
-                            </div>
-                            <div class="stat">
-                                <p>Última Añadida</p>
-                                <span id="lastAddedCategory">-</span>
-                            </div>
-                            <div class="stat">
-                                <p>Última Actualizada</p>
-                                <span id="lastUpdatedCategory">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Services Section -->
-                <div id="servicesSection" class="hidden">
-                    <div class="card">
-                        <h2 class="main-title">Gestión de Servicios</h2>
-                        <p class="subtitle">
-                            Añadir, editar y eliminar servicios con esta tabla
-                            interactiva
-                        </p>
-
-                        <!-- Add Service Form -->
-                        <div class="form-card">
-                            <h2 class="form-title">Añadir Nuevo Servicio</h2>
-                            <div class="form-group" id="tipo-item-group">
-                                <label class="group-label">Tipo de ítem:</label>
-                                <div class="radio-row">
-                                    <label
-                                        ><input
-                                            type="radio"
-                                            name="tipo_item"
-                                            value="servicio"
-                                            checked
-                                        />
-                                        Servicio</label
-                                    >
-                                    <label
-                                        ><input
-                                            type="radio"
-                                            name="tipo_item"
-                                            value="material"
-                                        />
-                                        Material</label
-                                    >
-                                    <label
-                                        ><input
-                                            type="radio"
-                                            name="tipo_item"
-                                            value="adicional"
-                                        />
-                                        Adicional</label
-                                    >
-                                </div>
-                            </div>
-
-                            <form
-                                id="addServiceForm"
-                                class="form-grid two-cols"
-                            >
-                                <div class="form-group">
-                                    <label for="serviceCode"
-                                        >Código de Servicio</label
-                                    >
-                                    <input
-                                        type="text"
-                                        id="serviceCode"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div class="form-group">
-                                    <label for="serviceCategory"
-                                        >Categoría</label
-                                    >
-                                    <select
-                                        id="serviceCategory"
-                                        required
-                                        class="select"
-                                    >
-                                        <option value=""
-                                            >Seleccionar una categoría</option
-                                        >
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="serviceDescription"
-                                        >Descripción</label
-                                    >
-                                    <input
-                                        type="text"
-                                        id="serviceDescription"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div class="form-group">
-                                    <label for="serviceSubtitle"
-                                        >Subtítulo</label
-                                    >
-                                    <input
-                                        type="text"
-                                        id="serviceSubtitle"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div class="form-group input-with-prefix">
-                                    <label for="servicePrice"
-                                        >Precio Neto</label
-                                    >
-                                    <input
-                                        type="number"
-                                        id="servicePrice"
-                                        min="0"
-                                        step="0.01"
-                                        required
-                                        class="input"
-                                    />
-                                </div>
-                                <div id="extra-material" style="display: none">
-                                    <div class="form-group">
-                                        <label for="serviceMarca">Marca</label>
-                                        <input
-                                            type="text"
-                                            id="serviceMarca"
-                                            class="input"
-                                        />
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="servicePresentacion"
-                                            >Presentación</label
-                                        >
-                                        <input
-                                            type="text"
-                                            id="servicePresentacion"
-                                            class="input"
-                                        />
-                                    </div>
-                                </div>
-                                <div class="form-group full-width">
-                                    <button
-                                        type="submit"
-                                        class="btn btn-primary"
-                                    >
-                                        <i
-                                            class="fas fa-plus"
-                                            style="margin-right: 0.5rem"
-                                        ></i>
-                                        Añadir Servicio
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Services Table -->
-                        <div class="search-container">
-                            <input
-                                type="text"
-                                id="serviceSearchInput"
-                                class="search-input form-control"
-                                style="
-                                    width: 40%;
-                                    margin-bottom: 1rem;
-                                    padding: 1rem;
-                                "
-                                placeholder="Buscar servicios..."
-                                onkeyup="filterServiceTable()"
-                            />
-                        </div>
-                        <div class="table-container">
-                            <table class="table" id="serviceTable">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Tipo</th>
-                                        <th>Categoria</th>
-                                        <th>Marca / Presentación</th>
-                                        <th>Subtítulo</th>
-                                        <th>Descripción</th>
-                                        <th>Precio neto</th>
-                                        <th class="center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="serviceTableBody">
-                                    <!-- Filas dinámicas -->
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Empty state message -->
-                        <div id="serviceEmptyState" class="empty-state">
-                            <i class="fas fa-teeth-open icon-empty"></i>
-                            <h3>No hay servicios aún</h3>
-                            <p
-                                >Añade tu primer servicio usando el formulario
-                                de arriba</p
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Stats Card -->
-                    <div class="card">
-                        <h2 class="form-title">Estadísticas de Servicios</h2>
-                        <div class="stats-grid">
-                            <div class="stat">
-                                <p>Total de Servicios</p>
-                                <span id="totalServices">0</span>
-                            </div>
-                            <div class="stat">
-                                <p>Precio Promedio</p>
-                                <span id="averagePrice">$0.00</span>
-                            </div>
-                            <div class="stat">
-                                <p>Último Añadido</p>
-                                <span id="lastAddedService">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Delete Confirmation Modal -->
-            <div id="deleteModal" class="modal hidden">
-                <div class="modal-content">
-                    <h2>Confirmar Eliminación</h2>
-                    <p id="deleteMessage">
-                        ¿Estás seguro de que quieres eliminar este elemento?
-                        Esta acción no se puede deshacer.
-                    </p>
-                    <div class="modal-actions">
-                        <button id="cancelDelete" class="btn btn-secondary">
-                            Cancelar
+                    <div class="action-buttons">
+                        <button id="reset-btn" class="btn btn-danger">
+                            Reiniciar Formulario
                         </button>
-                        <button id="confirmDelete" class="btn btn-danger"
-                            >Eliminar</button
-                        >
+                        <button type="button" class="btn btn-success" id="generatePdfBtn">
+                            <i class="fas fa-file-pdf"></i> Generar PDF
+                        </button>
+                        <button type="button" class="btn btn-warning" id="sendEmailBtn">
+                            <i class="fas fa-paper-plane"></i> Enviar por
+                            Email
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Cotización
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="historyTab" class="tab-content">
+        <div class="card">
+            <h2><i class="fas fa-history"></i> Historial de
+                Cotizaciones</h2>
+            <div class="search-container" style="width: 100%">
+                <input type="text" id="cotizationSearchInput" class="search-input form-control"
+                    style="width: 40%; margin-bottom: 1rem; padding: 1rem" placeholder="Buscar cotizaciones..."
+                    onkeyup="filterCotizationTable()" />
+            </div>
+            <div id="cotizacionesList">
+                <!-- Lista de cotizaciones se cargará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <div id="dataManagement" class="tab-content">
+        <!-- Data Management Section -->
+        <div id="dataManagementSection" class="fade-in">
+            <!-- Sub Tabs -->
+            <div class="tabs">
+                <button id="categoriesTab" class="tab-button active">
+                    Categorías
+                </button>
+                <button id="servicesTab" class="tab-button">Servicios</button>
+            </div>
+
+            <!-- Categories Section -->
+            <div id="categoriesSection">
+                <div class="card">
+                    <h2 class="main-title">Gestión de Categorías</h2>
+                    <p class="subtitle">
+                        Añadir, editar y eliminar categorías con esta tabla
+                        interactiva
+                    </p>
+
+                    <!-- Add Category Form -->
+                    <div class="form-card">
+                        <h2 class="form-title">Añadir Nueva Categoría</h2>
+                        <form id="addCategoryForm" class="form-grid three-cols">
+                            <div class="form-group">
+                                <label for="categoryName">Nombre de Categoría</label>
+                                <input type="text" id="categoryName" required class="input" />
+                            </div>
+                            <div class="form-group">
+                                <label for="categoryDescription">Descripción</label>
+                                <input type="text" id="categoryDescription" required class="input" />
+                            </div>
+                            <div class="form-group full-width">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus" style="margin-right: 0.5rem"></i>
+                                    Añadir Categoría
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Categories Table -->
+                    <div class="search-container" style="width: 100%">
+                        <input type="text" id="categorySearchInput" class="search-input form-control" style="
+                                    width: 40%;
+                                    margin-bottom: 1rem;
+                                    padding: 1rem;
+                                " placeholder="Buscar categorías..." onkeyup="filterCategoryTable()" />
+                    </div>
+                    <div class="table-container">
+                        <table class="table" id="categoryTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre de Categoría</th>
+                                    <th>Descripción</th>
+                                    <th class="center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryTableBody">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty state message -->
+                    <div id="categoryEmptyState" class="empty-state">
+                        <i class="fas fa-clipboard-list icon-empty"></i>
+                        <h3>No hay categorías aún</h3>
+                        <p>Añade tu primera categoría usando el formulario
+                            de arriba</p>
+                    </div>
+                </div>
+
+                <!-- Stats Card -->
+                <div class="card">
+                    <h2 class="form-title">Estadísticas de Categorías</h2>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <p>Total de Categorías</p>
+                            <span id="totalCategories">0</span>
+                        </div>
+                        <div class="stat">
+                            <p>Última Añadida</p>
+                            <span id="lastAddedCategory">-</span>
+                        </div>
+                        <div class="stat">
+                            <p>Última Actualizada</p>
+                            <span id="lastUpdatedCategory">-</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Toast Notification -->
-            <div id="toast" class="toast hidden">
-                <span id="toastMessage">Operación exitosa</span>
+            <!-- Services Section -->
+            <div id="servicesSection" class="hidden">
+                <div class="card">
+                    <h2 class="main-title">Gestión de Servicios</h2>
+                    <p class="subtitle">
+                        Añadir, editar y eliminar servicios con esta tabla
+                        interactiva
+                    </p>
+
+                    <!-- Add Service Form -->
+                    <div class="form-card">
+                        <h2 class="form-title">Añadir Nuevo Servicio</h2>
+                        <div class="form-group" id="tipo-item-group">
+                            <label class="group-label">Tipo de ítem:</label>
+                            <div class="radio-row">
+                                <label><input type="radio" name="tipo_item" value="servicio" checked />
+                                    Servicio</label>
+                                <label><input type="radio" name="tipo_item" value="material" />
+                                    Material</label>
+                                <label><input type="radio" name="tipo_item" value="adicional" />
+                                    Adicional</label>
+                            </div>
+                        </div>
+
+                        <form id="addServiceForm" class="form-grid two-cols">
+                            <div class="form-group">
+                                <label for="serviceCode">Código de Servicio</label>
+                                <input type="text" id="serviceCode" required class="input" />
+                            </div>
+                            <div class="form-group">
+                                <label for="serviceCategory">Categoría</label>
+                                <select id="serviceCategory" required class="select">
+                                    <option value="">Seleccionar una categoría</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="serviceDescription">Descripción</label>
+                                <input type="text" id="serviceDescription" required class="input" />
+                            </div>
+                            <div class="form-group">
+                                <label for="serviceSubtitle">Subtítulo</label>
+                                <input type="text" id="serviceSubtitle" required class="input" />
+                            </div>
+                            <div class="form-group input-with-prefix">
+                                <label for="servicePrice">Precio Neto</label>
+                                <input type="number" id="servicePrice" min="0" step="0.01" required class="input" />
+                            </div>
+                            <div id="extra-material" style="display: none">
+                                <div class="form-group">
+                                    <label for="serviceMarca">Marca</label>
+                                    <input type="text" id="serviceMarca" class="input" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="servicePresentacion">Presentación</label>
+                                    <input type="text" id="servicePresentacion" class="input" />
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus" style="margin-right: 0.5rem"></i>
+                                    Añadir Servicio
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Services Table -->
+                    <div class="search-container">
+                        <input type="text" id="serviceSearchInput" class="search-input form-control" style="
+                                    width: 40%;
+                                    margin-bottom: 1rem;
+                                    padding: 1rem;
+                                " placeholder="Buscar servicios..." onkeyup="filterServiceTable()" />
+                    </div>
+                    <div class="table-container">
+                        <table class="table" id="serviceTable">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Tipo</th>
+                                    <th>Categoria</th>
+                                    <th>Marca / Presentación</th>
+                                    <th>Subtítulo</th>
+                                    <th>Descripción</th>
+                                    <th>Precio neto</th>
+                                    <th class="center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceTableBody">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty state message -->
+                    <div id="serviceEmptyState" class="empty-state">
+                        <i class="fas fa-teeth-open icon-empty"></i>
+                        <h3>No hay servicios aún</h3>
+                        <p>Añade tu primer servicio usando el formulario
+                            de arriba</p>
+                    </div>
+                </div>
+
+                <!-- Stats Card -->
+                <div class="card">
+                    <h2 class="form-title">Estadísticas de Servicios</h2>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <p>Total de Servicios</p>
+                            <span id="totalServices">0</span>
+                        </div>
+                        <div class="stat">
+                            <p>Precio Promedio</p>
+                            <span id="averagePrice">$0.00</span>
+                        </div>
+                        <div class="stat">
+                            <p>Último Añadido</p>
+                            <span id="lastAddedService">-</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- jQuery necesario para Select2 -->
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <!-- Select2 CSS y JS desde CDN -->
-        <link
-            href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-            rel="stylesheet"
-        />
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Confirmar Eliminación</h2>
+                <p id="deleteMessage">
+                    ¿Estás seguro de que quieres eliminar este elemento?
+                    Esta acción no se puede deshacer.
+                </p>
+                <div class="modal-actions">
+                    <button id="cancelDelete" class="btn btn-secondary">
+                        Cancelar
+                    </button>
+                    <button id="confirmDelete" class="btn btn-danger">Eliminar</button>
+                </div>
+            </div>
+        </div>
 
-        <script src="pdf-payload.js"></script>
-        <script src="pdf-actions.js"></script>
-        <script src="email-actions.js"></script>
-        <script src="app.js"></script>
-    </body>
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden">
+            <span id="toastMessage">Operación exitosa</span>
+        </div>
+    </div>
 
-    <script>
-        (function () {
-            function initPaymentUI() {
-                const $ = (id) => document.getElementById(id);
-                const rdUnico = $("pago-metodo-unico");
-                const rdAplaz = $("pago-metodo-aplazado");
-                const boxAplaz = $("pago-aplazado-fields");
-                const inpCuotaInicial = $("pago-cuota-inicial");
-                const inpNumCuotas = $("pago-numero-cuotas");
-                const inpValorCuota = $("pago-valor-cuota");
+    <!-- jQuery necesario para Select2 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Select2 CSS y JS desde CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-                if (!rdUnico || !rdAplaz || !boxAplaz) return;
+    <script src="pdf-payload.js"></script>
+    <script src="pdf-actions.js"></script>
+    <script src="email-actions.js"></script>
+    <script src="app.js"></script>
+</body>
 
-                // --- Utilidades ---
-                const parseMoney = (s) => {
-                    const v = String(s || "")
-                        .replace(/\s/g, "")
-                        .replace(/\$/g, "")
-                        .replace(/\./g, "")
-                        .replace(",", ".");
-                    const n = parseFloat(v);
-                    return isNaN(n) ? 0 : n;
-                };
+<script>
+    (function () {
+        function initPaymentUI() {
+            const $ = (id) => document.getElementById(id);
+            const rdUnico = $("pago-metodo-unico");
+            const rdAplaz = $("pago-metodo-aplazado");
+            const boxAplaz = $("pago-aplazado-fields");
+            const inpCuotaInicial = $("pago-cuota-inicial");
+            const inpNumCuotas = $("pago-numero-cuotas");
+            const inpValorCuota = $("pago-valor-cuota");
 
-                // NUEVO: autocalcular “Valor por cuota”
-                const recalcularValorCuota = () => {
-                    if (!rdAplaz.checked) {
-                        inpValorCuota.value = "";
-                        return;
-                    }
-                    const totalTxt =
-                        document.getElementById("total-cotizacion")
-                            ?.textContent || "0";
-                    const total = parseMoney(totalTxt);
+            if (!rdUnico || !rdAplaz || !boxAplaz) return;
 
-                    let n = parseInt(inpNumCuotas.value, 10);
-                    if (!n || n < 2) {
-                        n = 2;
-                        inpNumCuotas.value = 2; // forzar mínimo 2 en UI
-                    }
+            // --- Utilidades ---
+            const parseMoney = (s) => {
+                const v = String(s || "")
+                    .replace(/\s/g, "")
+                    .replace(/\$/g, "")
+                    .replace(/\./g, "")
+                    .replace(",", ".");
+                const n = parseFloat(v);
+                return isNaN(n) ? 0 : n;
+            };
 
-                    if (window.hayOrtodoncia && rdAplaz.checked) {
-                        // 70% en cuotas (lo mismo que usas en el botón)
-                        const restante = Math.max(0, Math.floor(total * 0.7));
-                        const mensual = Math.floor(restante / n);
-                        inpValorCuota.value = mensual.toLocaleString("es-CO");
-                    } else {
-                        const inicial = parseMoney(inpCuotaInicial.value);
-                        const restante = Math.max(0, total - inicial);
-                        const cuota = Math.floor(restante / n);
-                        inpValorCuota.value = cuota.toLocaleString("es-CO");
-                    }
-                };
+            // NUEVO: autocalcular “Valor por cuota”
+            const recalcularValorCuota = () => {
+                if (!rdAplaz.checked) {
+                    inpValorCuota.value = "";
+                    return;
+                }
+                const totalTxt =
+                    document.getElementById("total-cotizacion")
+                        ?.textContent || "0";
+                const total = parseMoney(totalTxt);
 
-                // NUEVO: validación antes de guardar
-                const validarPagoAplazado = () => {
-                    if (!rdAplaz.checked) return true;
-                    const n = parseInt(inpNumCuotas.value, 10);
-                    const vcuota = parseMoney(inpValorCuota.value);
-                    if (!n || n < 2 || n > 36) {
-                        alert("El número de cuotas debe estar entre 2 y 36.");
-                        inpNumCuotas.focus();
-                        return false;
-                    }
-                    if (!vcuota || vcuota <= 0) {
-                        alert("El valor por cuota no puede estar vacío.");
-                        inpValorCuota.focus();
-                        return false;
-                    }
-                    return true;
-                };
+                let n = parseInt(inpNumCuotas.value, 10);
+                if (!n || n < 2) {
+                    n = 2;
+                    inpNumCuotas.value = 2; // forzar mínimo 2 en UI
+                }
 
-                // Enlaza la validación a tu guardarCotizacion si existe
-                (function wrapGuardar() {
-                    if (
-                        typeof window.guardarCotizacion === "function" &&
-                        !window.guardarCotizacion.__wrapped
-                    ) {
-                        const orig = window.guardarCotizacion;
-                        const wrapped = async function (...args) {
-                            if (!validarPagoAplazado()) return;
-                            return orig.apply(this, args);
-                        };
-                        wrapped.__wrapped = true;
-                        window.guardarCotizacion = wrapped;
-                    } else if (typeof window.guardarCotizacion !== "function") {
-                        // reintenta más tarde por si ese script carga después
-                        setTimeout(wrapGuardar, 300);
-                    }
-                })();
+                if (window.hayOrtodoncia && rdAplaz.checked) {
+                    // 70% en cuotas (lo mismo que usas en el botón)
+                    const restante = Math.max(0, Math.floor(total * 0.7));
+                    const mensual = Math.floor(restante / n);
+                    inpValorCuota.value = mensual.toLocaleString("es-CO");
+                } else {
+                    const inicial = parseMoney(inpCuotaInicial.value);
+                    const restante = Math.max(0, total - inicial);
+                    const cuota = Math.floor(restante / n);
+                    inpValorCuota.value = cuota.toLocaleString("es-CO");
+                }
+            };
 
-                // --- UI de método ---
-                const toggleAplazado = () => {
-                    const on = rdAplaz.checked;
-                    boxAplaz.classList.toggle("hidden", !on);
+            // NUEVO: validación antes de guardar
+            const validarPagoAplazado = () => {
+                if (!rdAplaz.checked) return true;
+                const n = parseInt(inpNumCuotas.value, 10);
+                const vcuota = parseMoney(inpValorCuota.value);
+                if (!n || n < 2 || n > 36) {
+                    alert("El número de cuotas debe estar entre 2 y 36.");
+                    inpNumCuotas.focus();
+                    return false;
+                }
+                if (!vcuota || vcuota <= 0) {
+                    alert("El valor por cuota no puede estar vacío.");
+                    inpValorCuota.focus();
+                    return false;
+                }
+                return true;
+            };
 
-                    // NUEVO: atributos/valores por defecto y required
-                    inpNumCuotas.min = 2;
-                    inpNumCuotas.max = 36;
-                    inpNumCuotas.step = 1;
+            // Enlaza la validación a tu guardarCotizacion si existe
+            (function wrapGuardar() {
+                if (
+                    typeof window.guardarCotizacion === "function" &&
+                    !window.guardarCotizacion.__wrapped
+                ) {
+                    const orig = window.guardarCotizacion;
+                    const wrapped = async function (...args) {
+                        if (!validarPagoAplazado()) return;
+                        return orig.apply(this, args);
+                    };
+                    wrapped.__wrapped = true;
+                    window.guardarCotizacion = wrapped;
+                } else if (typeof window.guardarCotizacion !== "function") {
+                    // reintenta más tarde por si ese script carga después
+                    setTimeout(wrapGuardar, 300);
+                }
+            })();
+
+            // --- UI de método ---
+            const toggleAplazado = () => {
+                const on = rdAplaz.checked;
+                boxAplaz.classList.toggle("hidden", !on);
+
+                // NUEVO: atributos/valores por defecto y required
+                inpNumCuotas.min = 2;
+                inpNumCuotas.max = 36;
+                inpNumCuotas.step = 1;
+                if (
+                    !inpNumCuotas.value ||
+                    parseInt(inpNumCuotas.value, 10) < 2
+                ) {
+                    inpNumCuotas.value = 2;
+                }
+                inpNumCuotas.required = on;
+                inpValorCuota.required = on;
+
+                recalcularValorCuota();
+            };
+
+            rdUnico.addEventListener("change", () => {
+                toggleAplazado();
+                window.actualizarUIOrtodoncia();
+            });
+            rdAplaz.addEventListener("change", () => {
+                toggleAplazado();
+                window.actualizarUIOrtodoncia();
+            });
+            toggleAplazado(); // estado inicial
+
+            // --- Cálculo especial ortodoncia (Cuota 1/2) ---
+            const calcularCuotasOrtodoncia = function () {
+                if (!(window.hayOrtodoncia && rdAplaz.checked)) return;
+                const totalTxt =
+                    document.getElementById("total-cotizacion")
+                        ?.textContent || "0";
+                const total = parseMoney(totalTxt);
+                const c1El = document.getElementById("cuota-1");
+                const c2El = document.getElementById("cuota-2");
+                if (!c1El || !c2El) return;
+
+                const cuota1 = Math.floor(total * 0.15);
+                const cuota2 = Math.floor(total * 0.15);
+                c1El.value = cuota1.toLocaleString("es-CO");
+                c2El.value = cuota2.toLocaleString("es-CO");
+            };
+
+            // Observar cambios del total → recalcular todo
+            const totalEl = document.getElementById("total-cotizacion");
+            if (totalEl) {
+                const obs = new MutationObserver(() => {
+                    calcularCuotasOrtodoncia();
+                    recalcularValorCuota(); // NUEVO
+                });
+                obs.observe(totalEl, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true,
+                });
+            }
+
+            // Botón existente (sigue funcionando, pero ahora todo es automático)
+            const btnCalc = document.getElementById("btn-calcular-cuota");
+            btnCalc?.addEventListener("click", () => {
+                // Simplemente reutiliza el mismo cálculo automático
+                recalcularValorCuota();
+            });
+
+            // NUEVO: recalcular cuando el usuario escribe
+            inpCuotaInicial?.addEventListener(
+                "input",
+                recalcularValorCuota
+            );
+            inpNumCuotas?.addEventListener("input", recalcularValorCuota);
+            inpNumCuotas?.addEventListener("change", recalcularValorCuota);
+
+            // --- Mostrar/ocultar bloque ortodoncia (tu lógica original) ---
+            window.actualizarUIOrtodoncia = function () {
+                if (window.hayOrtodoncia && rdAplaz.checked) {
+                    inpCuotaInicial
+                        .closest(".form-group")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("pago-aplazado-ortodoncia")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("col-ortodoncia")
+                        .classList.remove("hidden");
+                    calcularCuotasOrtodoncia();
+                } else {
+                    inpCuotaInicial
+                        .closest(".form-group")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("pago-aplazado-ortodoncia")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("col-ortodoncia")
+                        .classList.add("hidden");
+                }
+                // Además recalcula el valor por cuota
+                recalcularValorCuota();
+            };
+
+            function limpiarCamposPago() {
+                // Si es aplazado, mantenemos “nº cuotas = 2” por defecto; limpiamos el resto
+                if (rdAplaz.checked) {
+                    inpCuotaInicial.value = "";
+                    inpValorCuota.value = "";
                     if (
                         !inpNumCuotas.value ||
                         parseInt(inpNumCuotas.value, 10) < 2
                     ) {
                         inpNumCuotas.value = 2;
                     }
-                    inpNumCuotas.required = on;
-                    inpValorCuota.required = on;
-
-                    recalcularValorCuota();
-                };
-
-                rdUnico.addEventListener("change", () => {
-                    toggleAplazado();
-                    window.actualizarUIOrtodoncia();
-                });
-                rdAplaz.addEventListener("change", () => {
-                    toggleAplazado();
-                    window.actualizarUIOrtodoncia();
-                });
-                toggleAplazado(); // estado inicial
-
-                // --- Cálculo especial ortodoncia (Cuota 1/2) ---
-                const calcularCuotasOrtodoncia = function () {
-                    if (!(window.hayOrtodoncia && rdAplaz.checked)) return;
-                    const totalTxt =
-                        document.getElementById("total-cotizacion")
-                            ?.textContent || "0";
-                    const total = parseMoney(totalTxt);
-                    const c1El = document.getElementById("cuota-1");
-                    const c2El = document.getElementById("cuota-2");
-                    if (!c1El || !c2El) return;
-
-                    const cuota1 = Math.floor(total * 0.15);
-                    const cuota2 = Math.floor(total * 0.15);
-                    c1El.value = cuota1.toLocaleString("es-CO");
-                    c2El.value = cuota2.toLocaleString("es-CO");
-                };
-
-                // Observar cambios del total → recalcular todo
-                const totalEl = document.getElementById("total-cotizacion");
-                if (totalEl) {
-                    const obs = new MutationObserver(() => {
-                        calcularCuotasOrtodoncia();
-                        recalcularValorCuota(); // NUEVO
-                    });
-                    obs.observe(totalEl, {
-                        childList: true,
-                        characterData: true,
-                        subtree: true,
-                    });
+                } else {
+                    inpCuotaInicial.value = "";
+                    inpNumCuotas.value = "";
+                    inpValorCuota.value = "";
                 }
+                const cuota1 = document.getElementById("cuota-1");
+                const cuota2 = document.getElementById("cuota-2");
+                if (cuota1) cuota1.value = "";
+                if (cuota2) cuota2.value = "";
 
-                // Botón existente (sigue funcionando, pero ahora todo es automático)
-                const btnCalc = document.getElementById("btn-calcular-cuota");
-                btnCalc?.addEventListener("click", () => {
-                    // Simplemente reutiliza el mismo cálculo automático
-                    recalcularValorCuota();
-                });
+                if (window.hayOrtodoncia && rdAplaz.checked) {
+                    calcularCuotasOrtodoncia();
+                }
+                recalcularValorCuota(); // NUEVO
+            }
 
-                // NUEVO: recalcular cuando el usuario escribe
-                inpCuotaInicial?.addEventListener(
-                    "input",
-                    recalcularValorCuota
+            // Cuando cambian categorías, limpia y recalcula
+            document
+                .querySelectorAll(
+                    ".categoria-fase-select, .categoria-unica-select"
+                )
+                .forEach((sel) =>
+                    sel.addEventListener("change", limpiarCamposPago)
                 );
-                inpNumCuotas?.addEventListener("input", recalcularValorCuota);
-                inpNumCuotas?.addEventListener("change", recalcularValorCuota);
+        }
 
-                // --- Mostrar/ocultar bloque ortodoncia (tu lógica original) ---
-                window.actualizarUIOrtodoncia = function () {
-                    if (window.hayOrtodoncia && rdAplaz.checked) {
-                        inpCuotaInicial
-                            .closest(".form-group")
-                            .classList.add("hidden");
-                        document
-                            .getElementById("pago-aplazado-ortodoncia")
-                            .classList.remove("hidden");
-                        document
-                            .getElementById("col-ortodoncia")
-                            .classList.remove("hidden");
-                        calcularCuotasOrtodoncia();
-                    } else {
-                        inpCuotaInicial
-                            .closest(".form-group")
-                            .classList.remove("hidden");
-                        document
-                            .getElementById("pago-aplazado-ortodoncia")
-                            .classList.add("hidden");
-                        document
-                            .getElementById("col-ortodoncia")
-                            .classList.add("hidden");
-                    }
-                    // Además recalcula el valor por cuota
-                    recalcularValorCuota();
-                };
+        // Inicializa
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initPaymentUI);
+        } else {
+            initPaymentUI();
+        }
+        // expórtalo si reutilizas:
+        window.initPaymentUI = initPaymentUI;
+    })();
 
-                function limpiarCamposPago() {
-                    // Si es aplazado, mantenemos “nº cuotas = 2” por defecto; limpiamos el resto
-                    if (rdAplaz.checked) {
-                        inpCuotaInicial.value = "";
-                        inpValorCuota.value = "";
-                        if (
-                            !inpNumCuotas.value ||
-                            parseInt(inpNumCuotas.value, 10) < 2
-                        ) {
-                            inpNumCuotas.value = 2;
-                        }
-                    } else {
-                        inpCuotaInicial.value = "";
-                        inpNumCuotas.value = "";
-                        inpValorCuota.value = "";
-                    }
-                    const cuota1 = document.getElementById("cuota-1");
-                    const cuota2 = document.getElementById("cuota-2");
-                    if (cuota1) cuota1.value = "";
-                    if (cuota2) cuota2.value = "";
+    function setSelectPlaceholder(item, mode) {
+        const sel = item.querySelector(".servicio-select");
+        if (!sel) return;
 
-                    if (window.hayOrtodoncia && rdAplaz.checked) {
-                        calcularCuotasOrtodoncia();
-                    }
-                    recalcularValorCuota(); // NUEVO
-                }
+        // Asegura que exista una opción vacía al inicio
+        let firstOpt =
+            sel.querySelector('option[value=""]') || sel.options?.[0];
+        if (!firstOpt || firstOpt.value !== "") {
+            firstOpt = document.createElement("option");
+            firstOpt.value = "";
+            sel.insertBefore(firstOpt, sel.firstChild);
+        }
 
-                // Cuando cambian categorías, limpia y recalcula
-                document
-                    .querySelectorAll(
-                        ".categoria-fase-select, .categoria-unica-select"
-                    )
-                    .forEach((sel) =>
-                        sel.addEventListener("change", limpiarCamposPago)
-                    );
-            }
-
-            // Inicializa
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", initPaymentUI);
-            } else {
-                initPaymentUI();
-            }
-            // expórtalo si reutilizas:
-            window.initPaymentUI = initPaymentUI;
-        })();
-
-        function setSelectPlaceholder(item, mode) {
-            const sel = item.querySelector(".servicio-select");
-            if (!sel) return;
-
-            // Asegura que exista una opción vacía al inicio
-            let firstOpt =
-                sel.querySelector('option[value=""]') || sel.options?.[0];
-            if (!firstOpt || firstOpt.value !== "") {
-                firstOpt = document.createElement("option");
-                firstOpt.value = "";
-                sel.insertBefore(firstOpt, sel.firstChild);
-            }
-
-            // Texto según el modo
-            const text =
-                mode === "material"
-                    ? "Seleccionar material..."
-                    : mode === "adicional"
+        // Texto según el modo
+        const text =
+            mode === "material"
+                ? "Seleccionar material..."
+                : mode === "adicional"
                     ? "Seleccionar adicional..."
                     : "Seleccionar servicio...";
 
-            firstOpt.textContent = text;
+        firstOpt.textContent = text;
 
-            // Si no hay valor elegido, que muestre el placeholder
-            if (!sel.value) sel.selectedIndex = 0;
+        // Si no hay valor elegido, que muestre el placeholder
+        if (!sel.value) sel.selectedIndex = 0;
 
-            // Si usas Select2 sobre este <select>, refresca visualmente
-            if (window.$ && window.jQuery && $(sel).data("select2")) {
-                $(sel).find('option[value=""]').text(text);
-                $(sel).trigger("change.select2");
-            }
+        // Si usas Select2 sobre este <select>, refresca visualmente
+        if (window.$ && window.jQuery && $(sel).data("select2")) {
+            $(sel).find('option[value=""]').text(text);
+            $(sel).trigger("change.select2");
         }
+    }
 
-        //ocultar +añadir categoría en fases
-        document.addEventListener("DOMContentLoaded", () => {
-            const toggleFases = document.getElementById("use-phases");
-            const addCategoryBtn = document.getElementById("add-category-btn");
+    //ocultar +añadir categoría en fases
+    document.addEventListener("DOMContentLoaded", () => {
+        const toggleFases = document.getElementById("use-phases");
+        const addCategoryBtn = document.getElementById("add-category-btn");
 
-            if (toggleFases && addCategoryBtn) {
-                toggleFases.addEventListener("change", () => {
-                    if (toggleFases.checked) {
-                        addCategoryBtn.style.display = "none";
-                    } else {
-                        addCategoryBtn.style.display = "inline-block";
-                    }
-                });
-            }
-        });
-        //
-
-        (function () {
-            // detecta si hay una categoría de Ortodoncia (cubre Ortodoncia Invisible también)
-            function detectarEspecialidadPago() {
-                const sels = document.querySelectorAll(
-                    ".categoria-fase-select, .categoria-unica-select"
-                );
-                let hayOrto = false;
-                sels.forEach((s) => {
-                    const t = (
-                        s.selectedOptions?.[0]?.text ||
-                        s.value ||
-                        ""
-                    ).toUpperCase();
-                    if (t.includes("ORTODONCIA")) hayOrto = true; // "ORTODONCIA INVISIBLE" también matchea
-                });
-                window.hayOrtodoncia = hayOrto; // <- usado por tu UI/payload
-                window.actualizarUIOrtodoncia?.(); // <- ya existe en tu initPaymentUI
-            }
-
-            // engancha cambios de categoría para refrescar la UI de pago
-            document.addEventListener("change", (e) => {
-                if (
-                    e.target.matches(".categoria-fase-select") ||
-                    e.target.matches(".categoria-unica-select")
-                ) {
-                    detectarEspecialidadPago();
+        if (toggleFases && addCategoryBtn) {
+            toggleFases.addEventListener("change", () => {
+                if (toggleFases.checked) {
+                    addCategoryBtn.style.display = "none";
+                } else {
+                    addCategoryBtn.style.display = "inline-block";
                 }
             });
+        }
+    });
+    //
 
-            // primer cómputo al cargar
-            if (document.readyState === "loading") {
-                document.addEventListener(
-                    "DOMContentLoaded",
-                    detectarEspecialidadPago
-                );
-            } else {
-                detectarEspecialidadPago();
-            }
-        })();
-
-        (function () {
-            // Palabras clave permitidas (en mayúsculas). Ajusta si tu texto exacto difiere.
-            const ALLOW_KWS = ["PERIODONCIA", "ENDODONCIA", "CIRUG"];
-
-            function categoriaPermiteRadios(select) {
-                if (!select) return false;
-                const txt = (
-                    select.selectedOptions?.[0]?.text ||
-                    select.value ||
+    (function () {
+        // detecta si hay una categoría de Ortodoncia (cubre Ortodoncia Invisible también)
+        function detectarEspecialidadPago() {
+            const sels = document.querySelectorAll(
+                ".categoria-fase-select, .categoria-unica-select"
+            );
+            let hayOrto = false;
+            sels.forEach((s) => {
+                const t = (
+                    s.selectedOptions?.[0]?.text ||
+                    s.value ||
                     ""
                 ).toUpperCase();
-                return ALLOW_KWS.some((k) => txt.includes(k)); // “CIRUG” cubre CIRUGÍA / CIRUGIA
-            }
+                if (t.includes("ORTODONCIA")) hayOrto = true; // "ORTODONCIA INVISIBLE" también matchea
+            });
+            window.hayOrtodoncia = hayOrto; // <- usado por tu UI/payload
+            window.actualizarUIOrtodoncia?.(); // <- ya existe en tu initPaymentUI
+        }
 
-            function getCategoriaSelectFor(item) {
-                const group = item.closest(".category-group");
-                return group?.querySelector(
+        // engancha cambios de categoría para refrescar la UI de pago
+        document.addEventListener("change", (e) => {
+            if (
+                e.target.matches(".categoria-fase-select") ||
+                e.target.matches(".categoria-unica-select")
+            ) {
+                detectarEspecialidadPago();
+            }
+        });
+
+        // primer cómputo al cargar
+        if (document.readyState === "loading") {
+            document.addEventListener(
+                "DOMContentLoaded",
+                detectarEspecialidadPago
+            );
+        } else {
+            detectarEspecialidadPago();
+        }
+    })();
+
+    (function () {
+        // Palabras clave permitidas (en mayúsculas). Ajusta si tu texto exacto difiere.
+        const ALLOW_KWS = ["PERIODONCIA", "ENDODONCIA", "CIRUG"];
+
+        function categoriaPermiteRadios(select) {
+            if (!select) return false;
+            const txt = (
+                select.selectedOptions?.[0]?.text ||
+                select.value ||
+                ""
+            ).toUpperCase();
+            return ALLOW_KWS.some((k) => txt.includes(k)); // “CIRUG” cubre CIRUGÍA / CIRUGIA
+        }
+
+        function getCategoriaSelectFor(item) {
+            const group = item.closest(".category-group");
+            return group?.querySelector(
+                ".categoria-fase-select, .categoria-unica-select"
+            );
+        }
+
+        function updateItemRadiosVisibility(item) {
+            const filaRadios = item.querySelector(".tipo-item-row");
+            if (!filaRadios) return;
+            const sel = getCategoriaSelectFor(item);
+            const show = categoriaPermiteRadios(sel);
+            filaRadios.classList.toggle("hidden", !show);
+        }
+
+        function wireCategorySelect(select) {
+            if (!select || select.dataset.radiosGuard === "1") return;
+            select.dataset.radiosGuard = "1";
+            select.addEventListener("change", () => {
+                const group = select.closest(".category-group");
+                group
+                    ?.querySelectorAll(".service-item")
+                    .forEach(updateItemRadiosVisibility);
+            });
+        }
+
+        function initRadiosGuard() {
+            // Para selects ya presentes
+            document
+                .querySelectorAll(
                     ".categoria-fase-select, .categoria-unica-select"
-                );
-            }
+                )
+                .forEach(wireCategorySelect);
+            // Para service-items ya presentes
+            document
+                .querySelectorAll(".service-item")
+                .forEach(updateItemRadiosVisibility);
 
-            function updateItemRadiosVisibility(item) {
-                const filaRadios = item.querySelector(".tipo-item-row");
-                if (!filaRadios) return;
-                const sel = getCategoriaSelectFor(item);
-                const show = categoriaPermiteRadios(sel);
-                filaRadios.classList.toggle("hidden", !show);
-            }
+            // Observar nuevos service-items o selects que se agreguen dinámicamente
+            const obs = new MutationObserver((muts) => {
+                muts.forEach((m) => {
+                    m.addedNodes.forEach((n) => {
+                        if (n.nodeType !== 1) return;
+                        if (n.matches?.(".service-item"))
+                            updateItemRadiosVisibility(n);
+                        n.querySelectorAll?.(".service-item").forEach(
+                            updateItemRadiosVisibility
+                        );
 
-            function wireCategorySelect(select) {
-                if (!select || select.dataset.radiosGuard === "1") return;
-                select.dataset.radiosGuard = "1";
-                select.addEventListener("change", () => {
-                    const group = select.closest(".category-group");
-                    group
-                        ?.querySelectorAll(".service-item")
-                        .forEach(updateItemRadiosVisibility);
-                });
-            }
-
-            function initRadiosGuard() {
-                // Para selects ya presentes
-                document
-                    .querySelectorAll(
-                        ".categoria-fase-select, .categoria-unica-select"
-                    )
-                    .forEach(wireCategorySelect);
-                // Para service-items ya presentes
-                document
-                    .querySelectorAll(".service-item")
-                    .forEach(updateItemRadiosVisibility);
-
-                // Observar nuevos service-items o selects que se agreguen dinámicamente
-                const obs = new MutationObserver((muts) => {
-                    muts.forEach((m) => {
-                        m.addedNodes.forEach((n) => {
-                            if (n.nodeType !== 1) return;
-                            if (n.matches?.(".service-item"))
-                                updateItemRadiosVisibility(n);
-                            n.querySelectorAll?.(".service-item").forEach(
-                                updateItemRadiosVisibility
-                            );
-
-                            if (
-                                n.matches?.(
-                                    ".categoria-fase-select, .categoria-unica-select"
-                                )
-                            )
-                                wireCategorySelect(n);
-                            n.querySelectorAll?.(
+                        if (
+                            n.matches?.(
                                 ".categoria-fase-select, .categoria-unica-select"
-                            ).forEach(wireCategorySelect);
-                        });
-                    });
-                });
-                obs.observe(document.body, { childList: true, subtree: true });
-            }
-
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", initRadiosGuard);
-            } else {
-                initRadiosGuard();
-            }
-
-            // Utilidad opcional por si quieres forzar refresco manualmente
-            window.updateTipoItemRadiosAll = function () {
-                document
-                    .querySelectorAll(".service-item")
-                    .forEach(updateItemRadiosVisibility);
-            };
-        })();
-
-        (function () {
-            let __svcItemSeq = 0;
-
-            function applyMode(item, mode) {
-                const subtitulo = item.querySelector(".field-subtitulo");
-                const marca = item.querySelector(".field-marca");
-                const presentacion = item.querySelector(".field-presentacion");
-
-                if (!subtitulo || !marca || !presentacion) return;
-
-                if (mode === "material") {
-                    // Material: mostrar Marca/Presentación, ocultar Subtítulo
-                    subtitulo.style.display = "none";
-                    marca.style.display = "";
-                    presentacion.style.display = "";
-                } else {
-                    // Servicio y Adicional: mostrar Subtítulo, ocultar Marca/Presentación
-                    subtitulo.style.display = "";
-                    marca.style.display = "none";
-                    presentacion.style.display = "none";
-                }
-
-                setSelectPlaceholder(item, mode);
-            }
-
-            function wireServiceItem(item) {
-                if (!item || item.dataset.wired === "1") return;
-                item.dataset.wired = "1";
-
-                // 1) Agrupar radios con name único por fila
-                const radios = item.querySelectorAll(
-                    'input[type="radio"][data-role="tipo"]'
-                );
-                const groupName =
-                    "tipo_item_" +
-                    ++__svcItemSeq +
-                    "_" +
-                    Date.now().toString(36);
-                radios.forEach((r) => {
-                    r.name = groupName;
-                });
-
-                // 2) Estado inicial
-                const checked = item.querySelector(
-                    'input[type="radio"][data-role="tipo"]:checked'
-                );
-                applyMode(item, checked ? checked.value : "servicio");
-
-                // 3) Cambios de modo
-                item.addEventListener("change", (e) => {
-                    if (
-                        e.target.matches(
-                            'input[type="radio"][data-role="tipo"]'
+                            )
                         )
-                    ) {
-                        applyMode(item, e.target.value);
-                    }
-                });
-            }
-
-            // Inicializa los existentes y observa nuevos (cuando se clona el template)
-            function initServiceItemsObserver() {
-                document
-                    .querySelectorAll(".service-item")
-                    .forEach(wireServiceItem);
-
-                const obs = new MutationObserver((muts) => {
-                    muts.forEach((m) => {
-                        m.addedNodes.forEach((n) => {
-                            if (n.nodeType === 1) {
-                                if (n.matches && n.matches(".service-item"))
-                                    wireServiceItem(n);
-                                n.querySelectorAll?.(".service-item").forEach(
-                                    wireServiceItem
-                                );
-                            }
-                        });
+                            wireCategorySelect(n);
+                        n.querySelectorAll?.(
+                            ".categoria-fase-select, .categoria-unica-select"
+                        ).forEach(wireCategorySelect);
                     });
                 });
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+        }
 
-                obs.observe(document.body, { childList: true, subtree: true });
-            }
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initRadiosGuard);
+        } else {
+            initRadiosGuard();
+        }
 
-            if (document.readyState === "loading") {
-                document.addEventListener(
-                    "DOMContentLoaded",
-                    initServiceItemsObserver
-                );
+        // Utilidad opcional por si quieres forzar refresco manualmente
+        window.updateTipoItemRadiosAll = function () {
+            document
+                .querySelectorAll(".service-item")
+                .forEach(updateItemRadiosVisibility);
+        };
+    })();
+
+    (function () {
+        let __svcItemSeq = 0;
+
+        function applyMode(item, mode) {
+            const subtitulo = item.querySelector(".field-subtitulo");
+            const marca = item.querySelector(".field-marca");
+            const presentacion = item.querySelector(".field-presentacion");
+
+            if (!subtitulo || !marca || !presentacion) return;
+
+            if (mode === "material") {
+                // Material: mostrar Marca/Presentación, ocultar Subtítulo
+                subtitulo.style.display = "none";
+                marca.style.display = "";
+                presentacion.style.display = "";
             } else {
-                initServiceItemsObserver();
+                // Servicio y Adicional: mostrar Subtítulo, ocultar Marca/Presentación
+                subtitulo.style.display = "";
+                marca.style.display = "none";
+                presentacion.style.display = "none";
             }
-        })();
-    </script>
+
+            setSelectPlaceholder(item, mode);
+        }
+
+        function wireServiceItem(item) {
+            if (!item || item.dataset.wired === "1") return;
+            item.dataset.wired = "1";
+
+            // 1) Agrupar radios con name único por fila
+            const radios = item.querySelectorAll(
+                'input[type="radio"][data-role="tipo"]'
+            );
+            const groupName =
+                "tipo_item_" +
+                ++__svcItemSeq +
+                "_" +
+                Date.now().toString(36);
+            radios.forEach((r) => {
+                r.name = groupName;
+            });
+
+            // 2) Estado inicial
+            const checked = item.querySelector(
+                'input[type="radio"][data-role="tipo"]:checked'
+            );
+            applyMode(item, checked ? checked.value : "servicio");
+
+            // 3) Cambios de modo
+            item.addEventListener("change", (e) => {
+                if (
+                    e.target.matches(
+                        'input[type="radio"][data-role="tipo"]'
+                    )
+                ) {
+                    applyMode(item, e.target.value);
+                }
+            });
+        }
+
+        // Inicializa los existentes y observa nuevos (cuando se clona el template)
+        function initServiceItemsObserver() {
+            document
+                .querySelectorAll(".service-item")
+                .forEach(wireServiceItem);
+
+            const obs = new MutationObserver((muts) => {
+                muts.forEach((m) => {
+                    m.addedNodes.forEach((n) => {
+                        if (n.nodeType === 1) {
+                            if (n.matches && n.matches(".service-item"))
+                                wireServiceItem(n);
+                            n.querySelectorAll?.(".service-item").forEach(
+                                wireServiceItem
+                            );
+                        }
+                    });
+                });
+            });
+
+            obs.observe(document.body, { childList: true, subtree: true });
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener(
+                "DOMContentLoaded",
+                initServiceItemsObserver
+            );
+        } else {
+            initServiceItemsObserver();
+        }
+    })();
+</script>
+
 </html>
